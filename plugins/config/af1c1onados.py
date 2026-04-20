@@ -7,8 +7,11 @@ import os
 # Proxy settings
 proxies = {}
 
-# URL for the JSON playlist
-url = 'https://af1c1onados.vercel.app/14.AcEStREAM.iDs.w3u'
+# URL for the JSON playlist catalog
+url = 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u'
+
+# GitHub tree used as a fallback source when a shortener blocks requests.
+catalogtreeurl = 'https://api.github.com/repos/af1Series1/Tritolgia/git/trees/main?recursive=1'
 
 # Download playlist every N minutes
 updateevery = 60
