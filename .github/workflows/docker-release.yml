@@ -1,4 +1,4 @@
-name: Docker Release
+name: C++ Docker Release
 
 on:
   release:
@@ -28,12 +28,12 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./httpaceproxycpp/Dockerfile
           platforms: linux/amd64
           push: true
           tags: jopsis/httpaceproxy:${{ steps.get_version.outputs.VERSION }}-amd64
-          cache-from: type=gha,scope=amd64
-          cache-to: type=gha,mode=max,scope=amd64
+          cache-from: type=gha,scope=cpp-amd64
+          cache-to: type=gha,mode=max,scope=cpp-amd64
 
   build-arm64:
     runs-on: ubuntu-latest
@@ -61,12 +61,12 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./httpaceproxycpp/Dockerfile
           platforms: linux/arm64
           push: true
           tags: jopsis/httpaceproxy:${{ steps.get_version.outputs.VERSION }}-arm64
-          cache-from: type=gha,scope=arm64
-          cache-to: type=gha,mode=max,scope=arm64
+          cache-from: type=gha,scope=cpp-arm64
+          cache-to: type=gha,mode=max,scope=cpp-arm64
 
   build-arm32:
     runs-on: ubuntu-latest
@@ -94,12 +94,12 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./httpaceproxycpp/Dockerfile
           platforms: linux/arm/v7
           push: true
           tags: jopsis/httpaceproxy:${{ steps.get_version.outputs.VERSION }}-arm32
-          cache-from: type=gha,scope=arm32
-          cache-to: type=gha,mode=max,scope=arm32
+          cache-from: type=gha,scope=cpp-arm32
+          cache-to: type=gha,mode=max,scope=cpp-arm32
 
   create-manifests:
     runs-on: ubuntu-latest
@@ -133,7 +133,7 @@ jobs:
 
       - name: Create release summary
         run: |
-          echo "## 🐳 Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "## 🐳 C++ Docker Images Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Repository:** jopsis/httpaceproxy" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY

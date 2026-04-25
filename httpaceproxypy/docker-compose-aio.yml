@@ -1,0 +1,64 @@
+services:
+  aceserve:
+    image: jopsis/aceserve:latest
+    container_name: aceserve-engine
+    ports:
+      - "6878:6878"    # AceStream HTTP port
+      - "62062:62062"  # AceStream API port
+      - "8621:8621"   # AceStream P2P port
+    restart: unless-stopped
+    networks:
+      - aceproxy-net
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z 127.0.0.1 6878 && nc -z 127.0.0.1 62062 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    dns:
+      # - 74.115.172.133
+      - 1.1.1.1
+      - 1.0.0.1
+  httproxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # image: jopsis/httpaceproxy:latest
+    container_name: httpaceproxy
+    ports:
+      - "8888:8888"    # HTTPAceProxy web interface
+    environment:
+      - ACE_HOST=aceserve
+      - ACE_API_PORT=62062
+      - ACE_HTTP_PORT=6878
+      # Connection limits - Adjust based on your needs (see CONNECTION-LIMITS.md)
+      - MAX_CONNECTIONS=10           # Total clients (Personal: 10, Family: 25, Server: 100+)
+      - MAX_CONCURRENT_CHANNELS=5    # Different channels (Personal: 3-5, Family: 5-10, Server: 15-20)
+      # Plugin control - Specify which plugins to enable
+      # Options: 'all' (default), 'newera,acepl,stat', 'stat,statplugin', etc.
+      # Available: newera, elcano, acepl, stat, statplugin, misterchire, af1c1onados, aio
+      - ENABLED_PLUGINS=newera,elcano,stat,statplugin,misterchire,af1c1onados,aio
+      # - ENABLED_PLUGINS=stat,statplugin,aio
+      # AIO Plugin Filter - Which plugins to include in the AIO unified playlist
+      # Options: 'all' (default, includes all enabled plugins), 'newera,elcano', etc. newera,elcano,misterchire,af1c1onados
+      - AIO_PLUGINS=newera,elcano,misterchire,af1c1onados
+      # Plugin playlist URLs (optional - uses defaults if not set)
+      # - NEWERA_PLAYLIST_URL=https://your-custom-url/playlist.m3u
+      # - ELCANO_PLAYLIST_URL=https://your-custom-url/playlist.m3u
+    depends_on:
+      aceserve:
+        condition: service_healthy   # Wait for aceserve to be healthy before starting
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8888/stat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - aceproxy-net
+
+networks:
+  aceproxy-net:
+    driver: bridge

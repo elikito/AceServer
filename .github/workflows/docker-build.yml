@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build and Push C++ Docker Images
 
 on:
   push:
@@ -25,16 +25,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push AMD64 image
+      - name: Build and push AMD64 C++ image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./httpaceproxycpp/Dockerfile
           platforms: linux/amd64
           push: true
           tags: jopsis/httpaceproxy:latest-amd64
-          cache-from: type=gha,scope=amd64
-          cache-to: type=gha,mode=max,scope=amd64
+          cache-from: type=gha,scope=cpp-amd64
+          cache-to: type=gha,mode=max,scope=cpp-amd64
 
   build-arm64:
     runs-on: ubuntu-latest
@@ -54,16 +54,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push ARM64 image
+      - name: Build and push ARM64 C++ image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./httpaceproxycpp/Dockerfile
           platforms: linux/arm64
           push: true
           tags: jopsis/httpaceproxy:latest-arm64
-          cache-from: type=gha,scope=arm64
-          cache-to: type=gha,mode=max,scope=arm64
+          cache-from: type=gha,scope=cpp-arm64
+          cache-to: type=gha,mode=max,scope=cpp-arm64
 
   build-arm32:
     runs-on: ubuntu-latest
@@ -83,16 +83,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push ARM32 image
+      - name: Build and push ARM32 C++ image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./httpaceproxycpp/Dockerfile
           platforms: linux/arm/v7
           push: true
           tags: jopsis/httpaceproxy:latest-arm32
-          cache-from: type=gha,scope=arm32
-          cache-to: type=gha,mode=max,scope=arm32
+          cache-from: type=gha,scope=cpp-arm32
+          cache-to: type=gha,mode=max,scope=cpp-arm32
 
   create-manifest:
     runs-on: ubuntu-latest
@@ -124,5 +124,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: jopsis/httpaceproxy
-          short-description: "HTTPAceProxy - Ace Stream HTTP Proxy with NewEra and Elcano plugins"
+          short-description: "HTTPAceProxy - native C++ Ace Stream HTTP proxy"
           readme-filepath: ./README.md

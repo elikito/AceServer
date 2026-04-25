@@ -32,6 +32,9 @@ Thumbs.db
 *.log
 logs/
 
+# Deprecated Python implementation is not needed for the C++ image.
+httpaceproxypy/**
+
 # Docker files
 Dockerfile*
 docker-compose*.yml
@@ -51,3 +54,5 @@ LICENSE
 # Disabled plugins (already renamed)
 plugins/*.disabled
 plugins/*_plugin.py.disabled
+httpaceproxypy/plugins/*.disabled
+httpaceproxypy/plugins/*_plugin.py.disabled
