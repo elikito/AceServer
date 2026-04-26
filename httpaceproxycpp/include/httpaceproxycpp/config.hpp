@@ -19,6 +19,9 @@ struct Config {
     int ace_result_timeout = 5;
     int video_timeout = 30;
     int video_seekback = 0;
+    int client_queue_size = 256;
+    int client_write_timeout = 15;
+    int curl_stream_buffer = 1048576;
     bool use_chunked = true;
     bool firewall = false;
     bool firewall_blacklist_mode = false;

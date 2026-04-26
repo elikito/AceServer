@@ -101,7 +101,8 @@ bool HttpClient::stream(const std::string& url,
                         const std::function<bool(const char*, std::size_t)>& on_chunk,
                         const std::atomic<bool>& cancel,
                         long connect_timeout_seconds,
-                        long read_timeout_seconds) const {
+                        long read_timeout_seconds,
+                        long buffer_size) const {
     CURL* curl = curl_easy_init();
     if (!curl) return false;
     StreamState state{&on_chunk, &cancel};
@@ -118,6 +119,7 @@ bool HttpClient::stream(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "HTTPAceProxyCPP");
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, static_cast<long>(buffer_size));
     CURLcode rc = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
     return rc == CURLE_OK || !cancel.load();

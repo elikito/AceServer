@@ -8,30 +8,42 @@
 
 namespace httpace {
 
-ChunkQueue::ChunkQueue(std::size_t max_chunks) : max_chunks_(max_chunks) {}
+ChunkQueue::ChunkQueue(std::size_t max_chunks) : max_chunks_(std::max<std::size_t>(2, max_chunks)) {}
 
-bool ChunkQueue::push(std::vector<char> chunk) {
+PushResult ChunkQueue::push(std::vector<char> chunk, std::chrono::milliseconds wait) {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (closed_) return false;
-    if (chunks_.size() >= max_chunks_) return false;
+    if (closed_) return PushResult::Closed;
+    if (chunks_.size() >= max_chunks_ && wait.count() > 0) {
+        cv_space_.wait_for(lock, wait, [&] {
+            return closed_ || chunks_.size() < max_chunks_;
+        });
+        if (closed_) return PushResult::Closed;
+    }
+    PushResult result = PushResult::Ok;
+    if (chunks_.size() >= max_chunks_) {
+        chunks_.pop_front();
+        result = PushResult::DroppedOldest;
+    }
     chunks_.push_back(std::move(chunk));
-    cv_.notify_one();
-    return true;
+    cv_data_.notify_one();
+    return result;
 }
 
 bool ChunkQueue::pop(std::vector<char>& chunk) {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [&] { return closed_ || !chunks_.empty(); });
+    cv_data_.wait(lock, [&] { return closed_ || !chunks_.empty(); });
     if (chunks_.empty()) return false;
     chunk = std::move(chunks_.front());
     chunks_.pop_front();
+    cv_space_.notify_one();
     return true;
 }
 
 void ChunkQueue::close() {
     std::lock_guard<std::mutex> lock(mutex_);
     closed_ = true;
-    cv_.notify_all();
+    cv_data_.notify_all();
+    cv_space_.notify_all();
 }
 
 std::size_t ChunkQueue::size() const {
@@ -60,7 +72,8 @@ std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip
     client->channel_name = channel_name;
     client->channel_icon = channel_icon.empty() ? "http://static.acestream.net/sites/acestream/img/ACE-logo.png" : channel_icon;
     client->connection_time = unix_time();
-    client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.video_timeout)));
+    client->last_activity = client->connection_time;
+    client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)));
     client->ace = ace_;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -107,11 +120,13 @@ void Broadcast::start_once() {
 }
 
 void Broadcast::stop() {
+    bool expected = false;
+    if (!stopped_.compare_exchange_strong(expected, true)) return;
     running_ = false;
     for (auto& client : clients()) client->queue->close();
     if (ace_) {
-        ace_->stop_broadcast();
-        ace_->shutdown();
+        try { ace_->stop_broadcast(); } catch (...) {}
+        try { ace_->shutdown(); } catch (...) {}
     }
     if (stream_thread_.joinable() && stream_thread_.get_id() != std::this_thread::get_id()) stream_thread_.join();
 }
@@ -134,7 +149,7 @@ void Broadcast::stream_http_url(const std::string& url) {
     http_client_.stream(url, [&](const char* data, std::size_t size) {
         broadcast_chunk(data, size);
         return running_ && client_count() > 0;
-    }, running_, 5, config_.video_timeout);
+    }, running_, 5, config_.video_timeout, std::max(1, config_.curl_stream_buffer));
 }
 
 void Broadcast::stream_hls_url(const std::string& url) {
@@ -168,10 +183,24 @@ void Broadcast::stream_hls_url(const std::string& url) {
 
 void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
     std::vector<char> chunk(data, data + size);
+    auto write_timeout = std::max(1, config_.client_write_timeout);
+    auto wait = std::chrono::milliseconds(write_timeout * 1000 / 4);
+    auto now = unix_time();
     for (auto& client : clients()) {
-        if (!client->queue->push(chunk)) {
-            log_line("WARNING", "[" + client->client_ip + "] client queue full, closing client");
-            client->queue->close();
+        auto result = client->queue->push(chunk, wait);
+        if (result == PushResult::Closed) continue;
+        if (result == PushResult::DroppedOldest) {
+            client->dropped_chunks.fetch_add(1, std::memory_order_relaxed);
+            if (now - client->last_activity.load() > write_timeout) {
+                if (!client->stuck_logged.exchange(true)) {
+                    log_line("WARNING", "[" + client->client_ip + "] client too slow ("
+                             + std::to_string(client->dropped_chunks.load()) + " chunks dropped in "
+                             + std::to_string(write_timeout) + "s), closing");
+                    client->queue->close();
+                }
+            }
+        } else {
+            client->dropped_chunks.store(0, std::memory_order_relaxed);
         }
     }
 }
