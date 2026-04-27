@@ -28,7 +28,8 @@ public:
                 const std::function<bool(const char*, std::size_t)>& on_chunk,
                 const std::atomic<bool>& cancel,
                 long connect_timeout_seconds,
-                long read_timeout_seconds) const;
+                long read_timeout_seconds,
+                long buffer_size = 1048576) const;
 };
 
 } // namespace httpace

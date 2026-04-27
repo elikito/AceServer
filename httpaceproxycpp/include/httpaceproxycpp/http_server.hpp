@@ -62,6 +62,7 @@ public:
     void start();
     void stop();
     void join();
+    void set_client_send_timeout(int seconds) { client_send_timeout_ = seconds; }
 
 private:
     void accept_loop();
@@ -71,6 +72,7 @@ private:
     int port_;
     HttpHandler handler_;
     int listen_fd_ = -1;
+    int client_send_timeout_ = 0;
     std::atomic<bool> running_{false};
     std::thread accept_thread_;
 };

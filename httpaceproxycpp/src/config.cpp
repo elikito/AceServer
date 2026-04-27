@@ -69,6 +69,9 @@ Config load_config(int argc, char** argv) {
     cfg.ace_result_timeout = getenv_int("ACE_RESULT_TIMEOUT", cfg.ace_result_timeout);
     cfg.video_timeout = getenv_int("VIDEO_TIMEOUT", cfg.video_timeout);
     cfg.video_seekback = getenv_int("VIDEO_SEEKBACK", cfg.video_seekback);
+    cfg.client_queue_size = getenv_int("CLIENT_QUEUE_SIZE", cfg.client_queue_size);
+    cfg.client_write_timeout = getenv_int("CLIENT_WRITE_TIMEOUT", cfg.client_write_timeout);
+    cfg.curl_stream_buffer = getenv_int("CURL_STREAM_BUFFER", cfg.curl_stream_buffer);
 
     if (argc > 0 && argv && argv[0]) {
         std::filesystem::path exe(argv[0]);

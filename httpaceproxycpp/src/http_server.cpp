@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -139,6 +140,10 @@ void HttpServer::accept_loop() {
         }
         char ip[INET_ADDRSTRLEN] = {0};
         ::inet_ntop(AF_INET, &client.sin_addr, ip, sizeof(ip));
+        if (client_send_timeout_ > 0) {
+            timeval tv{client_send_timeout_, 0};
+            ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+        }
         std::thread(&HttpServer::handle_client, this, fd, std::string(ip)).detach();
     }
 }

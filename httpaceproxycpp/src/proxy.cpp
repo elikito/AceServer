@@ -152,6 +152,7 @@ Proxy::~Proxy() { stop(); }
 void Proxy::start() {
     server_ = std::make_unique<HttpServer>(config_.http_host, config_.http_port,
         [this](const HttpRequest& request, ClientConnection& connection) { handle_http(request, connection); });
+    server_->set_client_send_timeout(config_.client_write_timeout);
     server_->start();
     log_line("INFO", "HTTPAceProxyCPP started at " + config_.http_host + ":" + std::to_string(config_.http_port));
     server_->join();
@@ -309,15 +310,18 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
 
         std::vector<char> chunk;
         while (client->queue->pop(chunk)) {
+            bool ok;
             if (chunked) {
                 std::ostringstream prefix;
                 prefix << std::hex << chunk.size() << "\r\n";
-                if (!ctx.connection.send_text(prefix.str())) break;
-                if (!ctx.connection.send_all(chunk.data(), chunk.size())) break;
-                if (!ctx.connection.send_text("\r\n")) break;
+                ok = ctx.connection.send_text(prefix.str())
+                  && ctx.connection.send_all(chunk.data(), chunk.size())
+                  && ctx.connection.send_text("\r\n");
             } else {
-                if (!ctx.connection.send_all(chunk.data(), chunk.size())) break;
+                ok = ctx.connection.send_all(chunk.data(), chunk.size());
             }
+            if (!ok) break;
+            client->last_activity.store(unix_time(), std::memory_order_relaxed);
         }
         if (chunked) ctx.connection.send_text("0\r\n\r\n");
         broadcast->remove_client(client);

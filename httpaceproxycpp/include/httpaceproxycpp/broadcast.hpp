@@ -5,6 +5,7 @@
 #include "httpaceproxycpp/http_client.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <map>
@@ -17,10 +18,16 @@
 
 namespace httpace {
 
+enum class PushResult {
+    Ok,
+    DroppedOldest,
+    Closed,
+};
+
 class ChunkQueue {
 public:
     explicit ChunkQueue(std::size_t max_chunks);
-    bool push(std::vector<char> chunk);
+    PushResult push(std::vector<char> chunk, std::chrono::milliseconds wait);
     bool pop(std::vector<char>& chunk);
     void close();
     std::size_t size() const;
@@ -28,7 +35,8 @@ public:
 private:
     std::size_t max_chunks_;
     mutable std::mutex mutex_;
-    std::condition_variable cv_;
+    std::condition_variable cv_data_;
+    std::condition_variable cv_space_;
     std::deque<std::vector<char>> chunks_;
     bool closed_ = false;
 };
@@ -41,6 +49,9 @@ struct StreamClient {
     std::int64_t connection_time = 0;
     std::shared_ptr<ChunkQueue> queue;
     std::weak_ptr<AceClient> ace;
+    std::atomic<std::int64_t> last_activity{0};
+    std::atomic<int> dropped_chunks{0};
+    std::atomic<bool> stuck_logged{false};
 };
 
 class Broadcast : public std::enable_shared_from_this<Broadcast> {
@@ -75,6 +86,7 @@ private:
     std::vector<std::weak_ptr<StreamClient>> clients_;
     std::atomic<bool> running_{false};
     std::atomic<bool> started_{false};
+    std::atomic<bool> stopped_{false};
     std::thread stream_thread_;
 };
 
