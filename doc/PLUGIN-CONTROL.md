@@ -10,7 +10,6 @@ HTTPAceProxyCPP carga plugins en el arranque. La seleccion se controla con varia
 | `elcano` | Playlist | `/elcano` | Lista M3U deportiva curada desde IPFS. |
 | `acepl` | Playlist | `/acepl` | Catalogo desde la API publica de AceStream. |
 | `af1c1onados` | Playlist | `/af1c1onados` | Lista JSON organizada por grupos; usa fallback por catalogo GitHub. |
-| `misterchire` | Playlist | `/misterchire` | Scraping de fuente externa. Puede fallar si el sitio remoto bloquea TLS o no responde. |
 | `aio` | Playlist agregada | `/aio` | Combina canales de los plugins activos. |
 | `stat` | UI/API | `/stat` | Dashboard de estado, clientes y recursos. |
 | `statplugin` | UI/API | `/statplugin` | Navegador de canales y comprobaciones. |
@@ -108,7 +107,6 @@ http://localhost:8888/newera
 http://localhost:8888/elcano
 http://localhost:8888/acepl
 http://localhost:8888/af1c1onados
-http://localhost:8888/misterchire
 http://localhost:8888/aio
 ```
 

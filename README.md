@@ -17,7 +17,7 @@ The old Python implementation has been moved to [`httpaceproxypy/`](httpaceproxy
 
 - Native C++20 proxy runtime.
 - Direct streaming routes for Ace Stream content IDs, infohashes, torrent URLs, direct URLs, raw data and efile URLs.
-- Playlist plugins: `newera`, `elcano`, `acepl`, `af1c1onados`, `misterchire`, `aio`.
+- Playlist plugins: `newera`, `elcano`, `acepl`, `af1c1onados`, `aio`.
 - Web dashboards: `/stat` and `/statplugin`.
 - Broadcast sharing: multiple clients watching the same channel reuse one AceStream connection.
 - Limits for total clients and concurrent channels.
@@ -48,7 +48,8 @@ docker run -d \
   -e ACESTREAM_HTTP_PORT=6878 \
   -e MAX_CONNECTIONS=10 \
   -e MAX_CONCURRENT_CHANNELS=5 \
-  -e ENABLED_PLUGINS=all \
+  -e ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin \
+  -e AIO_PLUGINS=newera,elcano,acepl,af1c1onados \
   jopsis/httpaceproxy:latest
 ```
 
@@ -86,7 +87,6 @@ http://localhost:8888/newera
 http://localhost:8888/elcano
 http://localhost:8888/acepl
 http://localhost:8888/af1c1onados
-http://localhost:8888/misterchire
 ```
 
 Direct stream examples:

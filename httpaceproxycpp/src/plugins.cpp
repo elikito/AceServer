@@ -508,75 +508,6 @@ private:
     std::vector<CatalogEntry> catalog_entries_;
 };
 
-class MisterChirePlugin : public PlaylistPlugin {
-public:
-    MisterChirePlugin(Config cfg, HttpClient& client)
-        : PlaylistPlugin(std::move(cfg), client, "misterchire", PlaylistGenerator::epg_header(kEpgUrl, 0), 30) {}
-protected:
-    bool refresh() override {
-        std::string base_url = "https://www.misterchire.com";
-        auto main = http_client_.get(base_url, {{"User-Agent", kBrowserUserAgent}}, 30).body;
-        std::map<std::string, std::string> group_names = {
-            {"ll", "La Liga"}, {"llh", "La Liga Hypermotion"}, {"dll", "DAZN La Liga"},
-            {"dpl", "DAZN Premier League"}, {"mlc", "Liga de Campeones"}, {"mp", "Movistar+"},
-            {"rfef", "Primera RFEF"}, {"dm", "DAZN Motor"}, {"tdt-2", "TDT"}, {"tdt", "TDT"}
-        };
-        std::set<std::string> codes;
-        std::regex code_re(R"(href="[^"]*/inicio/([^/\?"]+)/")", std::regex::icase);
-        for (auto it = std::sregex_iterator(main.begin(), main.end(), code_re); it != std::sregex_iterator(); ++it) codes.insert((*it)[1].str());
-        PlaylistGenerator playlist(header_);
-        std::map<std::string, std::string> channels;
-        std::map<std::string, std::string> picons;
-        std::regex ace_re(R"REGEX(<a\s+href="(acestream://[a-f0-9]{40})"[^>]*>.*?<img[^>]*src="([^"]+)")REGEX", std::regex::icase);
-        for (const auto& code : codes) {
-            auto group = group_names.contains(code) ? group_names[code] : code;
-            try {
-                auto html = http_client_.get(base_url + "/inicio/" + code + "/", {{"User-Agent", kBrowserUserAgent}}, 30).body;
-                for (auto it = std::sregex_iterator(html.begin(), html.end(), ace_re); it != std::sregex_iterator(); ++it) {
-                    auto ace_url = (*it)[1].str();
-                    auto img = (*it)[2].str();
-                    auto ch = extract_channel_name(img);
-                    auto name = group + " " + ch;
-                    auto unique = name;
-                    int n = 2;
-                    bool exact_dup = false;
-                    while (channels.contains(unique)) {
-                        if (channels[unique] == ace_url) { exact_dup = true; break; }
-                        unique = name + " (" + std::to_string(n++) + ")";
-                    }
-                    if (exact_dup) continue;
-                    PlaylistItem item{unique, url_encode(unique, ""), group, unique, "", img};
-                    channels[unique] = ace_url;
-                    picons[unique] = img;
-                    playlist.add_item(item);
-                }
-            } catch (const std::exception& e) {
-                log_line("ERROR", "[misterchire] subsection failed " + code + ": " + e.what());
-            }
-        }
-        set_playlist(std::move(playlist), std::move(channels), std::move(picons));
-        log_line("INFO", "[misterchire] playlist generated with " + std::to_string(channel_count()) + " channels");
-        return true;
-    }
-
-private:
-    std::string extract_channel_name(const std::string& img_src) {
-        auto file = img_src.substr(img_src.find_last_of('/') == std::string::npos ? 0 : img_src.find_last_of('/') + 1);
-        auto dot = file.find_last_of('.');
-        auto base = dot == std::string::npos ? file : file.substr(0, dot);
-        auto parts = split(base, '-', false);
-        if (parts.size() >= 2) {
-            auto code = parts[0];
-            auto quality = parts.back();
-            auto number = std::regex_replace(code, std::regex(R"([a-z]+)", std::regex::icase), "");
-            if (!quality.empty() && std::all_of(quality.begin(), quality.end(), ::isdigit)) quality += "p";
-            if (!number.empty()) return number + " " + quality;
-            return quality;
-        }
-        return base.empty() ? "Channel" : base;
-    }
-};
-
 class AioPlugin : public Plugin {
 public:
     AioPlugin(Config cfg, Proxy& proxy) : config_(std::move(cfg)), proxy_(proxy) {}
@@ -684,7 +615,6 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
     add("elcano", [&] { return std::make_shared<ElcanoPlugin>(config, http_client); });
     add("acepl", [&] { return std::make_shared<AcePLPlugin>(config, http_client); });
     add("af1c1onados", [&] { return std::make_shared<Af1c1onadosPlugin>(config, http_client); });
-    add("misterchire", [&] { return std::make_shared<MisterChirePlugin>(config, http_client); });
     add("aio", [&] { return std::make_shared<AioPlugin>(config, proxy); });
     add("stat", [&] { return std::make_shared<StatPlugin>(config, proxy); });
     add("statplugin", [&] { return std::make_shared<StatpluginPlugin>(config, proxy); });

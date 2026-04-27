@@ -75,8 +75,8 @@ docker compose -f httpaceproxycpp/docker-compose-httpaceproxycpp.yml up -d
   `STOP`, `SHUTDOWN`, `LIVESEEK`, `SETOPTIONS`.
 - Broadcast sharing: one AceStream broadcast per `infohash`, many HTTP clients.
 - Limits: `MAX_CONNECTIONS` and `MAX_CONCURRENT_CHANNELS`.
-- Plugin endpoints: `newera`, `elcano`, `acepl`, `af1c1onados`,
-  `misterchire`, `aio`, `stat`, `statplugin`.
+- Plugin endpoints: `newera`, `elcano`, `acepl`, `af1c1onados`, `aio`,
+  `stat`, `statplugin`.
 - Static dashboard assets from `httpaceproxycpp/http/`.
 
 ## Current Verification

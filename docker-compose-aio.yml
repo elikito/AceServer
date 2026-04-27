@@ -35,8 +35,8 @@ services:
       - ACESTREAM_HTTP_PORT=6878
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-10}
       - MAX_CONCURRENT_CHANNELS=${MAX_CONCURRENT_CHANNELS:-5}
-      - ENABLED_PLUGINS=${ENABLED_PLUGINS:-newera,elcano,acepl,af1c1onados,misterchire,aio,stat,statplugin}
-      - AIO_PLUGINS=${AIO_PLUGINS:-newera,elcano,acepl,af1c1onados,misterchire}
+      - ENABLED_PLUGINS=${ENABLED_PLUGINS:-newera,elcano,acepl,af1c1onados,aio,stat,statplugin}
+      - AIO_PLUGINS=${AIO_PLUGINS:-newera,elcano,acepl,af1c1onados}
     depends_on:
       aceserve:
         condition: service_healthy

@@ -55,7 +55,8 @@ docker run -d \
   -e ACESTREAM_HTTP_PORT=6878 \
   -e MAX_CONNECTIONS=10 \
   -e MAX_CONCURRENT_CHANNELS=5 \
-  -e ENABLED_PLUGINS=all \
+  -e ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin \
+  -e AIO_PLUGINS=newera,elcano,acepl,af1c1onados \
   jopsis/httpaceproxy:latest
 ```
 
@@ -70,8 +71,8 @@ docker run -d \
 | `ACESTREAM_HTTP_PORT` | `6878` | Puerto HTTP del engine. |
 | `MAX_CONNECTIONS` | `10` | Clientes HTTP simultaneos maximos. |
 | `MAX_CONCURRENT_CHANNELS` | `5` | Canales distintos simultaneos maximos. |
-| `ENABLED_PLUGINS` | `all` | Plugins cargados al inicio. |
-| `AIO_PLUGINS` | `all` | Plugins incluidos en `/aio`. |
+| `ENABLED_PLUGINS` | `newera,elcano,acepl,af1c1onados,aio,stat,statplugin` | Plugins cargados al inicio. |
+| `AIO_PLUGINS` | `newera,elcano,acepl,af1c1onados` | Plugins incluidos en `/aio`. |
 
 `ACE_HOST`, `ACE_API_PORT` y `ACE_HTTP_PORT` tambien se aceptan como aliases.
 
@@ -116,7 +117,6 @@ http://localhost:8888/newera
 http://localhost:8888/elcano
 http://localhost:8888/acepl
 http://localhost:8888/af1c1onados
-http://localhost:8888/misterchire
 ```
 
 Rutas directas:
