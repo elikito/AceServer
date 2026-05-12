@@ -4,6 +4,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/jopsis/HTTPAceProxy)](https://github.com/jopsis/HTTPAceProxy/releases)
 [![GitHub Issues](https://img.shields.io/github/issues/jopsis/HTTPAceProxy)](https://github.com/jopsis/HTTPAceProxy/issues)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/jopsis)
 
 HTTPAceProxy exposes Ace Stream live streams and torrent content through a simple HTTP interface compatible with VLC, KODI, IPTV apps, and browsers.
 
