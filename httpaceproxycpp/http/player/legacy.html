@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HTTPAceProxy - Vista Legacy (iPad)</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <style>
+        /* Estilos ultra básicos, compatibles con WebKit antiguo (iOS 12.5.8) */
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: #121214;
+            color: #d1d1d6;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Navbar Plano Legacy */
+        .navbar {
+            background-color: #1a1a1e;
+            border-bottom: 1px solid #2d2d34;
+            padding: 10px 15px;
+            overflow: hidden;
+        }
+
+        .nav-brand {
+            float: left;
+            font-weight: bold;
+            font-size: 16px;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 5px 0;
+        }
+
+        .nav-links {
+            float: right;
+        }
+
+        .nav-links a {
+            color: #a8a8b2;
+            text-decoration: none;
+            font-size: 13px;
+            padding: 5px 10px;
+            display: inline-block;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: #ffffff;
+            background-color: #29292e;
+            border-radius: 3px;
+        }
+
+        .container {
+            padding: 15px;
+        }
+
+        .header-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #2d2d34;
+            padding-bottom: 10px;
+        }
+
+        .header-section h2 {
+            font-size: 18px;
+            color: #ffffff;
+            margin: 0 0 5px 0;
+        }
+
+        .header-section p {
+            font-size: 12px;
+            color: #8e8e93;
+            margin: 0;
+        }
+
+        /* Buscador Legacy */
+        .search-container-legacy {
+            margin-bottom: 15px;
+        }
+
+        .search-input-legacy {
+            width: 100%;
+            max-width: 320px;
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-input-legacy:focus {
+            border-color: #4cd964;
+        }
+
+        /* Lista Legacy de alto rendimiento */
+        .category-header {
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        .channel-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .channel-item {
+            background-color: #1a1a1e;
+            border-bottom: 1px solid #2d2d34;
+            padding: 10px 12px;
+            overflow: hidden;
+            display: block;
+        }
+
+        .channel-logo-container {
+            float: left;
+            margin-right: 12px;
+            width: 32px;
+            height: 32px;
+            background-color: #000000;
+            text-align: center;
+        }
+
+        .channel-logo {
+            max-width: 32px;
+            max-height: 32px;
+            vertical-align: middle;
+        }
+
+        .channel-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 2px;
+            padding-top: 6px;
+        }
+
+        .btn-play-legacy, .btn-copy-legacy {
+            float: right;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            margin-top: 2px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-play-legacy {
+            background-color: #4cd964;
+        }
+
+        .btn-play-legacy:hover {
+            background-color: #34c759;
+        }
+
+        .btn-copy-legacy {
+            background-color: #2d2d34;
+            border: 1px solid #4a4a52;
+            margin-right: 8px;
+        }
+
+        .btn-copy-legacy:hover {
+            background-color: #3f3f46;
+        }
+
+        .loading-screen {
+            text-align: center;
+            padding: 30px;
+            font-size: 13px;
+            color: #8e8e93;
+        }
+        
+        .footer-bar {
+            background-color: #1a1a1e;
+            border-top: 1px solid #2d2d34;
+            padding: 8px 15px;
+            font-size: 11px;
+            color: #8e8e93;
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar Legacy -->
+    <div class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <div class="nav-links">
+            <a href="/stat">Dashboard</a>
+            <a href="/statplugin/">Canales</a>
+            <a href="/listas/">Fuentes</a>
+            <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html" class="active">Reproductor Legacy</a>
+        </div>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <div class="header-section">
+            <h2>Reproductor IPTV (Legacy iOS 12)</h2>
+            <p id="loading-status">Cargando canales para WebKit ES5...</p>
+        </div>
+
+        <!-- Buscador Legacy -->
+        <div class="search-container-legacy">
+            <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..." onkeyup="filterChannelsLegacy()">
+        </div>
+
+        <div id="loading-indicator" class="loading-screen">
+            Descargando lista de canales...
+        </div>
+
+        <div id="channels-container"></div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        SERVER IP: <span id="server-ip">-</span> | VERSION: v07.18.05 (Legacy)
+    </div>
+
+    <script>
+        // JS ES5 Estricto: SIN funciones flecha, SIN template literals, SIN let/const si se prefiere compatibilidad total
+        // Se usa exclusivamente var y XMLHttpRequest clásica
+        
+        var allChannelsLegacy = [];
+
+        window.onload = function() {
+            // Cargar tema guardado si aplica
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.className = 'light-theme';
+            }
+            document.getElementById('server-ip').innerHTML = window.location.hostname || '127.0.0.1';
+            loadLegacyData();
+        };
+
+        function loadLegacyData() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/aio', true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        var m3uText = xhr.responseText;
+                        allChannelsLegacy = parseM3ULegacy(m3uText);
+                        document.getElementById('loading-status').innerHTML = allChannelsLegacy.length + ' canales cargados.';
+                        renderChannelsLegacy(allChannelsLegacy);
+                    } else {
+                        document.getElementById('loading-status').innerHTML = 'Error al cargar canales (HTTP ' + xhr.status + ')';
+                        document.getElementById('loading-indicator').style.display = 'none';
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function parseM3ULegacy(text) {
+            var lines = text.split('\n');
+            var channels = [];
+            var currentItem = null;
+            
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (line.indexOf('#EXTINF:') === 0) {
+                    currentItem = { logo: '', group: 'Otros', name: 'Canal', url: '' };
+                    
+                    // Parse logo
+                    var logoMatch = line.match(/tvg-logo="([^"]*)"/);
+                    if (logoMatch) {
+                        currentItem.logo = logoMatch[1];
+                    }
+                    
+                    // Parse group
+                    var groupMatch = line.match(/group-title="([^"]*)"/);
+                    if (groupMatch) {
+                        currentItem.group = groupMatch[1];
+                    }
+
+                    // Parse name
+                    var commaIdx = line.lastIndexOf(',');
+                    if (commaIdx !== -1) {
+                        currentItem.name = line.substring(commaIdx + 1).trim();
+                    }
+                } else if (line.indexOf('http') === 0 && currentItem) {
+                    // Reconstruir URL de streaming con el host actual
+                    var rawUrl = line;
+                    try {
+                        var slashIdx = rawUrl.indexOf('//');
+                        if (slashIdx !== -1) {
+                            var rest = rawUrl.substring(slashIdx + 2);
+                            var nextSlash = rest.indexOf('/');
+                            if (nextSlash !== -1) {
+                                rawUrl = 'http://' + window.location.host + rest.substring(nextSlash);
+                            }
+                        }
+                    } catch(e) {}
+                    
+                    currentItem.url = rawUrl;
+                    channels.push(currentItem);
+                    currentItem = null;
+                }
+            }
+            return channels;
+        }
+
+        function filterChannelsLegacy() {
+            var query = document.getElementById('search-legacy').value.toLowerCase().trim();
+            var filtered = [];
+            for (var i = 0; i < allChannelsLegacy.length; i++) {
+                var chan = allChannelsLegacy[i];
+                if (!query || chan.name.toLowerCase().indexOf(query) !== -1 || chan.group.toLowerCase().indexOf(query) !== -1) {
+                    filtered.push(chan);
+                }
+            }
+            renderChannelsLegacy(filtered);
+        }
+
+        function copyUrlLegacy(url, btn) {
+            var textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '0';
+            textarea.style.width = '1px';
+            textarea.style.height = '1px';
+            textarea.style.padding = '0';
+            textarea.style.border = 'none';
+            textarea.style.outline = 'none';
+            textarea.style.boxShadow = 'none';
+            textarea.style.background = 'transparent';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    var originalText = btn.innerHTML;
+                    btn.innerHTML = 'Copied';
+                    btn.style.backgroundColor = '#4cd964';
+                    setTimeout(function() {
+                        btn.innerHTML = originalText;
+                        btn.style.backgroundColor = '#2d2d34';
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('Legacy copy failed', err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function renderChannelsLegacy(channels) {
+            var container = document.getElementById('channels-container');
+            document.getElementById('loading-indicator').style.display = 'none';
+            container.innerHTML = '';
+
+            if (channels.length === 0) {
+                container.innerHTML = '<div class="loading-screen">No se encontraron canales.</div>';
+                return;
+            }
+
+            // Agrupar por categorías
+            var grouped = {};
+            var groups = [];
+            for (var i = 0; i < channels.length; i++) {
+                var chan = channels[i];
+                if (!grouped[chan.group]) {
+                    grouped[chan.group] = [];
+                    groups.push(chan.group);
+                }
+                grouped[chan.group].push(chan);
+            }
+            
+            // Ordenar grupos alfabéticamente
+            groups.sort();
+
+            for (var g = 0; g < groups.length; g++) {
+                var groupName = groups[g];
+                var groupChannels = grouped[groupName];
+
+                // Crear cabecera de categoría
+                var catHeader = document.createElement('div');
+                catHeader.className = 'category-header';
+                catHeader.innerHTML = groupName + ' (' + groupChannels.length + ')';
+                container.appendChild(catHeader);
+
+                // Crear lista de canales
+                var list = document.createElement('ul');
+                list.className = 'channel-list';
+                
+                for (var c = 0; c < groupChannels.length; c++) {
+                    var channel = groupChannels[c];
+                    var item = document.createElement('li');
+                    item.className = 'channel-item';
+                    
+                    var fallbackLogo = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="%232d2d34"/><text x="16" y="20" font-family="sans-serif" font-size="10" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>';
+                    var logoUrl = channel.logo || fallbackLogo;
+
+                    item.innerHTML = 
+                        '<a href="' + channel.url + '" class="btn-play-legacy" target="_blank">&#9654;</a>' +
+                        '<button class="btn-copy-legacy" onclick="copyUrlLegacy(\'' + channel.url + '\', this)">Copy</button>' +
+                        '<div class="channel-logo-container">' +
+                            '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
+                        '</div>' +
+                        '<div class="channel-name">' + channel.name + '</div>';
+                    
+                    list.appendChild(item);
+                }
+                container.appendChild(list);
+            }
+        }
+    </script>
+</body>
+</html>

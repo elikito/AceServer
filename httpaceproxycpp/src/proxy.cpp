@@ -185,22 +185,120 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
     RequestContext ctx{request, connection, request.path, request.query, split(request.path, '/', true), "", "m3u8"};
 
     if (ctx.parts.size() > 1 && ctx.parts[1] == "config") {
-        auto plugin = query_get(ctx.query, "plugin");
-        auto status_str = query_get(ctx.query, "status");
-        if (!plugin.empty() && !status_str.empty()) {
-            bool status = (status_str == "true");
-            set_plugin_enabled(plugin, status);
-            std::map<std::string, std::string> headers = {
-                {"Access-Control-Allow-Origin", "*"},
-                {"Content-Type", "application/json; charset=utf-8"},
-                {"Connection", "close"}
-            };
+        auto action = query_get(ctx.query, "action");
+        std::map<std::string, std::string> headers = {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Content-Type", "application/json; charset=utf-8"},
+            {"Connection", "close"}
+        };
+        
+        if (action == "get_config") {
             connection.send_response_headers(200, status_reason(200), headers);
-            connection.send_text("{\"status\":\"success\"}");
-        } else {
-            send_error(connection, 400, "Missing plugin or status parameter");
+            connection.send_text(plugins_state_json_.is_null() ? "{}" : plugins_state_json_.dump(2));
+            return;
         }
-        return;
+        else if (action == "set_url") {
+            auto plugin = query_get(ctx.query, "plugin");
+            auto url = query_get(ctx.query, "url");
+            if (!plugin.empty() && !url.empty()) {
+                set_plugin_url(plugin, url_decode(url));
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing plugin or url parameter");
+            }
+            return;
+        }
+        else if (action == "save_custom_list") {
+            auto name = query_get(ctx.query, "name");
+            auto url = query_get(ctx.query, "url");
+            auto enabled_str = query_get(ctx.query, "enabled");
+            if (!name.empty() && !url.empty()) {
+                bool enabled = (enabled_str != "false");
+                {
+                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    Json::object obj;
+                    if (plugins_state_json_.is_object()) {
+                        obj = plugins_state_json_.as_object();
+                    }
+                    Json::array arr;
+                    if (obj.contains("custom_lists") && obj["custom_lists"].is_array()) {
+                        arr = obj["custom_lists"].as_array();
+                    }
+                    bool found = false;
+                    for (auto& item : arr) {
+                        if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                            Json::object item_obj = item.as_object();
+                            item_obj["url"] = url_decode(url);
+                            item_obj["enabled"] = enabled;
+                            item = item_obj;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        arr.push_back(Json::object{
+                            {"name", name},
+                            {"url", url_decode(url)},
+                            {"enabled", enabled}
+                        });
+                    }
+                    obj["custom_lists"] = arr;
+                    plugins_state_json_ = obj;
+                }
+                save_plugins_state();
+                add_custom_list_plugin(name, url_decode(url));
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing name or url parameter");
+            }
+            return;
+        }
+        else if (action == "delete_custom_list") {
+            auto name = query_get(ctx.query, "name");
+            if (!name.empty()) {
+                {
+                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    Json::object obj;
+                    if (plugins_state_json_.is_object()) {
+                        obj = plugins_state_json_.as_object();
+                    }
+                    if (obj.contains("custom_lists") && obj["custom_lists"].is_array()) {
+                        Json::array arr = obj["custom_lists"].as_array();
+                        Json::array new_arr;
+                        for (const auto& item : arr) {
+                            if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                                continue;
+                            }
+                            new_arr.push_back(item);
+                        }
+                        obj["custom_lists"] = new_arr;
+                        plugins_state_json_ = obj;
+                    }
+                }
+                save_plugins_state();
+                remove_custom_list_plugin(name);
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing name parameter");
+            }
+            return;
+        }
+        else {
+            auto plugin = query_get(ctx.query, "plugin");
+            auto status_str = query_get(ctx.query, "status");
+            if (!plugin.empty() && !status_str.empty()) {
+                bool status = (status_str == "true");
+                set_plugin_enabled(plugin, status);
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing plugin, status or action parameter");
+            }
+            return;
+        }
     }
 
     for (int redirects = 0; redirects < 4; ++redirects) {
@@ -593,14 +691,47 @@ Json Proxy::check_channel_peers(const std::string& content_id, int max_wait) {
 
 bool Proxy::is_plugin_enabled(const std::string& name) const {
     std::lock_guard<std::mutex> lock(plugins_state_mutex_);
-    auto it = plugins_state_.find(name);
-    return it == plugins_state_.end() ? true : it->second;
+    if (!plugins_state_json_.is_object()) return true;
+    if (plugins_state_json_.contains("custom_lists") && plugins_state_json_["custom_lists"].is_array()) {
+        for (const auto& item : plugins_state_json_["custom_lists"].as_array()) {
+            if (item.is_object() && item.contains("name") && item["name"].as_string() == name) {
+                return item["enabled"].as_bool(true);
+            }
+        }
+    }
+    if (plugins_state_json_.contains(name)) {
+        return plugins_state_json_[name].as_bool(true);
+    }
+    return true;
 }
 
 void Proxy::set_plugin_enabled(const std::string& name, bool enabled) {
     {
         std::lock_guard<std::mutex> lock(plugins_state_mutex_);
-        plugins_state_[name] = enabled;
+        Json::object obj;
+        if (plugins_state_json_.is_object()) {
+            obj = plugins_state_json_.as_object();
+        }
+        bool is_custom = false;
+        if (obj.contains("custom_lists") && obj["custom_lists"].is_array()) {
+            Json::array arr = obj["custom_lists"].as_array();
+            for (auto& item : arr) {
+                if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                    Json::object item_obj = item.as_object();
+                    item_obj["enabled"] = enabled;
+                    item = item_obj;
+                    is_custom = true;
+                    break;
+                }
+            }
+            if (is_custom) {
+                obj["custom_lists"] = arr;
+            }
+        }
+        if (!is_custom) {
+            obj[name] = enabled;
+        }
+        plugins_state_json_ = obj;
     }
     save_plugins_state();
 
@@ -614,8 +745,116 @@ void Proxy::set_plugin_enabled(const std::string& name, bool enabled) {
                     }).detach();
                 }
             }
+            break;
         }
     }
+}
+
+std::string Proxy::get_plugin_url(const std::string& name, const std::string& fallback) const {
+    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    if (!plugins_state_json_.is_object()) return fallback;
+    if (plugins_state_json_.contains("custom_lists") && plugins_state_json_["custom_lists"].is_array()) {
+        for (const auto& item : plugins_state_json_["custom_lists"].as_array()) {
+            if (item.is_object() && item.contains("name") && item["name"].as_string() == name) {
+                if (item.contains("url")) {
+                    return item["url"].as_string();
+                }
+            }
+        }
+    }
+    if (plugins_state_json_.contains("urls") && plugins_state_json_["urls"].is_object()) {
+        auto urls = plugins_state_json_["urls"].as_object();
+        auto it = urls.find(name);
+        if (it != urls.end()) {
+            return it->second.as_string(fallback);
+        }
+    }
+    return fallback;
+}
+
+void Proxy::set_plugin_url(const std::string& name, const std::string& url) {
+    {
+        std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+        Json::object obj;
+        if (plugins_state_json_.is_object()) {
+            obj = plugins_state_json_.as_object();
+        }
+        bool is_custom = false;
+        if (obj.contains("custom_lists") && obj["custom_lists"].is_array()) {
+            Json::array arr = obj["custom_lists"].as_array();
+            for (auto& item : arr) {
+                if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                    Json::object item_obj = item.as_object();
+                    item_obj["url"] = url;
+                    item = item_obj;
+                    is_custom = true;
+                    break;
+                }
+            }
+            if (is_custom) {
+                obj["custom_lists"] = arr;
+            }
+        }
+        if (!is_custom) {
+            Json::object urls;
+            if (obj.contains("urls") && obj["urls"].is_object()) {
+                urls = obj["urls"].as_object();
+            }
+            urls[name] = url;
+            obj["urls"] = urls;
+        }
+        plugins_state_json_ = obj;
+    }
+    save_plugins_state();
+
+    for (auto& plugin : plugins_.unique_plugins()) {
+        if (plugin->name() == name && plugin->is_enabled()) {
+            if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+                std::thread([playlist] {
+                    try { playlist->refresh_if_needed(); } catch (...) {}
+                }).detach();
+            }
+            break;
+        }
+    }
+}
+
+Json Proxy::plugins_state_json() const {
+    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    return plugins_state_json_;
+}
+
+extern std::shared_ptr<Plugin> create_custom_list_plugin_helper(Config config, HttpClient& http_client, Proxy& proxy, const std::string& name, const std::string& url);
+
+void Proxy::add_custom_list_plugin(const std::string& name, const std::string& url) {
+    auto existing = plugins_.by_handler(name);
+    if (existing) {
+        // Since CustomListPlugin type is declared in plugins.cpp, we don't have its class definition here.
+        // We can just use the Proxy set_plugin_url to update it, which then triggers refresh!
+        // That is already done by set_plugin_url! So no need to cast.
+        return;
+    }
+    
+    // Register new custom plugin
+    auto plugin = create_custom_list_plugin_helper(config_, http_client_, *this, name, url);
+    plugins_.add(plugin);
+    
+    std::thread([plugin] {
+        if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+            try { playlist->refresh_if_needed(); } catch (...) {}
+        }
+    }).detach();
+}
+
+void Proxy::remove_custom_list_plugin(const std::string& name) {
+    // Disable it first so it frees memory
+    for (auto& plugin : plugins_.unique_plugins()) {
+        if (plugin->name() == name) {
+            plugin->set_enabled(false);
+            break;
+        }
+    }
+    plugins_.remove(name);
 }
 
 void Proxy::load_plugins_state() {
@@ -626,12 +865,7 @@ void Proxy::load_plugins_state() {
     std::stringstream buffer;
     buffer << file.rdbuf();
     try {
-        auto data = Json::parse(buffer.str());
-        if (data.is_object()) {
-            for (const auto& [k, v] : data.as_object()) {
-                plugins_state_[k] = v.as_bool(true);
-            }
-        }
+        plugins_state_json_ = Json::parse(buffer.str());
     } catch (...) {
         log_line("ERROR", "Failed to parse plugins_state.json");
     }
@@ -640,13 +874,9 @@ void Proxy::load_plugins_state() {
 void Proxy::save_plugins_state() {
     std::lock_guard<std::mutex> lock(plugins_state_mutex_);
     auto filepath = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
-    Json::object obj;
-    for (const auto& [k, v] : plugins_state_) {
-        obj[k] = v;
-    }
     std::ofstream file(filepath.string());
     if (file.is_open()) {
-        file << Json(obj).dump(2);
+        file << plugins_state_json_.dump(2);
     } else {
         log_line("ERROR", "Failed to write plugins_state.json");
     }

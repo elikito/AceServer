@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HTTPAceProxy Sources Management">
+    <title>HTTPAceProxy - Fuentes</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --border-color: #2d2d34;
+            --text-color: #e1e1e6;
+            --text-muted: #a8a8b2;
+            --header-bg: #1a1a1e;
+            --stat-bg: #202024;
+            --brand-color: #4CAF50;
+            --input-bg: #121214;
+        }
+
+        body.light-theme {
+            --bg-color: #f4f4f5;
+            --card-bg: #ffffff;
+            --border-color: #e4e4e7;
+            --text-color: #18181b;
+            --text-muted: #71717a;
+            --header-bg: #ffffff;
+            --stat-bg: #f4f4f5;
+            --input-bg: #ffffff;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Navbar Plano Superior */
+        .navbar {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: #ffffff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.light-theme .nav-brand {
+            color: #18181b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        /* Hamburger menu button */
+        .navbar-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 101;
+        }
+
+        .navbar-toggle .icon-bar {
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-color);
+            border-radius: 1px;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background-color: var(--header-bg);
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px 24px;
+                gap: 8px;
+                z-index: 99;
+            }
+
+            .nav-links.show {
+                display: flex;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+            }
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header-section {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .header-section h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .header-section p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 24px 0 12px 0;
+            padding-left: 4px;
+            border-left: 3px solid #4CAF50;
+        }
+
+        /* Bento Grid Panels */
+        .config-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* Tabla Minimalista */
+        .table-responsive {
+            overflow-x: auto;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: var(--stat-bg);
+            color: var(--text-color);
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            color: var(--text-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .plugin-badge {
+            font-family: monospace;
+            background-color: var(--border-color);
+            color: var(--text-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Form Controls */
+        .url-input {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: monospace;
+            outline: none;
+        }
+
+        .url-input:focus {
+            border-color: #4CAF50;
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-save, .btn-check, .btn-delete {
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-save { background-color: #4CAF50; }
+        .btn-save:hover { background-color: #45a049; }
+
+        .btn-check { background-color: #2196F3; }
+        .btn-check:hover { background-color: #1976D2; }
+
+        .btn-delete { background-color: #ff3b30; }
+        .btn-delete:hover { background-color: #e02d22; }
+
+        .btn-save:disabled, .btn-check:disabled, .btn-delete:disabled {
+            background-color: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* Form Agregar */
+        .add-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Alerts & Status Messages */
+        .status-alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-alert.success {
+            background-color: rgba(76, 217, 100, 0.15);
+            border: 1px solid #4cd964;
+            color: #4cd964;
+            display: block;
+        }
+
+        .status-alert.error {
+            background-color: rgba(255, 59, 48, 0.15);
+            border: 1px solid #ff3b30;
+            color: #ff3b30;
+            display: block;
+        }
+
+        .status-msg {
+            font-size: 11px;
+            margin-top: 4px;
+            display: block;
+            font-weight: 500;
+        }
+        .status-msg.checking { color: #2196F3; }
+        .status-msg.valid { color: #4cd964; }
+        .status-msg.invalid { color: #ff9500; }
+        .status-msg.error { color: #ff3b30; }
+
+        /* Footer Bar */
+        .footer-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 40px;
+            background-color: var(--header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .footer-left, .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 200px;
+        }
+
+        .footer-right {
+            justify-content: flex-end;
+        }
+
+        .footer-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .footer-left .val {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .footer-right .version-badge {
+            background-color: var(--border-color);
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .theme-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .theme-toggle-btn:hover {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .theme-toggle-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                height: auto;
+                padding: 12px 16px;
+                gap: 12px;
+            }
+            .nav-links {
+                width: 100%;
+                justify-content: space-around;
+            }
+            .add-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+            <a href="/stat">Dashboard</a>
+            <a href="/statplugin/">Canales</a>
+            <a href="/listas/" class="active">Fuentes</a>
+            <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html">Reproductor Legacy</a>
+        </div>
+    </nav>
+
+    <!-- Container -->
+    <div class="container">
+        <div class="header-section">
+            <h2>Gestión de Fuentes de Canales</h2>
+            <p>Edita o añade listas de canales M3U dinámicamente y comprueba su estado en caliente.</p>
+        </div>
+
+        <div id="alert-box" class="status-alert"></div>
+
+        <!-- Fuentes Predefinidas -->
+        <div class="section-title">Listas Predefinidas de Plugins</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Plugin</th>
+                        <th style="width: 55%;">Dirección URL / IPFS</th>
+                        <th style="width: 30%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="plugins-table-body">
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #a8a8b2; padding: 16px;">
+                            Cargando configuración de listas predefinidas...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Fuentes Dinámicas Custom -->
+        <div class="section-title">Fuentes Dinámicas Personalizadas</div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Lista</th>
+                        <th style="width: 55%;">Dirección URL</th>
+                        <th style="width: 30%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="custom-table-body">
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #a8a8b2; padding: 16px;">
+                            No hay listas personalizadas agregadas.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Agregar Nueva Lista Custom -->
+        <div class="section-title">Agregar Nueva Lista</div>
+        <div class="config-card">
+            <div class="add-form-grid">
+                <div class="form-group">
+                    <label for="new-list-name">Identificador / Nombre</label>
+                    <input type="text" id="new-list-name" class="url-input" placeholder="ej: mifuentetv" oninput="sanitizeName(this)">
+                </div>
+                <div class="form-group">
+                    <label for="new-list-url">Dirección URL</label>
+                    <input type="text" id="new-list-url" class="url-input" placeholder="http://example.com/playlist.m3u">
+                </div>
+                <div>
+                    <button class="btn-save" style="padding: 10px 20px; width: 100%;" onclick="addCustomList()">Agregar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        <div class="footer-left">
+            <span class="label">SERVER IP:</span>
+            <span id="server-ip" class="val">-</span>
+        </div>
+        <div class="footer-center">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
+                <svg id="theme-icon" viewBox="0 0 24 24">
+                    <path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="footer-right">
+            <span class="label">VERSION:</span>
+            <span class="val version-badge">v07.18.05</span>
+        </div>
+    </div>
+
+    <script>
+        const editablePlugins = [
+            { id: 'newera', name: 'NewEra', fallback: 'https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u' },
+            { id: 'elcano', name: 'Elcano', fallback: 'https://ipfs.io/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u,https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u' },
+            { id: 'af1c1onados', name: 'Af1c1onados', fallback: 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u' }
+        ];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-theme');
+                setLightIcon(themeIcon);
+            }
+            
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('light-theme');
+                    if (document.body.classList.contains('light-theme')) {
+                        localStorage.setItem('theme', 'light');
+                        setLightIcon(themeIcon);
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                        setDarkIcon(themeIcon);
+                    }
+                });
+            }
+            
+            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+
+            // Hamburger menu toggle
+            const navbarToggle = document.getElementById('navbar-toggle');
+            const navLinks = document.getElementById('nav-links');
+            if (navbarToggle && navLinks) {
+                navbarToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('show');
+                });
+            }
+
+            loadConfigs();
+        });
+
+        function showAlert(msg, type = 'success') {
+            const box = document.getElementById('alert-box');
+            box.textContent = msg;
+            box.className = `status-alert ${type}`;
+            setTimeout(() => {
+                box.style.display = 'none';
+            }, 6000);
+        }
+
+        function sanitizeName(input) {
+            input.value = input.value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
+        function loadConfigs() {
+            fetch('/config?action=get_config')
+                .then(res => res.json())
+                .then(config => {
+                    const tbody = document.getElementById('plugins-table-body');
+                    tbody.innerHTML = '';
+
+                    const savedUrls = (config && config.urls) ? config.urls : {};
+
+                    // 1. Render predefinidas
+                    editablePlugins.forEach(plugin => {
+                        const currentUrl = savedUrls[plugin.id] || plugin.fallback;
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><span class="plugin-badge">${plugin.name}</span></td>
+                            <td>
+                                <input type="text" id="url-${plugin.id}" class="url-input" value="${currentUrl}" placeholder="${plugin.fallback}">
+                                <span id="status-${plugin.id}" class="status-msg"></span>
+                            </td>
+                            <td>
+                                <div class="action-cell">
+                                    <button class="btn-check" onclick="checkList('${plugin.id}', '${plugin.id}')">Comprobar</button>
+                                    <button class="btn-save" onclick="saveUrl('${plugin.id}', this)">Guardar</button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    // 2. Render dinámicas custom
+                    const customTbody = document.getElementById('custom-table-body');
+                    customTbody.innerHTML = '';
+                    const customLists = (config && config.custom_lists) ? config.custom_lists : [];
+
+                    if (customLists.length === 0) {
+                        customTbody.innerHTML = `
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 16px;">
+                                    No hay listas personalizadas agregadas.
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    customLists.forEach(list => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><span class="plugin-badge">${list.name}</span></td>
+                            <td>
+                                <input type="text" id="url-${list.name}" class="url-input" value="${list.url}">
+                                <span id="status-${list.name}" class="status-msg"></span>
+                            </td>
+                            <td>
+                                <div class="action-cell">
+                                    <button class="btn-check" onclick="checkList('${list.name}', '${list.name}')">Comprobar</button>
+                                    <button class="btn-save" onclick="saveCustomUrl('${list.name}', this)">Guardar</button>
+                                    <button class="btn-delete" onclick="deleteCustomList('${list.name}', this)">Eliminar</button>
+                                </div>
+                            </td>
+                        `;
+                        customTbody.appendChild(row);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error al cargar config:', err);
+                    showAlert('Error al conectar con la API de configuración.', 'error');
+                });
+        }
+
+        function checkList(inputId, statusId) {
+            const input = document.getElementById(`url-${inputId}`);
+            const urlVal = input.value.trim();
+            const statusSpan = document.getElementById(`status-${statusId}`);
+            const button = event.target;
+
+            if (!urlVal) {
+                statusSpan.textContent = '⚠ URL vacía';
+                statusSpan.className = 'status-msg invalid';
+                return;
+            }
+
+            button.disabled = true;
+            statusSpan.textContent = 'Comprobando...';
+            statusSpan.className = 'status-msg checking';
+
+            // Realiza el fetch del archivo M3U en segundo plano (soporta CORS si el host remoto lo permite)
+            fetch(urlVal)
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.text();
+                })
+                .then(text => {
+                    button.disabled = false;
+                    const lines = text.split('\n');
+                    let channelsCount = 0;
+                    const groups = new Set();
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (line.startsWith('#EXTINF:')) {
+                            channelsCount++;
+                            const groupMatch = line.match(/group-title="([^"]*)"/);
+                            if (groupMatch && groupMatch[1]) {
+                                groups.add(groupMatch[1]);
+                            }
+                        }
+                    }
+
+                    if (channelsCount > 0) {
+                        statusSpan.textContent = `✓ M3U Válido: ${channelsCount} canales, ${groups.size} grupos.`;
+                        statusSpan.className = 'status-msg valid';
+                    } else {
+                        // Comprobar si es JSON
+                        try {
+                            const json = JSON.parse(text);
+                            if (json.channels || json.items) {
+                                const count = (json.channels || json.items).length;
+                                statusSpan.textContent = `✓ JSON Válido: ${count} canales.`;
+                                statusSpan.className = 'status-msg valid';
+                                return;
+                            }
+                        } catch(e) {}
+                        statusSpan.textContent = '⚠ Vacío o formato no reconocido';
+                        statusSpan.className = 'status-msg invalid';
+                    }
+                })
+                .catch(err => {
+                    button.disabled = false;
+                    statusSpan.textContent = `✗ Error: ${err.message}`;
+                    statusSpan.className = 'status-msg error';
+                });
+        }
+
+        function saveUrl(pluginId, button) {
+            const input = document.getElementById(`url-${pluginId}`);
+            const urlVal = input.value.trim();
+            
+            if (!urlVal) {
+                showAlert('La URL no puede estar vacía.', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '...';
+
+            fetch(`/config?action=set_url&plugin=${pluginId}&url=${encodeURIComponent(urlVal)}`)
+                .then(res => res.json())
+                .then(data => {
+                    button.disabled = false;
+                    button.textContent = 'Guardar';
+                    if (data.status === 'success') {
+                        showAlert(`URL de ${pluginId} guardada con éxito. El plugin recargará la lista en segundo plano.`, 'success');
+                    } else {
+                        showAlert('Error en el servidor al guardar la configuración.', 'error');
+                    }
+                })
+                .catch(err => {
+                    button.disabled = false;
+                    button.textContent = 'Guardar';
+                    console.error(err);
+                    showAlert('Error de red al guardar la configuración.', 'error');
+                });
+        }
+
+        function saveCustomUrl(listName, button) {
+            const input = document.getElementById(`url-${listName}`);
+            const urlVal = input.value.trim();
+            
+            if (!urlVal) {
+                showAlert('La URL no puede estar vacía.', 'error');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '...';
+
+            fetch(`/config?action=save_custom_list&name=${listName}&url=${encodeURIComponent(urlVal)}&enabled=true`)
+                .then(res => res.json())
+                .then(data => {
+                    button.disabled = false;
+                    button.textContent = 'Guardar';
+                    if (data.status === 'success') {
+                        showAlert(`Lista personalizada "${listName}" guardada y cargada con éxito en el proxy.`, 'success');
+                        loadConfigs();
+                    } else {
+                        showAlert('Error en el servidor al guardar la lista.', 'error');
+                    }
+                })
+                .catch(err => {
+                    button.disabled = false;
+                    button.textContent = 'Guardar';
+                    console.error(err);
+                    showAlert('Error de red al guardar la lista.', 'error');
+                });
+        }
+
+        function addCustomList() {
+            const nameInput = document.getElementById('new-list-name');
+            const urlInput = document.getElementById('new-list-url');
+            const name = nameInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!name || !url) {
+                showAlert('El identificador y la URL son campos obligatorios.', 'error');
+                return;
+            }
+
+            fetch(`/config?action=save_custom_list&name=${name}&url=${encodeURIComponent(url)}&enabled=true`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert(`Lista "${name}" agregada con éxito en caliente.`, 'success');
+                        nameInput.value = '';
+                        urlInput.value = '';
+                        loadConfigs();
+                    } else {
+                        showAlert('Error en el servidor al agregar la lista.', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showAlert('Error de red al agregar la lista.', 'error');
+                });
+        }
+
+        function deleteCustomList(listName, button) {
+            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente la lista "${listName}"?`)) {
+                return;
+            }
+
+            button.disabled = true;
+
+            fetch(`/config?action=delete_custom_list&name=${listName}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAlert(`Lista personalizada "${listName}" eliminada correctamente en caliente.`, 'success');
+                        loadConfigs();
+                    } else {
+                        button.disabled = false;
+                        showAlert('Error en el servidor al eliminar la lista.', 'error');
+                    }
+                })
+                .catch(err => {
+                    button.disabled = false;
+                    console.error(err);
+                    showAlert('Error de red al eliminar la lista.', 'error');
+                });
+        }
+        function setLightIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
+        }
+        
+        function setDarkIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
+        }
+    </script>
+</body>
+</html>

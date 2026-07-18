@@ -129,6 +129,11 @@ void PluginRegistry::add(std::shared_ptr<Plugin> plugin) {
     for (const auto& handler : plugin->handlers()) handlers_[lower(handler)] = plugin;
 }
 
+void PluginRegistry::remove(const std::string& handler) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    handlers_.erase(lower(handler));
+}
+
 std::shared_ptr<Plugin> PluginRegistry::by_handler(const std::string& handler) const {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = handlers_.find(lower(handler));
@@ -300,7 +305,8 @@ public:
         : PlaylistPlugin(std::move(cfg), client, proxy, "newera", PlaylistGenerator::epg_header(kEpgUrl, 0), 60) {}
 protected:
     bool refresh() override {
-        auto url = env_or("NEWERA_PLAYLIST_URL", "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u");
+        auto default_url = env_or("NEWERA_PLAYLIST_URL", "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u");
+        auto url = proxy_.get_plugin_url("newera", default_url);
         auto response = http_client_.get(url, {{"User-Agent", kBrowserUserAgent}}, 60);
         PlaylistGenerator playlist(header_);
         std::map<std::string, std::string> channels;
@@ -321,10 +327,13 @@ public:
         : PlaylistPlugin(std::move(cfg), client, proxy, "elcano", PlaylistGenerator::epg_header(kEpgUrl, 0), 60) {}
 protected:
     bool refresh() override {
-        auto urls = env_csv_or("ELCANO_PLAYLIST_URL", {
+        auto default_urls = env_csv_or("ELCANO_PLAYLIST_URL", {
             "https://ipfs.io/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u",
             "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u"
         });
+        std::string default_url_str = join(default_urls, ",");
+        std::string configured_url = proxy_.get_plugin_url("elcano", default_url_str);
+        std::vector<std::string> urls = split(configured_url, ',', false);
         PlaylistGenerator playlist(header_);
         std::map<std::string, std::string> channels;
         std::map<std::string, std::string> picons;
@@ -386,7 +395,8 @@ public:
         : PlaylistPlugin(std::move(cfg), client, proxy, "af1c1onados", PlaylistGenerator::epg_header(kEpgUrl, 0, true), 60) {}
 protected:
     bool refresh() override {
-        auto root_url = "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u";
+        auto default_url = "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u";
+        auto root_url = proxy_.get_plugin_url("af1c1onados", default_url);
         auto data = fetch_playlist_json(root_url);
         PlaylistGenerator playlist(header_);
         std::map<std::string, std::string> channels;
@@ -570,6 +580,9 @@ public:
         std::string relative = "index.html";
         if (ctx.path != "/stat") {
             relative = ctx.path.substr(std::string("/stat/").size());
+            if (relative.empty()) {
+                relative = "index.html";
+            }
         }
         if (!path_is_safe_relative(relative)) {
             send_bytes(ctx.connection, 404, "text/plain", "Not Found");
@@ -622,6 +635,101 @@ private:
     Proxy& proxy_;
 };
 
+class PlayerPlugin : public Plugin {
+public:
+    PlayerPlugin(Config cfg) : config_(std::move(cfg)) {}
+    std::string name() const override { return "player"; }
+    std::vector<std::string> handlers() const override { return {"player"}; }
+    
+    bool handle(RequestContext& ctx) override {
+        std::string relative = "index.html";
+        if (ctx.path != "/player") {
+            if (ctx.path.find("/player/") == 0) {
+                relative = ctx.path.substr(std::string("/player/").size());
+            } else {
+                relative = ctx.path;
+            }
+        } else {
+            relative = "player/index.html";
+        }
+        
+        if (relative.empty()) {
+            relative = "index.html";
+        }
+        
+        std::filesystem::path full;
+        if (relative == "player/index.html") {
+            full = std::filesystem::path(config_.root_dir) / "http" / "player" / "index.html";
+        } else {
+            full = std::filesystem::path(config_.root_dir) / "http" / "player" / relative;
+        }
+
+        try {
+            auto body = read_file_binary(full.string());
+            send_bytes(ctx.connection, 200, mime_type_for_path(full.filename().string()), body);
+        } catch (...) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+        }
+        return true;
+    }
+private:
+    Config config_;
+};
+
+class ListasPlugin : public Plugin {
+public:
+    ListasPlugin(Config cfg) : config_(std::move(cfg)) {}
+    std::string name() const override { return "listas"; }
+    std::vector<std::string> handlers() const override { return {"listas"}; }
+    
+    bool handle(RequestContext& ctx) override {
+        try {
+            auto full = std::filesystem::path(config_.root_dir) / "http" / "listas" / "index.html";
+            send_bytes(ctx.connection, 200, "text/html; charset=utf-8", read_file_binary(full.string()));
+        } catch (...) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+        }
+        return true;
+    }
+private:
+    Config config_;
+};
+
+class CustomListPlugin : public PlaylistPlugin {
+public:
+    CustomListPlugin(Config cfg, HttpClient& client, Proxy& proxy, std::string name, std::string url)
+        : PlaylistPlugin(std::move(cfg), client, proxy, name, PlaylistGenerator::epg_header("", 0), 60),
+          custom_url_(std::move(url)) {}
+protected:
+    bool refresh() override {
+        if (!is_enabled()) {
+            return false;
+        }
+        auto url = proxy_.get_plugin_url(name(), custom_url_);
+        try {
+            auto response = http_client_.get(url, {{"User-Agent", kBrowserUserAgent}}, 60);
+            PlaylistGenerator playlist(header_);
+            std::map<std::string, std::string> channels;
+            std::map<std::string, std::string> picons;
+            for (auto& item : parse_m3u_acestream_items(response.body, channels, picons)) {
+                playlist.add_item(item);
+            }
+            set_playlist(std::move(playlist), std::move(channels), std::move(picons));
+            log_line("INFO", "[" + name() + "] dynamic playlist generated with " + std::to_string(channel_count()) + " channels");
+            return true;
+        } catch (const std::exception& e) {
+            log_line("ERROR", "[" + name() + "] failed to download playlist: " + e.what());
+            return false;
+        }
+    }
+private:
+    std::string custom_url_;
+};
+
+std::shared_ptr<Plugin> create_custom_list_plugin_helper(Config config, HttpClient& http_client, Proxy& proxy, const std::string& name, const std::string& url) {
+    return std::make_shared<CustomListPlugin>(std::move(config), http_client, proxy, name, url);
+}
+
 std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& http_client, Proxy& proxy) {
     std::vector<std::shared_ptr<Plugin>> plugins;
     auto add = [&](const std::string& name, const std::function<std::shared_ptr<Plugin>()>& factory) {
@@ -638,6 +746,21 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
     add("aio", [&] { return std::make_shared<AioPlugin>(config, proxy); });
     add("stat", [&] { return std::make_shared<StatPlugin>(config, proxy); });
     add("statplugin", [&] { return std::make_shared<StatpluginPlugin>(config, proxy); });
+
+    plugins.push_back(std::make_shared<PlayerPlugin>(config));
+    plugins.push_back(std::make_shared<ListasPlugin>(config));
+
+    // Dynamic Custom Lists
+    auto state = proxy.plugins_state_json();
+    if (state.is_object() && state.contains("custom_lists") && state["custom_lists"].is_array()) {
+        for (const auto& item : state["custom_lists"].as_array()) {
+            if (item.is_object() && item.contains("name") && item.contains("url")) {
+                auto name = item["name"].as_string();
+                auto url = item["url"].as_string();
+                plugins.push_back(std::make_shared<CustomListPlugin>(config, http_client, proxy, name, url));
+            }
+        }
+    }
 
     for (auto& plugin : plugins) {
         if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {

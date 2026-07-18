@@ -36,8 +36,13 @@ public:
 
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);
+    std::string get_plugin_url(const std::string& name, const std::string& fallback) const;
+    void set_plugin_url(const std::string& name, const std::string& url);
     void load_plugins_state();
     void save_plugins_state();
+    Json plugins_state_json() const;
+    void add_custom_list_plugin(const std::string& name, const std::string& url);
+    void remove_custom_list_plugin(const std::string& name);
 
 private:
     bool is_fake_request(const HttpRequest& request) const;
@@ -58,7 +63,7 @@ private:
     std::mutex ace_status_mutex_;
     std::chrono::steady_clock::time_point ace_status_time_{};
     Json ace_status_cache_;
-    std::map<std::string, bool> plugins_state_;
+    Json plugins_state_json_;
     mutable std::mutex plugins_state_mutex_;
 };
 

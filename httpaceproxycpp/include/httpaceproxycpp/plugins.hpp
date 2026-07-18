@@ -54,6 +54,7 @@ public:
 class PluginRegistry {
 public:
     void add(std::shared_ptr<Plugin> plugin);
+    void remove(const std::string& handler);
     std::shared_ptr<Plugin> by_handler(const std::string& handler) const;
     std::map<std::string, std::shared_ptr<Plugin>> handlers() const;
     std::vector<std::shared_ptr<Plugin>> unique_plugins() const;
