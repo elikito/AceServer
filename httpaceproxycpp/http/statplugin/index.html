@@ -1,71 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plugin Status - HTTPAceProxy</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
         .header {
             text-align: center;
             margin-bottom: 25px;
         }
+
         .header h1 {
             color: white;
             font-size: 36px;
             font-weight: 700;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
             margin-bottom: 5px;
         }
+
         .header-links {
             display: flex;
             justify-content: center;
             gap: 15px;
             flex-wrap: wrap;
         }
+
         .header-link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             color: white;
             text-decoration: none;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s;
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
+
         .header-link:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
         }
+
         .header-link svg {
             width: 18px;
             height: 18px;
             fill: currentColor;
         }
+
         .stats {
             background: white;
             padding: 25px;
             border-radius: 12px;
             margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
         }
+
         .stat-box {
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -73,15 +92,26 @@
             text-align: center;
             color: white;
         }
-        .stat-box .label { font-size: 13px; opacity: 0.9; margin-bottom: 8px; }
-        .stat-box .value { font-size: 32px; font-weight: bold; }
+
+        .stat-box .label {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .stat-box .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
         .plugin {
             background: white;
             margin-bottom: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
+
         .plugin-header {
             background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
             color: white;
@@ -92,30 +122,35 @@
             user-select: none;
             transition: all 0.3s;
         }
+
         .plugin-header:hover {
             filter: brightness(1.05);
         }
+
         .plugin-header h2 {
             font-size: 20px;
             text-transform: capitalize;
             font-weight: 600;
         }
+
         .plugin-header .count {
-            background: rgba(255,255,255,0.25);
+            background: rgba(255, 255, 255, 0.25);
             padding: 6px 16px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
         }
+
         .plugin-header .header-actions {
             display: flex;
             gap: 10px;
             align-items: center;
         }
+
         .plugin-header .bulk-btn {
             padding: 6px 14px;
-            border: 2px solid rgba(255,255,255,0.5);
-            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
             color: white;
             border-radius: 6px;
             cursor: pointer;
@@ -123,17 +158,21 @@
             font-weight: 600;
             transition: all 0.2s;
         }
+
         .plugin-header .bulk-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
             border-color: white;
         }
+
         .plugin-header .bulk-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
+
         .plugin-header .bulk-btn.running {
             animation: pulse 1s infinite;
         }
+
         .collapse-icon {
             display: inline-block;
             width: 24px;
@@ -142,40 +181,48 @@
             transition: transform 0.3s ease;
             flex-shrink: 0;
         }
+
         .plugin.collapsed .collapse-icon {
             transform: rotate(-90deg);
         }
+
         .collapse-icon svg {
             width: 100%;
             height: 100%;
             fill: white;
         }
+
         .progress-bar {
             height: 3px;
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
             border-radius: 2px;
             overflow: hidden;
             margin-top: 10px;
             display: none;
         }
+
         .progress-bar.active {
             display: block;
         }
+
         .progress-bar .progress {
             height: 100%;
             background: white;
             transition: width 0.3s;
             width: 0%;
         }
+
         .channels {
             padding: 0;
             overflow: hidden;
             transition: max-height 0.3s ease-out;
         }
+
         .plugin.collapsed .channels {
             max-height: 0;
             transition: max-height 0.3s ease-in;
         }
+
         .channel {
             padding: 16px 25px;
             border-bottom: 1px solid #f0f0f0;
@@ -185,15 +232,21 @@
             align-items: center;
             transition: all 0.2s;
         }
+
         .channel:hover {
             background: #f8f9fa;
         }
-        .channel:last-child { border-bottom: none; }
+
+        .channel:last-child {
+            border-bottom: none;
+        }
+
         .channel-logo-wrapper {
             width: 50px;
             height: 50px;
             flex-shrink: 0;
         }
+
         .channel-logo {
             width: 50px;
             height: 50px;
@@ -202,16 +255,19 @@
             background: #1a1a1a;
             padding: 4px;
         }
+
         .channel-logo-placeholder {
             width: 50px;
             height: 50px;
             background: #1a1a1a;
             border-radius: 6px;
         }
+
         .channel-info {
             min-width: 0;
             overflow: hidden;
         }
+
         .channel-name {
             font-weight: 600;
             color: #333;
@@ -221,6 +277,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .channel-id {
             font-family: 'Monaco', 'Courier New', monospace;
             font-size: 10px;
@@ -229,6 +286,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .status {
             padding: 6px 10px;
             border-radius: 20px;
@@ -237,31 +295,44 @@
             text-align: center;
             white-space: nowrap;
         }
+
         .status.available {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
+
         .status.unavailable {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
         .status.unknown {
             background: #e2e3e5;
             color: #383d41;
             border: 1px solid #d6d8db;
         }
+
         .status.checking {
             background: #fff3cd;
             color: #856404;
             border: 1px solid #ffeaa7;
             animation: pulse 1.5s infinite;
         }
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
+
         .check-btn {
             padding: 5px 10px;
             background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
@@ -274,13 +345,16 @@
             transition: all 0.2s;
             white-space: nowrap;
         }
+
         .check-btn:hover {
             filter: brightness(1.1);
         }
+
         .check-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
+
         .peers-btn {
             padding: 5px 10px;
             background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
@@ -293,23 +367,28 @@
             transition: all 0.2s;
             white-space: nowrap;
         }
+
         .peers-btn:hover {
             filter: brightness(1.1);
         }
+
         .peers-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
+
         .btn-group {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
+
         .peers-info {
             display: flex;
             justify-content: center;
             align-items: center;
         }
+
         .peers-badge {
             padding: 4px 8px;
             border-radius: 10px;
@@ -319,25 +398,30 @@
             color: #495057;
             white-space: nowrap;
         }
+
         .peers-badge.has-peers {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
         }
+
         .peers-badge.no-peers {
             background: #f8d7da;
             color: #721c24;
         }
+
         .peers-badge.checking {
             background: #fff3cd;
             color: #856404;
             animation: pulse 1.5s infinite;
         }
+
         .loading {
             text-align: center;
             padding: 60px;
             color: white;
             font-size: 18px;
         }
+
         .error {
             background: #f8d7da;
             color: #721c24;
@@ -346,12 +430,15 @@
             margin: 20px 0;
             border: 1px solid #f5c6cb;
         }
+
         .controls {
             display: flex;
             gap: 15px;
             margin-bottom: 25px;
         }
-        .refresh-btn, .check-all-btn {
+
+        .refresh-btn,
+        .check-all-btn {
             background: white;
             color: #667eea;
             border: 2px solid white;
@@ -361,24 +448,29 @@
             font-size: 15px;
             font-weight: 600;
             transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .refresh-btn:hover, .check-all-btn:hover {
+
+        .refresh-btn:hover,
+        .check-all-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
+
         .check-all-btn {
             background: #28a745;
             color: white;
             border-color: #28a745;
         }
+
         .filter-box {
             background: white;
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         .filter-input {
             width: 100%;
             padding: 12px 16px;
@@ -387,28 +479,40 @@
             font-size: 15px;
             transition: border 0.2s;
         }
+
         .filter-input:focus {
             outline: none;
             border-color: #667eea;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
             <h1>HTTPAceProxy</h1>
             <p style="opacity: 0.9; font-size: 14px; color: white; margin-bottom: 15px;">Plugin Channels Status</p>
+            <p style="opacity: 0.9; font-size: 14px; color: white; margin-bottom: 15px;">v1.0</p>
             <div class="header-links">
                 <a href="/stat" target="_blank" class="header-link">
-                    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+                    </svg>
                     Statistics
                 </a>
                 <a href="https://github.com/jopsis/HTTPAceProxy" target="_blank" class="header-link">
-                    <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                    </svg>
                     GitHub
                 </a>
                 <a href="https://hub.docker.com/r/jopsis/httpaceproxy" target="_blank" class="header-link">
-                    <svg viewBox="0 0 24 24"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.186m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.185-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.185.185v1.888c0 .102.084.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288z"/></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.186m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.185-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.185.185v1.888c0 .102.084.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288z" />
+                    </svg>
                     Docker Hub
                 </a>
             </div>
@@ -419,11 +523,8 @@
         </div>
 
         <div class="filter-box">
-            <input type="text"
-                   class="filter-input"
-                   id="filter-input"
-                   placeholder="🔍 Filter channels by name..."
-                   oninput="filterChannels()">
+            <input type="text" class="filter-input" id="filter-input" placeholder="🔍 Filter channels by name..."
+                oninput="filterChannels()">
         </div>
 
         <div class="stats">
@@ -604,7 +705,7 @@
                     channelsDiv.style.maxHeight = actualHeight + 'px';
                 }
 
-                headerDiv.addEventListener('click', function(e) {
+                headerDiv.addEventListener('click', function (e) {
                     // Don't toggle if clicking on buttons
                     if (e.target.closest('.bulk-btn')) {
                         return;
@@ -1131,4 +1232,5 @@
         setInterval(loadPlugins, 5 * 60 * 1000);
     </script>
 </body>
+
 </html>
