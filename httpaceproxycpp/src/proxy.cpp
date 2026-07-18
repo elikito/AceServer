@@ -143,6 +143,7 @@ Json system_info() {
 
 Proxy::Proxy(Config config)
     : config_(std::move(config)), broadcasts_(config_, http_client_) {
+    load_plugins_state();
     auto plugins = create_plugins(config_, http_client_, *this);
     for (auto& plugin : plugins) plugins_.add(plugin);
 }
@@ -182,6 +183,26 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
     }
 
     RequestContext ctx{request, connection, request.path, request.query, split(request.path, '/', true), "", "m3u8"};
+
+    if (ctx.parts.size() > 1 && ctx.parts[1] == "config") {
+        auto plugin = query_get(ctx.query, "plugin");
+        auto status_str = query_get(ctx.query, "status");
+        if (!plugin.empty() && !status_str.empty()) {
+            bool status = (status_str == "true");
+            set_plugin_enabled(plugin, status);
+            std::map<std::string, std::string> headers = {
+                {"Access-Control-Allow-Origin", "*"},
+                {"Content-Type", "application/json; charset=utf-8"},
+                {"Connection", "close"}
+            };
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text("{\"status\":\"success\"}");
+        } else {
+            send_error(connection, 400, "Missing plugin or status parameter");
+        }
+        return;
+    }
+
     for (int redirects = 0; redirects < 4; ++redirects) {
         ctx.rewritten = false;
         ctx.parts = split(ctx.path, '/', true);
@@ -378,7 +399,8 @@ Json Proxy::status_json() {
             {"name", plugin->name()},
             {"channels", static_cast<double>(plugin->channel_count())},
             {"status", "loaded"},
-            {"handlers", handlers}
+            {"handlers", handlers},
+            {"enabled", is_plugin_enabled(plugin->name())}
         });
     }
     // Métricas del Thread Pool — lectura lock-free desde los contadores atómicos.
@@ -566,6 +588,67 @@ Json Proxy::check_channel_peers(const std::string& content_id, int max_wait) {
         };
     } catch (const std::exception& e) {
         return Json::object{{"status", "error"}, {"error", e.what()}, {"available", false}};
+    }
+}
+
+bool Proxy::is_plugin_enabled(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    auto it = plugins_state_.find(name);
+    return it == plugins_state_.end() ? true : it->second;
+}
+
+void Proxy::set_plugin_enabled(const std::string& name, bool enabled) {
+    {
+        std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+        plugins_state_[name] = enabled;
+    }
+    save_plugins_state();
+
+    for (auto& plugin : plugins_.unique_plugins()) {
+        if (plugin->name() == name) {
+            plugin->set_enabled(enabled);
+            if (enabled) {
+                if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+                    std::thread([playlist] {
+                        try { playlist->refresh_if_needed(); } catch (...) {}
+                    }).detach();
+                }
+            }
+        }
+    }
+}
+
+void Proxy::load_plugins_state() {
+    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    auto filepath = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
+    std::ifstream file(filepath.string());
+    if (!file.is_open()) return;
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    try {
+        auto data = Json::parse(buffer.str());
+        if (data.is_object()) {
+            for (const auto& [k, v] : data.as_object()) {
+                plugins_state_[k] = v.as_bool(true);
+            }
+        }
+    } catch (...) {
+        log_line("ERROR", "Failed to parse plugins_state.json");
+    }
+}
+
+void Proxy::save_plugins_state() {
+    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    auto filepath = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
+    Json::object obj;
+    for (const auto& [k, v] : plugins_state_) {
+        obj[k] = v;
+    }
+    std::ofstream file(filepath.string());
+    if (file.is_open()) {
+        file << Json(obj).dump(2);
+    } else {
+        log_line("ERROR", "Failed to write plugins_state.json");
     }
 }
 

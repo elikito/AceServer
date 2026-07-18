@@ -150,10 +150,11 @@ std::vector<std::shared_ptr<Plugin>> PluginRegistry::unique_plugins() const {
     return out;
 }
 
-PlaylistPlugin::PlaylistPlugin(Config config, HttpClient& http_client, std::string plugin_name,
+PlaylistPlugin::PlaylistPlugin(Config config, HttpClient& http_client, Proxy& proxy, std::string plugin_name,
                                std::string header, int update_minutes)
     : config_(std::move(config)),
       http_client_(http_client),
+      proxy_(proxy),
       plugin_name_(std::move(plugin_name)),
       header_(std::move(header)),
       update_minutes_(update_minutes),
@@ -178,6 +179,21 @@ PlaylistPlugin::~PlaylistPlugin() {
     }
     updater_cv_.notify_all();
     if (updater_.joinable()) updater_.join();
+}
+
+void PlaylistPlugin::set_enabled(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!enabled) {
+        playlist_ = PlaylistGenerator(header_);
+        channels_.clear();
+        picons_.clear();
+        etag_.clear();
+        playlist_time_ = std::chrono::steady_clock::time_point{};
+    }
+}
+
+bool PlaylistPlugin::is_enabled() const {
+    return proxy_.is_plugin_enabled(plugin_name_);
 }
 
 bool PlaylistPlugin::handle(RequestContext& ctx) {
@@ -224,6 +240,10 @@ std::size_t PlaylistPlugin::channel_count() const {
 }
 
 bool PlaylistPlugin::refresh_if_needed() {
+    if (!is_enabled()) {
+        set_enabled(false);
+        return false;
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto age = std::chrono::steady_clock::now() - playlist_time_;
@@ -276,8 +296,8 @@ bool PlaylistPlugin::rewrite_channel(RequestContext& ctx, const std::string& cha
 
 class NewEraPlugin : public PlaylistPlugin {
 public:
-    NewEraPlugin(Config cfg, HttpClient& client)
-        : PlaylistPlugin(std::move(cfg), client, "newera", PlaylistGenerator::epg_header(kEpgUrl, 0), 60) {}
+    NewEraPlugin(Config cfg, HttpClient& client, Proxy& proxy)
+        : PlaylistPlugin(std::move(cfg), client, proxy, "newera", PlaylistGenerator::epg_header(kEpgUrl, 0), 60) {}
 protected:
     bool refresh() override {
         auto url = env_or("NEWERA_PLAYLIST_URL", "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u");
@@ -297,8 +317,8 @@ protected:
 
 class ElcanoPlugin : public PlaylistPlugin {
 public:
-    ElcanoPlugin(Config cfg, HttpClient& client)
-        : PlaylistPlugin(std::move(cfg), client, "elcano", PlaylistGenerator::epg_header(kEpgUrl, 0), 60) {}
+    ElcanoPlugin(Config cfg, HttpClient& client, Proxy& proxy)
+        : PlaylistPlugin(std::move(cfg), client, proxy, "elcano", PlaylistGenerator::epg_header(kEpgUrl, 0), 60) {}
 protected:
     bool refresh() override {
         auto urls = env_csv_or("ELCANO_PLAYLIST_URL", {
@@ -326,8 +346,8 @@ protected:
 
 class AcePLPlugin : public PlaylistPlugin {
 public:
-    AcePLPlugin(Config cfg, HttpClient& client)
-        : PlaylistPlugin(std::move(cfg), client, "acepl", PlaylistGenerator::epg_header("", 0), 30) {}
+    AcePLPlugin(Config cfg, HttpClient& client, Proxy& proxy)
+        : PlaylistPlugin(std::move(cfg), client, proxy, "acepl", PlaylistGenerator::epg_header("", 0), 30) {}
 protected:
     bool refresh() override {
         auto response = http_client_.get("https://api.acestream.me/all?api_version=1.0&api_key=test_api_key", {{"User-Agent", kBrowserUserAgent}}, 60);
@@ -362,8 +382,8 @@ protected:
 
 class Af1c1onadosPlugin : public PlaylistPlugin {
 public:
-    Af1c1onadosPlugin(Config cfg, HttpClient& client)
-        : PlaylistPlugin(std::move(cfg), client, "af1c1onados", PlaylistGenerator::epg_header(kEpgUrl, 0, true), 60) {}
+    Af1c1onadosPlugin(Config cfg, HttpClient& client, Proxy& proxy)
+        : PlaylistPlugin(std::move(cfg), client, proxy, "af1c1onados", PlaylistGenerator::epg_header(kEpgUrl, 0, true), 60) {}
 protected:
     bool refresh() override {
         auto root_url = "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u";
@@ -611,10 +631,10 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
             log_line("INFO", "enabled plugin: " + name);
         }
     };
-    add("newera", [&] { return std::make_shared<NewEraPlugin>(config, http_client); });
-    add("elcano", [&] { return std::make_shared<ElcanoPlugin>(config, http_client); });
-    add("acepl", [&] { return std::make_shared<AcePLPlugin>(config, http_client); });
-    add("af1c1onados", [&] { return std::make_shared<Af1c1onadosPlugin>(config, http_client); });
+    add("newera", [&] { return std::make_shared<NewEraPlugin>(config, http_client, proxy); });
+    add("elcano", [&] { return std::make_shared<ElcanoPlugin>(config, http_client, proxy); });
+    add("acepl", [&] { return std::make_shared<AcePLPlugin>(config, http_client, proxy); });
+    add("af1c1onados", [&] { return std::make_shared<Af1c1onadosPlugin>(config, http_client, proxy); });
     add("aio", [&] { return std::make_shared<AioPlugin>(config, proxy); });
     add("stat", [&] { return std::make_shared<StatPlugin>(config, proxy); });
     add("statplugin", [&] { return std::make_shared<StatpluginPlugin>(config, proxy); });

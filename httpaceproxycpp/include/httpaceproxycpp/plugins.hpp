@@ -47,6 +47,8 @@ public:
     virtual std::map<std::string, std::string> channels() const { return {}; }
     virtual std::map<std::string, std::string> picons() const { return {}; }
     virtual std::size_t channel_count() const { return channels().size(); }
+    virtual void set_enabled(bool) {}
+    virtual bool is_enabled() const { return true; }
 };
 
 class PluginRegistry {
@@ -63,7 +65,7 @@ private:
 
 class PlaylistPlugin : public Plugin {
 public:
-    PlaylistPlugin(Config config, HttpClient& http_client, std::string plugin_name,
+    PlaylistPlugin(Config config, HttpClient& http_client, Proxy& proxy, std::string plugin_name,
                    std::string header, int update_minutes);
     ~PlaylistPlugin() override;
 
@@ -74,6 +76,8 @@ public:
     std::map<std::string, std::string> channels() const override;
     std::map<std::string, std::string> picons() const override;
     std::size_t channel_count() const override;
+    void set_enabled(bool enabled) override;
+    bool is_enabled() const override;
     bool refresh_if_needed();
 
 protected:
@@ -85,6 +89,7 @@ protected:
 
     Config config_;
     HttpClient& http_client_;
+    Proxy& proxy_;
     std::string plugin_name_;
     std::string header_;
     int update_minutes_;

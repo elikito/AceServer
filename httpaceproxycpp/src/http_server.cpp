@@ -130,6 +130,7 @@ void HttpServer::join() {
 }
 
 void HttpServer::accept_loop() {
+    pool_ = std::make_unique<ThreadPool>(pool_max_workers_, pool_max_queue_);
     while (running_) {
         sockaddr_in client{};
         socklen_t len = sizeof(client);
@@ -144,8 +145,18 @@ void HttpServer::accept_loop() {
             timeval tv{client_send_timeout_, 0};
             ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
         }
-        std::thread(&HttpServer::handle_client, this, fd, std::string(ip)).detach();
+        bool submitted = pool_->try_submit([this, fd, client_ip = std::string(ip)] {
+            handle_client(fd, client_ip);
+        });
+        if (!submitted) {
+            send_overload_response(fd);
+        }
     }
+}
+
+void HttpServer::send_overload_response(int fd) {
+    ClientConnection conn(fd);
+    send_simple_response(conn, 503, "text/plain", "Service Temporarily Overloaded");
 }
 
 void HttpServer::handle_client(int client_fd, std::string client_ip) {
@@ -212,6 +223,66 @@ void send_simple_response(ClientConnection& connection, int status, const std::s
     extra_headers["Connection"] = "close";
     connection.send_response_headers(status, status_reason(status), extra_headers);
     if (!body.empty()) connection.send_text(body);
+}
+
+// ThreadPool implementation
+ThreadPool::ThreadPool(std::size_t max_workers, std::size_t max_queue)
+    : max_queue_(max_queue == 0 ? DEFAULT_QUEUE_DEPTH : max_queue) {
+    if (max_workers == 0) {
+        max_workers = std::min(MAX_WORKERS, static_cast<std::size_t>(std::thread::hardware_concurrency() * 2));
+        if (max_workers == 0) max_workers = 2;
+    }
+    for (std::size_t i = 0; i < max_workers; ++i) {
+        workers_.emplace_back([this] { worker_loop(); });
+    }
+}
+
+ThreadPool::~ThreadPool() {
+    shutdown();
+}
+
+bool ThreadPool::try_submit(std::function<void()> task) {
+    if (stop_) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (tasks_.size() >= max_queue_) return false;
+    tasks_.push(std::move(task));
+    queue_size_.store(tasks_.size(), std::memory_order_relaxed);
+    cv_.notify_one();
+    return true;
+}
+
+void ThreadPool::shutdown() {
+    stop_ = true;
+    cv_.notify_all();
+    for (auto& worker : workers_) {
+        if (worker.joinable()) worker.join();
+    }
+    workers_.clear();
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::queue<std::function<void()>> empty;
+    std::swap(tasks_, empty);
+    queue_size_.store(0, std::memory_order_relaxed);
+}
+
+void ThreadPool::worker_loop() {
+    while (true) {
+        std::function<void()> task;
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+            if (stop_ && tasks_.empty()) return;
+            task = std::move(tasks_.front());
+            tasks_.pop();
+            queue_size_.store(tasks_.size(), std::memory_order_relaxed);
+        }
+        active_.fetch_add(1, std::memory_order_relaxed);
+        try {
+            task();
+        } catch (...) {
+            // ignore exceptions in pool threads
+        }
+        active_.fetch_sub(1, std::memory_order_relaxed);
+    }
 }
 
 } // namespace httpace

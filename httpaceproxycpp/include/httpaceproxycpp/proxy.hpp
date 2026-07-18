@@ -34,6 +34,11 @@ public:
     Json check_channel_light(const std::string& plugin, const std::string& channel, const std::string& content_id);
     Json check_channel_peers(const std::string& content_id, int max_wait);
 
+    bool is_plugin_enabled(const std::string& name) const;
+    void set_plugin_enabled(const std::string& name, bool enabled);
+    void load_plugins_state();
+    void save_plugins_state();
+
 private:
     bool is_fake_request(const HttpRequest& request) const;
     bool check_firewall(const std::string& client_ip) const;
@@ -53,6 +58,8 @@ private:
     std::mutex ace_status_mutex_;
     std::chrono::steady_clock::time_point ace_status_time_{};
     Json ace_status_cache_;
+    std::map<std::string, bool> plugins_state_;
+    mutable std::mutex plugins_state_mutex_;
 };
 
 } // namespace httpace
