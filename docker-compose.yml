@@ -1,0 +1,39 @@
+services:
+  aceserve:
+    image: jopsis/aceserve:latest
+    container_name: aceserve-engine
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    ports:
+      - "6878:6878"
+      - "62062:62062"
+      - "8621:8621"
+    networks:
+      - aceproxy-net
+
+  httpaceproxy:
+    build:
+      context: .
+      dockerfile: httpaceproxycpp/Dockerfile
+    container_name: httpaceproxy
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      # Mapeo clave para desarrollo en tiempo real
+      - /opt/HTTPAceProxy/httpaceproxycpp/http:/app/http
+    environment:
+      - ACESTREAM_HOST=aceserve-engine
+      - ACESTREAM_API_PORT=62062
+      - ACESTREAM_HTTP_PORT=6878
+      - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
+    depends_on:
+      - aceserve
+    networks:
+      - aceproxy-net
+
+networks:
+  aceproxy-net:
+    driver: bridge
