@@ -381,6 +381,15 @@ Json Proxy::status_json() {
             {"handlers", handlers}
         });
     }
+    // Métricas del Thread Pool — lectura lock-free desde los contadores atómicos.
+    // server_ puede ser null en el instante previo a Proxy::start(), se protege
+    // con guardia ternaria para no causar UB en ningún caso.
+    Json thread_pool_info = Json::object{
+        {"workers_total",  server_ ? static_cast<double>(server_->pool_worker_count())   : 0.0},
+        {"workers_active", server_ ? static_cast<double>(server_->pool_active_workers()) : 0.0},
+        {"queue_pending",  server_ ? static_cast<double>(server_->pool_queue_depth())    : 0.0}
+    };
+
     return Json::object{
         {"status", "success"},
         {"sys_info", system_info()},
@@ -397,13 +406,15 @@ Json Proxy::status_json() {
             {"plugins_loaded", loaded}
         }},
         {"connection_info", Json::object{
-            {"max_clients", config_.max_connections},
-            {"total_clients", static_cast<double>(broadcasts_.client_count())},
-            {"active_broadcasts", static_cast<double>(broadcasts_.broadcast_count())}
+            {"max_clients",       config_.max_connections},
+            {"total_clients",     static_cast<double>(broadcasts_.client_count())},
+            {"active_broadcasts", static_cast<double>(broadcasts_.broadcast_count())},
+            {"thread_pool",       thread_pool_info}
         }},
         {"clients_data", clients}
     };
 }
+
 
 Json Proxy::acestream_engine_status() {
     {
