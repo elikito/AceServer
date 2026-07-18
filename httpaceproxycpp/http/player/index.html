@@ -503,7 +503,7 @@
         </div>
         <div class="footer-right">
             <span class="label">VERSION:</span>
-            <span class="val version-badge">v07.18.05</span>
+            <span class="val version-badge">v07.18.06</span>
         </div>
     </div>
 
@@ -682,7 +682,7 @@
                             </div>
                         </div>
                         <div class="card-actions">
-                            <a href="${getExactStreamUrl(item.chan.url)}" class="btn-play" target="_blank" title="Play">
+                            <a href="${getExactStreamUrl(item.chan.url)}" class="btn-play" target="_blank" rel="noopener noreferrer" title="Play">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M8 5v14l11-7z"/></svg>
                             </a>
                             <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copy URL">
@@ -703,17 +703,29 @@
         }
 
         function copyStreamUrl(url, button) {
-            navigator.clipboard.writeText(url).then(() => {
+            var textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Failed to copy stream URL:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
                 button.classList.add('copied');
-                const originalSvg = button.innerHTML;
+                var originalSvg = button.innerHTML;
                 button.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
                 setTimeout(() => {
                     button.classList.remove('copied');
                     button.innerHTML = originalSvg;
                 }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy stream URL:', err);
-            });
+            }
         }
 
         // --- LÓGICA DE EPG & FUZZY MATCHING ---
