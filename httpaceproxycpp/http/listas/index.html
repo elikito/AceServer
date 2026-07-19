@@ -51,7 +51,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 24px;
+            padding: 0 20px;
             height: 56px;
             position: sticky;
             top: 0;
@@ -145,27 +145,60 @@
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 24px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
         }
 
         .header-section {
             margin-bottom: 24px;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
-        .header-section h2 {
-            font-size: 22px;
-            font-weight: 600;
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
             color: var(--text-color);
         }
 
-        .header-section p {
+        .header-title p {
             font-size: 13px;
             color: var(--text-muted);
             margin-top: 4px;
+        }
+
+        /* Toast notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 50px;
+            right: 24px;
+            background-color: var(--brand-color);
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .section-title {
@@ -451,8 +484,10 @@
     <!-- Container -->
     <div class="container">
         <div class="header-section">
-            <h2>Gestión de Fuentes de Canales</h2>
-            <p>Edita o añade listas de canales M3U dinámicamente y comprueba su estado en caliente.</p>
+            <div class="header-title">
+                <h1>Gestión de Fuentes de Canales</h1>
+                <p>Edita o añade listas de canales M3U dinámicamente y comprueba su estado en caliente.</p>
+            </div>
         </div>
 
         <div id="alert-box" class="status-alert"></div>
@@ -521,7 +556,7 @@
     <!-- Footer Bar -->
     <div class="footer-bar">
         <div class="footer-left">
-            <span class="label">SERVER IP:</span>
+            <span class="label">IP DEL SERVIDOR:</span>
             <span id="server-ip" class="val">-</span>
         </div>
         <div class="footer-center">
@@ -532,8 +567,8 @@
             </button>
         </div>
         <div class="footer-right">
-            <span class="label">VERSION:</span>
-            <span class="val version-badge">v07.18.06</span>
+            <span class="label">VERSIÓN:</span>
+            <span class="val version-badge">v07.18.11</span>
         </div>
     </div>
 
@@ -843,6 +878,48 @@
                     showAlert('Error de red al eliminar la lista.', 'error');
                 });
         }
+        function showToast(message) {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                toast.className = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message || '✓ Enlace copiado al portapapeles';
+            toast.classList.add('show');
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function copyTextToClipboard(text, button, customMsg) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
+                showToast(customMsg || '✓ Enlace copiado al portapapeles');
+                if (button) {
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                    }, 2000);
+                }
+            }
+        }
+
         function setLightIcon(themeIcon) {
             if (!themeIcon) return;
             themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -44,7 +45,8 @@
             display: inline-block;
         }
 
-        .nav-links a:hover, .nav-links a.active {
+        .nav-links a:hover,
+        .nav-links a.active {
             color: #ffffff;
             background-color: #29292e;
             border-radius: 3px;
@@ -122,16 +124,23 @@
         .channel-logo-container {
             float: left;
             margin-right: 12px;
-            width: 32px;
-            height: 32px;
-            background-color: #000000;
-            text-align: center;
+            width: 60px;
+            height: 60px;
+            background-color: #121214;
+            border: 1px solid #2d2d34;
+            border-radius: 6px;
+            padding: 4px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .channel-logo {
-            max-width: 32px;
-            max-height: 32px;
-            vertical-align: middle;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }
 
         .channel-name {
@@ -139,20 +148,24 @@
             font-weight: bold;
             color: #ffffff;
             margin-bottom: 2px;
-            padding-top: 6px;
+            padding-top: 18px;
         }
 
-        .btn-play-legacy, .btn-copy-legacy {
+        .btn-play-legacy,
+        .btn-copy-legacy {
             float: right;
             color: #ffffff;
             text-decoration: none;
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 8px 14px;
+            font-size: 13px;
             font-weight: bold;
-            border-radius: 4px;
-            margin-top: 2px;
+            border-radius: 6px;
+            margin-top: 12px;
             cursor: pointer;
             border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-play-legacy {
@@ -179,7 +192,7 @@
             font-size: 13px;
             color: #8e8e93;
         }
-        
+
         .footer-bar {
             background-color: #1a1a1e;
             border-top: 1px solid #2d2d34;
@@ -191,6 +204,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- Navbar Legacy -->
@@ -214,7 +228,8 @@
 
         <!-- Buscador Legacy -->
         <div class="search-container-legacy">
-            <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..." onkeyup="filterChannelsLegacy()">
+            <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..."
+                onkeyup="filterChannelsLegacy()">
         </div>
 
         <div id="loading-indicator" class="loading-screen">
@@ -226,16 +241,16 @@
 
     <!-- Footer Bar -->
     <div class="footer-bar">
-        SERVER IP: <span id="server-ip">-</span> | VERSION: v07.18.06 (Legacy)
+        SERVER IP: <span id="server-ip">-</span> | VERSION: v07.18.11 (Legacy)
     </div>
 
     <script>
         // JS ES5 Estricto: SIN funciones flecha, SIN template literals, SIN let/const si se prefiere compatibilidad total
         // Se usa exclusivamente var y XMLHttpRequest clásica
-        
+
         var allChannelsLegacy = [];
 
-        window.onload = function() {
+        window.onload = function () {
             // Cargar tema guardado si aplica
             if (localStorage.getItem('theme') === 'light') {
                 document.body.className = 'light-theme';
@@ -247,7 +262,7 @@
         function loadLegacyData() {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', '/aio', true);
-            xhr.onreadystatechange = function() {
+            xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         var m3uText = xhr.responseText;
@@ -267,18 +282,18 @@
             var lines = text.split('\n');
             var channels = [];
             var currentItem = null;
-            
+
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i].trim();
                 if (line.indexOf('#EXTINF:') === 0) {
                     currentItem = { logo: '', group: 'Otros', name: 'Canal', url: '' };
-                    
+
                     // Parse logo
                     var logoMatch = line.match(/tvg-logo="([^"]*)"/);
                     if (logoMatch) {
                         currentItem.logo = logoMatch[1];
                     }
-                    
+
                     // Parse group
                     var groupMatch = line.match(/group-title="([^"]*)"/);
                     if (groupMatch) {
@@ -302,8 +317,8 @@
                                 rawUrl = 'http://' + window.location.host + rest.substring(nextSlash);
                             }
                         }
-                    } catch(e) {}
-                    
+                    } catch (e) { }
+
                     currentItem.url = rawUrl;
                     channels.push(currentItem);
                     currentItem = null;
@@ -324,6 +339,32 @@
             renderChannelsLegacy(filtered);
         }
 
+        function getExactStreamUrlLegacy(originalUrl) {
+            if (!originalUrl) return '';
+            var streamUrl = originalUrl;
+            try {
+                var slashIdx = streamUrl.indexOf('//');
+                if (slashIdx !== -1) {
+                    var rest = streamUrl.substring(slashIdx + 2);
+                    var nextSlash = rest.indexOf('/');
+                    if (nextSlash !== -1) {
+                        streamUrl = 'http://' + window.location.host + rest.substring(nextSlash);
+                    }
+                }
+            } catch(e) {}
+            return streamUrl;
+        }
+
+        function getVlcUrl(originalUrl) {
+            var directUrl = getExactStreamUrlLegacy(originalUrl);
+            if (directUrl.indexOf('http://') === 0) {
+                return 'vlc://' + directUrl;
+            } else if (directUrl.indexOf('https://') === 0) {
+                return 'vlc://' + directUrl.substring(8);
+            }
+            return directUrl;
+        }
+
         function copyUrlLegacy(url, btn) {
             var textarea = document.createElement('textarea');
             textarea.value = url;
@@ -341,13 +382,13 @@
             textarea.select();
             try {
                 var successful = document.execCommand('copy');
-                if (successful) {
-                    var originalText = btn.innerHTML;
-                    btn.innerHTML = 'Copied';
-                    btn.style.backgroundColor = '#4cd964';
-                    setTimeout(function() {
-                        btn.innerHTML = originalText;
-                        btn.style.backgroundColor = '#2d2d34';
+                if (successful && btn) {
+                    var originalSvg = btn.innerHTML;
+                    btn.classList.add('copied');
+                    btn.innerHTML = '✓';
+                    setTimeout(function () {
+                        btn.classList.remove('copied');
+                        btn.innerHTML = originalSvg;
                     }, 2000);
                 }
             } catch (err) {
@@ -377,7 +418,7 @@
                 }
                 grouped[chan.group].push(chan);
             }
-            
+
             // Ordenar grupos alfabéticamente
             groups.sort();
 
@@ -394,23 +435,25 @@
                 // Crear lista de canales
                 var list = document.createElement('ul');
                 list.className = 'channel-list';
-                
+
                 for (var c = 0; c < groupChannels.length; c++) {
                     var channel = groupChannels[c];
                     var item = document.createElement('li');
                     item.className = 'channel-item';
-                    
-                    var fallbackLogo = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="%232d2d34"/><text x="16" y="20" font-family="sans-serif" font-size="10" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>';
-                    var logoUrl = channel.logo || fallbackLogo;
 
-                    item.innerHTML = 
-                        '<a href="' + channel.url + '" class="btn-play-legacy" target="_blank">&#9654;</a>' +
-                        '<button class="btn-copy-legacy" onclick="copyUrlLegacy(\'' + channel.url + '\', this)">Copy</button>' +
+                    var fallbackSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="sans-serif" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>';
+                    var fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
+                    var logoUrl = channel.logo || fallbackLogo;
+                    var copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+
+                    item.innerHTML =
+                        '<a href="' + getVlcUrl(channel.url) + '" class="btn-play-legacy" target="_blank" title="Abrir en VLC">&#9654;</a>' +
+                        '<button class="btn-copy-legacy" onclick="copyUrlLegacy(\'' + getExactStreamUrlLegacy(channel.url) + '\', this)" title="Copiar enlace del canal">' + copyIcon + '</button>' +
                         '<div class="channel-logo-container">' +
-                            '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
+                        '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
                         '</div>' +
                         '<div class="channel-name">' + channel.name + '</div>';
-                    
+
                     list.appendChild(item);
                 }
                 container.appendChild(list);
@@ -418,4 +461,5 @@
         }
     </script>
 </body>
+
 </html>

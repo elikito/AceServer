@@ -25,6 +25,7 @@
             --brand-color: #4CAF50;
             --accent-color: #764ba2;
             --table-header: #202024;
+            --input-bg: #1a1a1e;
         }
 
         body.light-theme {
@@ -38,6 +39,7 @@
             --brand-color: #4CAF50;
             --accent-color: #667eea;
             --table-header: #e4e4e7;
+            --input-bg: #ffffff;
         }
 
         body {
@@ -55,7 +57,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 24px;
+            padding: 0 20px;
             height: 56px;
             position: sticky;
             top: 0;
@@ -148,23 +150,58 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 24px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
         }
 
-        /* Header */
-        .header {
+        .header-section {
             margin-bottom: 24px;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 16px;
-            text-align: left;
-            color: var(--text-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
-        .header h1 {
+        .header-title h1 {
             font-size: 24px;
             font-weight: 700;
             color: var(--text-color);
-            margin-bottom: 4px;
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Toast notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 50px;
+            right: 24px;
+            background-color: var(--brand-color);
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .header p {
@@ -461,32 +498,51 @@
             transform: translateX(18px);
         }
 
-        /* Clients Table */
+        /* Clients Table - Bento Card High Contrast */
         .clients-panel {
-            padding: 0;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             overflow: hidden;
+            margin-top: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .clients-header {
-            padding: 20px 24px;
+            padding: 18px 24px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background-color: var(--card-bg);
         }
 
         .clients-header h2 {
             margin-bottom: 0;
             border-bottom: none;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .clients-header h2 svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--brand-color);
         }
 
         .clients-header .count {
-            background-color: var(--border-color);
-            color: var(--text-color);
-            padding: 4px 12px;
+            background-color: rgba(76, 217, 100, 0.15);
+            color: var(--brand-color);
+            border: 1px solid rgba(76, 217, 100, 0.3);
+            padding: 4px 14px;
             border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         .table-responsive {
@@ -500,7 +556,7 @@
         }
 
         .clients-table thead {
-            background-color: var(--table-header);
+            background-color: var(--stat-bg);
         }
 
         .clients-table th {
@@ -510,49 +566,70 @@
             color: var(--text-muted);
             text-transform: uppercase;
             font-size: 11px;
+            letter-spacing: 0.5px;
             border-bottom: 1px solid var(--border-color);
         }
 
         .clients-table td {
-            padding: 12px 16px;
+            padding: 14px 16px;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-color);
+            vertical-align: middle;
         }
 
         .clients-table tr:last-child td {
             border-bottom: none;
         }
 
+        .clients-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .channel-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         .channel-icon {
-            width: 40px;
-            height: 30px;
+            width: 44px;
+            height: 44px;
             object-fit: contain;
-            border-radius: 4px;
-            background: #1a1a1a;
-            padding: 3px;
+            border-radius: 6px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            flex-shrink: 0;
         }
 
         .channel-name {
-            font-weight: 500;
-            color: #333;
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        body.light-theme .channel-name {
+            color: #18181b;
         }
 
         .client-ip {
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 12px;
-            color: #666;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: #00BCD4;
         }
 
         .speed-cell {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-family: 'Monaco', monospace;
-            font-size: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .speed-down {
-            color: #4CAF50;
+            color: #4cd964;
         }
 
         .speed-up {
@@ -569,80 +646,82 @@
             padding: 4px 10px;
             border-radius: 12px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .status-badge.dl {
-            background: #d4edda;
-            color: #155724;
+            background: rgba(76, 217, 100, 0.15);
+            color: #4cd964;
+            border: 1px solid rgba(76, 217, 100, 0.3);
         }
 
         .status-badge.buf {
-            background: #fff3cd;
-            color: #856404;
+            background: rgba(255, 149, 0, 0.15);
+            color: #ff9500;
+            border: 1px solid rgba(255, 149, 0, 0.3);
         }
 
-        .status-badge.prebuf {
-            background: #f8d7da;
-            color: #721c24;
+        .status-badge.prebuf, .status-badge.wait {
+            background: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
         }
 
-        .status-badge.wait {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-badge.check {
-            background: #cce5ff;
-            color: #004085;
+        .status-badge.check, .status-badge.loading {
+            background: rgba(33, 150, 243, 0.15);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.3);
         }
 
         .status-badge.idle {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-
-        .status-badge.loading {
-            background: #cce5ff;
-            color: #004085;
+            background: var(--stat-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
         }
 
         .peers-cell {
-            text-align: center;
+            text-align: left;
         }
 
         .peers-count {
-            font-weight: 600;
-            color: #333;
+            font-weight: 700;
+            color: var(--text-color);
             margin-right: 8px;
+            font-size: 13px;
         }
 
         /* Empty state */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #666;
+            padding: 48px 24px;
+            color: var(--text-muted);
+            background-color: var(--card-bg);
         }
 
         .empty-state h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
         }
 
         .empty-state p {
-            font-size: 14px;
+            font-size: 13px;
+            color: var(--text-muted);
         }
 
         /* Error state */
         .error-state {
             text-align: center;
-            padding: 40px 20px;
-            color: #721c24;
-            background: #f8d7da;
+            padding: 24px;
+            color: #ff3b30;
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid rgba(255, 59, 48, 0.3);
             border-radius: 8px;
             margin: 20px;
+            font-weight: 600;
             display: none;
         }
 
@@ -767,123 +846,130 @@
         </div>
     </nav>
 
-    <div class="header">
-        <h1>HTTPAceProxy</h1>
-        <p style="opacity: 0.9; font-size: 14px;">Real-time Statistics Dashboard</p>
-    </div>
-
-    <!-- Connection Stats -->
-    <div class="stats">
-        <div class="stats-grid">
-            <div class="stat-box green">
-                <div class="label">Connected Clients</div>
-                <div class="value" id="total-clients">-</div>
-                <div class="sub">of <span id="max-clients">-</span> max</div>
-            </div>
-            <div class="stat-box">
-                <div class="label">CPU Usage</div>
-                <div class="value" id="cpu-usage">-</div>
-                <div class="sub" id="cpu-cores">- cores</div>
-            </div>
-            <div class="stat-box orange">
-                <div class="label">RAM Used</div>
-                <div class="value" id="ram-used">-</div>
-                <div class="sub">of <span id="ram-total">-</span></div>
-            </div>
-            <div class="stat-box blue">
-                <div class="label">Disk Used</div>
-                <div class="value" id="disk-used">-</div>
-                <div class="sub">of <span id="disk-total">-</span></div>
+    <div class="container">
+        <div class="header-section">
+            <div class="header-title">
+                <h1>HTTPAceProxy</h1>
+                <p>Panel de Estadísticas en Tiempo Real</p>
             </div>
         </div>
-    </div>
 
-    <!-- Server Configuration & Status -->
-    <div class="config-panel" id="config-panel" style="display:none;">
-        <h3>Server Configuration & Status</h3>
-
-        <!-- HTTPAceProxy Configuration -->
-        <div class="config-section">
-            <h4>HTTPAceProxy</h4>
-            <div class="config-grid">
-                <div class="config-item">
-                    <span class="label">Host</span>
-                    <span class="value" id="config-proxy-host">-</span>
+        <!-- Connection Stats -->
+        <div class="stats">
+            <div class="stats-grid">
+                <div class="stat-box green">
+                    <div class="label">CLIENTES CONECTADOS</div>
+                    <div class="value" id="total-clients">-</div>
+                    <div class="sub">de <span id="max-clients">-</span> máx</div>
                 </div>
-                <div class="config-item">
-                    <span class="label">Port</span>
-                    <span class="value" id="config-proxy-port">-</span>
+                <div class="stat-box">
+                    <div class="label">USO DE CPU</div>
+                    <div class="value" id="cpu-usage">-</div>
+                    <div class="sub" id="cpu-cores">- núcleos</div>
                 </div>
-                <div class="config-item">
-                    <span class="label">Max Connections</span>
-                    <span class="value" id="config-max-connections">-</span>
+                <div class="stat-box orange">
+                    <div class="label">MEMORIA RAM</div>
+                    <div class="value" id="ram-used">-</div>
+                    <div class="sub">de <span id="ram-total">-</span></div>
                 </div>
-                <div class="config-item">
-                    <span class="label">Max Concurrent Channels</span>
-                    <span class="value" id="config-max-channels">-</span>
+                <div class="stat-box blue">
+                    <div class="label">ALMACENAMIENTO</div>
+                    <div class="value" id="disk-used">-</div>
+                    <div class="sub">de <span id="disk-total">-</span></div>
                 </div>
             </div>
         </div>
 
-        <!-- AceStream Engine Configuration -->
-        <div class="config-section">
-            <h4>Ace Stream Engine</h4>
-            <div class="config-grid">
-                <div class="config-item">
-                    <span class="label">Host</span>
-                    <span class="value" id="config-ace-host">-</span>
+        <!-- Server Configuration & Status -->
+        <div class="config-panel" id="config-panel" style="display:none;">
+            <h3>Configuración y Estado del Servidor</h3>
+
+            <!-- HTTPAceProxy Configuration -->
+            <div class="config-section">
+                <h4>HTTPAceProxy</h4>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <span class="label">Servidor</span>
+                        <span class="value" id="config-proxy-host">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Puerto</span>
+                        <span class="value" id="config-proxy-port">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Conexiones Máximas</span>
+                        <span class="value" id="config-max-connections">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Canales Máximos</span>
+                        <span class="value" id="config-max-channels">-</span>
+                    </div>
                 </div>
-                <div class="config-item">
-                    <span class="label">API Port</span>
-                    <span class="value" id="config-ace-api-port">-</span>
+            </div>
+
+            <!-- AceStream Engine Configuration -->
+            <div class="config-section">
+                <h4>Motor Ace Stream</h4>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <span class="label">Servidor</span>
+                        <span class="value" id="config-ace-host">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Puerto API</span>
+                        <span class="value" id="config-ace-api-port">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Puerto HTTP</span>
+                        <span class="value" id="config-ace-http-port">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Estado</span>
+                        <div id="config-ace-status"></div>
+                    </div>
                 </div>
-                <div class="config-item">
-                    <span class="label">HTTP Port</span>
-                    <span class="value" id="config-ace-http-port">-</span>
-                </div>
-                <div class="config-item">
-                    <span class="label">Status</span>
-                    <div id="config-ace-status"></div>
-                </div>
+            </div>
+
+            <!-- Plugins -->
+            <div class="config-section">
+                <h4>Plugins Cargados</h4>
+                <div id="config-plugins-list"></div>
             </div>
         </div>
 
-        <!-- Plugins -->
-        <div class="config-section">
-            <h4>Plugins Loaded</h4>
-            <div id="config-plugins-list"></div>
-        </div>
-    </div>
-
-    <!-- Clients Table -->
-    <div class="clients-panel">
-        <div class="clients-header">
-            <h2>Active Connections</h2>
-            <span class="count" id="clients-count">0 clients</span>
-        </div>
-        <div id="clients-container">
-            <div class="empty-state" id="empty-state">
-                <h3>No active connections</h3>
-                <p>Clients will appear here when they connect to watch streams.</p>
+        <!-- Clients Table -->
+        <div class="clients-panel">
+            <div class="clients-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                    Conexiones Activas
+                </h2>
+                <span class="count" id="clients-count">0 clientes</span>
             </div>
-            <table class="clients-table" id="clients-table" style="display:none;">
-                <thead>
-                    <tr>
-                        <th>Channel</th>
-                        <th>Client IP</th>
-                        <th>Location</th>
-                        <th>Started</th>
-                        <th>Duration</th>
-                        <th>Speed</th>
-                        <th>Peers / Status</th>
-                    </tr>
-                </thead>
-                <tbody id="clients-tbody">
-                </tbody>
-            </table>
-        </div>
-        <div class="error-state" id="error-state">
-            Server not responding! Refresh page...
+            <div id="clients-container">
+                <div class="empty-state" id="empty-state">
+                    <h3>No hay clientes conectados actualmente</h3>
+                    <p>Los clientes aparecerán aquí cuando se conecten para ver transmisiones.</p>
+                </div>
+                <table class="clients-table" id="clients-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Canal</th>
+                            <th>IP Cliente</th>
+                            <th>Ubicación</th>
+                            <th>Inicio</th>
+                            <th>Duración</th>
+                            <th>Velocidad (Bajada/Subida)</th>
+                            <th>Peers / Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clients-tbody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="error-state" id="error-state">
+                ¡El servidor no responde! Reintentando...
+            </div>
         </div>
     </div>
     </div>
@@ -931,14 +1017,14 @@
                     statusEl.innerHTML = `
                         <div class="status-indicator success">
                             <span class="status-dot"></span>
-                            <span>Connected ${aceStatus.version !== 'unknown' ? '(v' + aceStatus.version + ')' : ''}</span>
+                            <span>Conectado ${aceStatus.version !== 'unknown' ? '(v' + aceStatus.version + ')' : ''}</span>
                         </div>
                     `;
                 } else {
                     statusEl.innerHTML = `
                         <div class="status-indicator error">
                             <span class="status-dot"></span>
-                            <span>Not Connected</span>
+                            <span>Desconectado</span>
                         </div>
                     `;
                 }
@@ -962,7 +1048,9 @@
                                         <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
                                     </svg>
                                     <a href="/${handler}" target="_blank" class="handler-url">${fullUrl}</a>
-                                    <button class="handler-copy-btn" onclick="copyToClipboard('${fullUrl}', this); event.preventDefault();">Copy</button>
+                                    <button class="handler-copy-btn" onclick="copyTextToClipboard('${fullUrl}', this, '✓ Enlace copiado al portapapeles'); event.preventDefault();" title="Copiar enlace">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                    </button>
                                 </div>
                             `;
                         }).join('');
@@ -980,7 +1068,7 @@
                                         <span class="plugin-name">${p.name}</span>
                                     </div>
                                     <div class="plugin-card-header-right" onclick="event.stopPropagation();">
-                                        ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} channels</span>` : ''}
+                                        ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} canales</span>` : ''}
                                         ${(p.name !== 'stat' && p.name !== 'statplugin') ? `
                                             <label class="switch" title="Toggle Plugin">
                                                 <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePlugin('${p.name}', this.checked)">
@@ -1023,7 +1111,7 @@
                         });
                     }, 0);
                 } else {
-                    pluginsList.innerHTML = '<div class="status-indicator warning"><span class="status-dot"></span><span>No plugins loaded</span></div>';
+                    pluginsList.innerHTML = '<div class="status-indicator warning"><span class="status-dot"></span><span>No hay plugins cargados</span></div>';
                 }
 
                 document.getElementById('config-panel').style.display = 'block';
@@ -1035,7 +1123,7 @@
 
             document.getElementById('total-clients').textContent = conn.total_clients;
             document.getElementById('max-clients').textContent = conn.max_clients;
-            document.getElementById('clients-count').textContent = conn.total_clients + ' client' + (conn.total_clients !== 1 ? 's' : '');
+            document.getElementById('clients-count').textContent = conn.total_clients + ' cliente' + (conn.total_clients !== 1 ? 's' : '');
 
             // CPU
             const cpuPercent = sys.cpu_percent.reduce((a, b) => a + b, 0) / sys.cpu_nums;
@@ -1162,23 +1250,50 @@
             return div.innerHTML;
         }
 
-        function copyToClipboard(text, button) {
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.classList.add('copied');
+        function showToast(message) {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                toast.className = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message || '✓ Enlace copiado al portapapeles';
+            toast.classList.add('show');
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
 
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                button.textContent = 'Error';
-                setTimeout(() => {
-                    button.textContent = 'Copy';
-                }, 2000);
-            });
+        function copyTextToClipboard(text, button, customMsg) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
+                showToast(customMsg || '✓ Enlace copiado al portapapeles');
+                if (button) {
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                    }, 2000);
+                }
+            }
+        }
+
+        function copyToClipboard(text, button) {
+            copyTextToClipboard(text, button);
         }
 
         function togglePlugin(name, enabled) {
@@ -1248,7 +1363,7 @@
     <!-- Footer Bar -->
     <div class="footer-bar">
         <div class="footer-left">
-            <span class="label">SERVER IP:</span>
+            <span class="label">IP DEL SERVIDOR:</span>
             <span id="server-ip" class="val">-</span>
         </div>
         <div class="footer-center">
@@ -1259,8 +1374,8 @@
             </button>
         </div>
         <div class="footer-right">
-            <span class="label">VERSION:</span>
-            <span class="val version-badge">v07.18.06</span>
+            <span class="label">VERSIÓN:</span>
+            <span class="val version-badge">v07.18.11</span>
         </div>
     </div>
 </body>
