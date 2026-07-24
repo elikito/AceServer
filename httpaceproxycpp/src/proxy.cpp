@@ -15,11 +15,13 @@ namespace httpace {
 namespace {
 
 bool is_video_extension(const std::string& path) {
+    auto ext = extension_of(path);
+    if (ext.empty()) return true;
     static const std::set<std::string> exts = {
         "avi", "flv", "m2ts", "mkv", "mpeg", "mpeg4", "mpegts", "mpg4", "mp4",
         "mpg", "mov", "mpv", "qt", "ts", "wmv", "m3u8"
     };
-    return exts.contains(extension_of(path));
+    return exts.contains(ext);
 }
 
 std::string header_host(const HttpRequest& request) {
