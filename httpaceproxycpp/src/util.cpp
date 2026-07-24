@@ -396,6 +396,19 @@ std::string rewrite_url_host_port(std::string_view url, std::string_view host, s
     return build_url(parsed);
 }
 
+std::string normalize_list_url(const std::string& input_url) {
+    std::string url = trim(input_url);
+    static const std::regex inbrowser_regex(R"(https?://([a-zA-Z0-9]+)\.(ipns|ipfs)\.inbrowser\.link(/.*)?)", std::regex::icase);
+    std::smatch match;
+    if (std::regex_match(url, match, inbrowser_regex)) {
+        std::string hash = match[1].str();
+        std::string type = match[2].str();
+        std::string path = match[3].matched ? match[3].str() : "";
+        return "https://ipfs.io/" + type + "/" + hash + path;
+    }
+    return url;
+}
+
 void log_line(const std::string& level, const std::string& message) {
     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::tm tm{};

@@ -440,11 +440,11 @@
                             if (config.custom_lists && config.custom_lists.length) {
                                 for (var j = 0; j < config.custom_lists.length; j++) {
                                     var item = config.custom_lists[j];
-                                    if (item.enabled !== false && item.url) {
+                                    if (item.enabled !== false && item.name) {
                                         sources.push({
                                             key: 'custom_' + item.name,
                                             label: item.name,
-                                            url: item.url
+                                            url: '/' + item.name
                                         });
                                     }
                                 }

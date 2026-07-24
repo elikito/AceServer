@@ -387,6 +387,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         }
         else if (action == "upload_list") {
             std::string name = query_get(ctx.query, "name");
+            std::string title = query_get(ctx.query, "title");
             std::string filename = query_get(ctx.query, "filename");
             std::string content = request.body;
 
@@ -395,6 +396,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     auto j = Json::parse(content);
                     if (j.is_object()) {
                         if (j.contains("name") && name.empty()) name = j["name"].as_string();
+                        if (j.contains("title") && title.empty()) title = j["title"].as_string();
                         if (j.contains("filename") && filename.empty()) filename = j["filename"].as_string();
                         if (j.contains("content")) content = j["content"].as_string();
                     }
@@ -402,6 +404,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             }
 
             if (name.empty()) name = "custom_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+            if (title.empty()) title = name;
             if (filename.empty()) filename = name + ".m3u";
 
             filename = replace_all(filename, "..", "");
@@ -435,6 +438,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 for (auto& item : arr) {
                     if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
                         Json::object item_obj = item.as_object();
+                        item_obj["title"] = title;
                         item_obj["url"] = relative_url;
                         item_obj["enabled"] = true;
                         item = item_obj;
@@ -445,6 +449,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 if (!found) {
                     arr.push_back(Json::object{
                         {"name", name},
+                        {"title", title},
                         {"url", relative_url},
                         {"enabled", true}
                     });
@@ -458,6 +463,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             Json res = Json::object{
                 {"status", "success"},
                 {"name", name},
+                {"title", title},
                 {"url", relative_url}
             };
             connection.send_response_headers(200, status_reason(200), headers);
@@ -630,6 +636,46 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             connection.send_text(res.dump(2));
             return;
         }
+        else if (action == "refresh_plugin") {
+            auto plugin_name = query_get(ctx.query, "plugin");
+            if (plugin_name.empty()) plugin_name = query_get(ctx.query, "name");
+            if (!plugin_name.empty()) {
+                std::size_t channel_cnt = 0;
+                std::size_t group_cnt = 0;
+                bool success = false;
+
+                auto lower_target = lower(plugin_name);
+                for (auto& plugin : plugins_.unique_plugins()) {
+                    if (lower(plugin->name()) == lower_target) {
+                        if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+                            success = playlist->refresh_if_needed(true);
+                            channel_cnt = playlist->channel_count();
+                            std::set<std::string> groups;
+                            for (const auto& item : playlist->playlist_items()) {
+                                if (!item.group.empty()) groups.insert(item.group);
+                            }
+                            group_cnt = groups.size();
+                        } else {
+                            success = true;
+                        }
+                        break;
+                    }
+                }
+
+                Json res = Json::object{
+                    {"status", success ? "success" : "error"},
+                    {"plugin", plugin_name},
+                    {"channels_count", static_cast<double>(channel_cnt)},
+                    {"groups_count", static_cast<double>(group_cnt)}
+                };
+
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text(res.dump(2));
+            } else {
+                send_error(connection, 400, "Missing plugin parameter");
+            }
+            return;
+        }
         else if (action == "set_url") {
             auto plugin = query_get(ctx.query, "plugin");
             auto url = query_get(ctx.query, "url");
@@ -644,10 +690,12 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         }
         else if (action == "save_custom_list") {
             auto name = query_get(ctx.query, "name");
+            auto title = query_get(ctx.query, "title");
             auto url = query_get(ctx.query, "url");
             auto enabled_str = query_get(ctx.query, "enabled");
             if (!name.empty() && !url.empty()) {
                 bool enabled = (enabled_str != "false");
+                if (title.empty()) title = name;
                 {
                     std::lock_guard<std::mutex> lock(plugins_state_mutex_);
                     Json::object obj;
@@ -662,6 +710,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     for (auto& item : arr) {
                         if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
                             Json::object item_obj = item.as_object();
+                            item_obj["title"] = url_decode(title);
                             item_obj["url"] = url_decode(url);
                             item_obj["enabled"] = enabled;
                             item = item_obj;
@@ -672,6 +721,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     if (!found) {
                         arr.push_back(Json::object{
                             {"name", name},
+                            {"title", url_decode(title)},
                             {"url", url_decode(url)},
                             {"enabled", enabled}
                         });
@@ -716,6 +766,61 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 connection.send_text("{\"status\":\"success\"}");
             } else {
                 send_error(connection, 400, "Missing name parameter");
+            }
+            return;
+        }
+        else if (action == "check_list") {
+            auto target_url = query_get(ctx.query, "url");
+            if (!target_url.empty()) {
+                auto decoded_url = normalize_list_url(url_decode(target_url));
+                try {
+                    auto res = http_client_.get(decoded_url, {{"User-Agent", "Mozilla/5.0"}}, 10, true);
+                    if (res.status >= 200 && res.status < 400) {
+                        std::istringstream stream(res.body);
+                        std::string line;
+                        int channel_count = 0;
+                        std::set<std::string> groups;
+                        while (std::getline(stream, line)) {
+                            line = trim(line);
+                            if (starts_with(line, "#EXTINF:")) {
+                                channel_count++;
+                                auto attrs = parse_extinf_attrs(line);
+                                if (attrs.contains("group-title") && !attrs["group-title"].empty()) {
+                                    groups.insert(attrs["group-title"]);
+                                }
+                            }
+                        }
+                        Json out = Json::object{
+                            {"status", "success"},
+                            {"http_status", static_cast<double>(res.status)},
+                            {"channels_count", static_cast<double>(channel_count)},
+                            {"groups_count", static_cast<double>(groups.size())},
+                            {"size_bytes", static_cast<double>(res.body.size())}
+                        };
+                        connection.send_response_headers(200, status_reason(200), headers);
+                        connection.send_text(out.dump(2));
+                        return;
+                    } else {
+                        Json out = Json::object{
+                            {"status", "error"},
+                            {"http_status", static_cast<double>(res.status)},
+                            {"error", "HTTP " + std::to_string(res.status)}
+                        };
+                        connection.send_response_headers(200, status_reason(200), headers);
+                        connection.send_text(out.dump(2));
+                        return;
+                    }
+                } catch (const std::exception& e) {
+                    Json out = Json::object{
+                        {"status", "error"},
+                        {"error", e.what()}
+                    };
+                    connection.send_response_headers(200, status_reason(200), headers);
+                    connection.send_text(out.dump(2));
+                    return;
+                }
+            } else {
+                send_error(connection, 400, "Missing url parameter");
             }
             return;
         }
@@ -1458,6 +1563,7 @@ void Proxy::add_custom_list_plugin(const std::string& name, const std::string& u
     auto existing = plugins_.by_handler(name);
     if (existing) {
         if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(existing)) {
+            set_plugin_url(name, url);
             playlist->force_refresh();
         }
         return;

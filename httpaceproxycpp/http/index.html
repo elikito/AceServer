@@ -812,6 +812,90 @@
             color: white;
         }
 
+        .handler-refresh-btn {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .handler-refresh-btn:hover {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .handler-refresh-btn.spinning svg {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .drag-handle:hover {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .plugin-card {
+            transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+        }
+
+        .plugin-card.dragging {
+            opacity: 0.45;
+            transform: scale(0.98);
+            border-color: #2196F3 !important;
+        }
+
+        .plugin-card.drag-over {
+            border-top: 2px solid #4CAF50 !important;
+        }
+
+        .plugin-status-msg {
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 6px;
+            display: block;
+        }
+
+        .plugin-status-msg.checking {
+            color: #2196F3;
+        }
+
+        .plugin-status-msg.valid {
+            color: #4cd964;
+        }
+
+        .plugin-status-msg.invalid {
+            color: #ff9500;
+        }
+
+        .plugin-status-msg.error {
+            color: #ff3b30;
+        }
+
         /* Switches */
         .switch {
             position: relative;
@@ -2007,49 +2091,71 @@
 
                 // Plugins
                 const pluginsList = document.getElementById('config-plugins-list');
-                const hiddenPlugins = ['listas', 'player', 'stat', 'statplugin'];
+                const hiddenPlugins = ['listas', 'player', 'stat', 'statplugin', 'epg'];
                 const visiblePlugins = (info.plugins_loaded || []).filter(p => !hiddenPlugins.includes(p.name.toLowerCase()));
 
-                // Sort: Aio first, then alphabetical
+                // Custom User Order via Drag and Drop
+                let storedOrder = [];
+                try {
+                    storedOrder = JSON.parse(localStorage.getItem('pluginsOrder') || '[]');
+                } catch (e) {}
+
                 visiblePlugins.sort((a, b) => {
                     const nameA = a.name.toLowerCase();
                     const nameB = b.name.toLowerCase();
+                    const idxA = storedOrder.indexOf(nameA);
+                    const idxB = storedOrder.indexOf(nameB);
+
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    if (idxA !== -1) return -1;
+                    if (idxB !== -1) return 1;
+
                     if (nameA === 'aio') return -1;
                     if (nameB === 'aio') return 1;
                     return nameA.localeCompare(nameB);
                 });
 
                 if (visiblePlugins.length > 0) {
-                    pluginsList.innerHTML = visiblePlugins.map(p => {
-                        const copyButtonsHtml = p.handlers.map(handler => {
-                            const fullUrl = window.location.origin + '/' + handler;
+                    if (!isDraggingCard) {
+                        pluginsList.innerHTML = visiblePlugins.map(p => {
+                            const copyButtonsHtml = p.handlers.map(handler => {
+                                const fullUrl = window.location.origin + '/' + handler;
+                                return `
+                                    <button class="handler-copy-btn" onclick="copyTextToClipboard('${fullUrl}', this, '✓ Enlace copiado'); event.preventDefault();" title="Copiar enlace (${fullUrl})">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                    </button>
+                                `;
+                            }).join('');
+
                             return `
-                                <button class="handler-copy-btn" onclick="copyTextToClipboard('${fullUrl}', this, '✓ Enlace copiado'); event.preventDefault();" title="Copiar enlace (${fullUrl})">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                </button>
+                                <div class="plugin-card" data-plugin-name="${p.name}" draggable="true">
+                                    <div class="plugin-header-line">
+                                        <div class="plugin-left">
+                                            <span class="drag-handle" title="Arrastrar para reordenar el panel">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                            </span>
+                                            ${(p.name.toLowerCase() !== 'stat' && p.name.toLowerCase() !== 'statplugin') ? `
+                                                <label class="switch" title="Activar/Desactivar Plugin">
+                                                    <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePlugin('${p.name}', this.checked)">
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            ` : ''}
+                                            <span class="plugin-name">${p.name}</span>
+                                        </div>
+                                        <div class="plugin-card-header-right">
+                                            ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} canales</span>` : ''}
+                                            <button class="handler-refresh-btn" onclick="refreshDashboardList('${p.name}', this); event.preventDefault();" title="Actualizar lista (${p.name})">
+                                                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                                            </button>
+                                            ${copyButtonsHtml}
+                                        </div>
+                                    </div>
+                                    <div id="status-msg-${p.name}" class="plugin-status-msg" style="display:none;"></div>
+                                </div>
                             `;
                         }).join('');
-
-                        return `
-                            <div class="plugin-card" data-plugin-name="${p.name}">
-                                <div class="plugin-header-line">
-                                    <div class="plugin-left">
-                                        ${(p.name.toLowerCase() !== 'stat' && p.name.toLowerCase() !== 'statplugin') ? `
-                                            <label class="switch" title="Activar/Desactivar Plugin">
-                                                <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePlugin('${p.name}', this.checked)">
-                                                <span class="slider round"></span>
-                                            </label>
-                                        ` : ''}
-                                        <span class="plugin-name">${p.name}</span>
-                                    </div>
-                                    <div class="plugin-card-header-right">
-                                        ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} canales</span>` : ''}
-                                        ${copyButtonsHtml}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
+                        initPluginCardsDragAndDrop();
+                    }
                 } else {
                     pluginsList.innerHTML = '<div class="status-indicator warning"><span class="status-dot"></span><span>No hay listas cargadas</span></div>';
                 }
@@ -2374,6 +2480,136 @@
                         </div>
                     `;
                 });
+        }
+
+        let isDraggingCard = false;
+
+        function refreshDashboardList(pluginName, btn) {
+            if (!pluginName) return;
+            const card = document.querySelector(`.plugin-card[data-plugin-name="${pluginName}"]`);
+            let statusEl = document.getElementById(`status-msg-${pluginName}`);
+            if (!statusEl && card) {
+                statusEl = document.createElement('div');
+                statusEl.id = `status-msg-${pluginName}`;
+                statusEl.className = 'plugin-status-msg checking';
+                card.appendChild(statusEl);
+            }
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.textContent = 'Comprobar...';
+                statusEl.className = 'plugin-status-msg checking';
+            }
+            if (btn) btn.classList.add('spinning');
+
+            fetch(`/config?action=refresh_plugin&plugin=${encodeURIComponent(pluginName)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (btn) btn.classList.remove('spinning');
+                    if (data.status === 'success') {
+                        const count = data.channels_count || 0;
+                        const groups = data.groups_count || 0;
+                        let msg = '';
+                        if (count > 0) {
+                            msg = groups > 0 ? `✓ M3U Válido: ${count} canales, ${groups} grupos.` : `✓ M3U Válido: ${count} canales.`;
+                            if (statusEl) {
+                                statusEl.textContent = msg;
+                                statusEl.className = 'plugin-status-msg valid';
+                            }
+                            showToast(`✓ ${pluginName}: ${count} canales cargados`, 'success');
+                        } else {
+                            msg = '⚠ Vacío o formato no reconocido';
+                            if (statusEl) {
+                                statusEl.textContent = msg;
+                                statusEl.className = 'plugin-status-msg invalid';
+                            }
+                            showToast(`⚠ ${pluginName}: Formato no reconocido o vacío`, 'error');
+                        }
+                        const badge = card ? card.querySelector('.plugin-channels-badge') : null;
+                        if (badge) {
+                            badge.textContent = `${count} canales`;
+                        }
+                    } else {
+                        if (statusEl) {
+                            statusEl.textContent = '✗ Error al actualizar la lista';
+                            statusEl.className = 'plugin-status-msg error';
+                        }
+                        showToast(`✗ Error al actualizar ${pluginName}`, 'error');
+                    }
+                })
+                .catch(err => {
+                    if (btn) btn.classList.remove('spinning');
+                    if (statusEl) {
+                        statusEl.textContent = `✗ Error: ${err.message || 'Error de red'}`;
+                        statusEl.className = 'plugin-status-msg error';
+                    }
+                    showToast(`✗ Error de red al actualizar ${pluginName}`, 'error');
+                });
+        }
+
+        function initPluginCardsDragAndDrop() {
+            const container = document.getElementById('config-plugins-list');
+            if (!container) return;
+
+            let draggedItem = null;
+            const cards = container.querySelectorAll('.plugin-card');
+
+            cards.forEach(card => {
+                card.setAttribute('draggable', 'true');
+
+                card.addEventListener('dragstart', (e) => {
+                    draggedItem = card;
+                    isDraggingCard = true;
+                    card.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', card.getAttribute('data-plugin-name'));
+                });
+
+                card.addEventListener('dragend', () => {
+                    if (draggedItem) {
+                        draggedItem.classList.remove('dragging');
+                        draggedItem = null;
+                    }
+                    isDraggingCard = false;
+                    cards.forEach(c => c.classList.remove('drag-over'));
+                    savePluginCardsOrder();
+                });
+
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (card !== draggedItem) {
+                        card.classList.add('drag-over');
+                    }
+                });
+
+                card.addEventListener('dragleave', () => {
+                    card.classList.remove('drag-over');
+                });
+
+                card.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    card.classList.remove('drag-over');
+                    if (draggedItem && card !== draggedItem) {
+                        const allCards = Array.from(container.querySelectorAll('.plugin-card'));
+                        const draggedIdx = allCards.indexOf(draggedItem);
+                        const targetIdx = allCards.indexOf(card);
+                        if (draggedIdx < targetIdx) {
+                            container.insertBefore(draggedItem, card.nextSibling);
+                        } else {
+                            container.insertBefore(draggedItem, card);
+                        }
+                        savePluginCardsOrder();
+                    }
+                });
+            });
+        }
+
+        function savePluginCardsOrder() {
+            const container = document.getElementById('config-plugins-list');
+            if (!container) return;
+            const cards = container.querySelectorAll('.plugin-card');
+            const order = Array.from(cards).map(c => c.getAttribute('data-plugin-name').toLowerCase());
+            localStorage.setItem('pluginsOrder', JSON.stringify(order));
         }
 
         // Start polling

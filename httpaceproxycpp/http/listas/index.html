@@ -220,19 +220,25 @@
             height: 22px;
             vertical-align: middle;
         }
+
         .switch input {
             opacity: 0;
             width: 0;
             height: 0;
         }
+
         .slider {
             position: absolute;
             cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: #2d2d34;
             transition: .3s;
             border-radius: 22px;
         }
+
         .slider:before {
             position: absolute;
             content: "";
@@ -244,10 +250,12 @@
             transition: .3s;
             border-radius: 50%;
         }
-        input:checked + .slider {
+
+        input:checked+.slider {
             background-color: #4CAF50;
         }
-        input:checked + .slider:before {
+
+        input:checked+.slider:before {
             transform: translateX(16px);
         }
 
@@ -339,11 +347,24 @@
             color: #ffffff;
             border: none;
             border-radius: 4px;
-            padding: 6px 12px;
+            padding: 6px 10px;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+
+        .btn-save svg,
+        .btn-check svg,
+        .btn-delete svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            display: block;
         }
 
         .btn-save {
@@ -610,14 +631,15 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 15%;">Lista</th>
-                        <th style="width: 55%;">Dirección URL</th>
-                        <th style="width: 30%; text-align: center;">Acciones</th>
+                        <th style="width: 15%;">Identificador</th>
+                        <th style="width: 25%;">Nombre Visible</th>
+                        <th style="width: 35%;">Dirección URL</th>
+                        <th style="width: 25%; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="custom-table-body">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #a8a8b2; padding: 16px;">
+                        <td colspan="4" style="text-align: center; color: #a8a8b2; padding: 16px;">
                             No hay listas personalizadas agregadas.
                         </td>
                     </tr>
@@ -628,11 +650,15 @@
         <!-- Agregar Nueva Lista Custom -->
         <div class="section-title">Agregar Nueva Lista por URL</div>
         <div class="config-card">
-            <div class="add-form-grid">
+            <div class="add-form-grid" style="grid-template-columns: 1fr 1.5fr 2fr auto;">
                 <div class="form-group">
-                    <label for="new-list-name">Identificador / Nombre</label>
+                    <label for="new-list-name">Identificador (ID)</label>
                     <input type="text" id="new-list-name" class="url-input" placeholder="ej: mifuentetv"
                         oninput="sanitizeName(this)">
+                </div>
+                <div class="form-group">
+                    <label for="new-list-title">Nombre Visible</label>
+                    <input type="text" id="new-list-title" class="url-input" placeholder="ej: Mi Fuente TV Deportes">
                 </div>
                 <div class="form-group">
                     <label for="new-list-url">Dirección URL</label>
@@ -649,11 +675,15 @@
         <!-- Subir Fichero M3U Local -->
         <div class="section-title">Subir Fichero M3U Local</div>
         <div class="config-card">
-            <div class="add-form-grid">
+            <div class="add-form-grid" style="grid-template-columns: 1fr 1.5fr 2fr auto;">
                 <div class="form-group">
-                    <label for="upload-list-name">Identificador / Nombre</label>
+                    <label for="upload-list-name">Identificador (ID)</label>
                     <input type="text" id="upload-list-name" class="url-input" placeholder="ej: miscanales"
                         oninput="sanitizeName(this)">
+                </div>
+                <div class="form-group">
+                    <label for="upload-list-title">Nombre Visible</label>
+                    <input type="text" id="upload-list-title" class="url-input" placeholder="ej: Mis Canales Locales">
                 </div>
                 <div class="form-group">
                     <label for="upload-file-input">Seleccionar Archivo (.m3u, .m3u8, .txt)</label>
@@ -715,15 +745,19 @@ acestream://1234567890abcdef1234567890abcdef12345678
             <div class="add-form-grid">
                 <div class="form-group">
                     <label for="new-epg-name">Identificador / Nombre</label>
-                    <input type="text" id="new-epg-name" class="url-input" placeholder="ej: epg_secundaria" oninput="sanitizeName(this)">
+                    <input type="text" id="new-epg-name" class="url-input" placeholder="ej: epg_secundaria"
+                        oninput="sanitizeName(this)">
                 </div>
                 <div class="form-group">
                     <label for="new-epg-url">Dirección URL de EPG (XML / XML.GZ)</label>
-                    <input type="text" id="new-epg-url" class="url-input" placeholder="https://raw.githubusercontent.com/.../guiatv_sincolor0.xml.gz">
+                    <input type="text" id="new-epg-url" class="url-input"
+                        placeholder="https://raw.githubusercontent.com/.../guiatv_sincolor0.xml.gz">
                 </div>
                 <div style="display: flex; gap: 8px; align-items: flex-end;">
-                    <button class="btn-save" style="padding: 10px 16px; flex: 1;" onclick="addNewEpgSource()">Agregar EPG</button>
-                    <button class="btn-check" style="padding: 10px 16px; flex: 1;" id="btn-test-new-epg" onclick="checkNewEpgUrl()">Comprobar</button>
+                    <button class="btn-save" style="padding: 10px 16px; flex: 1;"
+                        onclick="addNewEpgSource()">Añadir</button>
+                    <button class="btn-check" style="padding: 10px 16px; flex: 1;" id="btn-test-new-epg"
+                        onclick="checkNewEpgUrl()">Comprobar</button>
                 </div>
             </div>
             <div id="new-epg-test-result" style="margin-top: 10px; font-size: 13px; display: none;"></div>
@@ -858,6 +892,11 @@ acestream://1234567890abcdef1234567890abcdef12345678
                 });
         }
 
+        const iconCheck = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
+        const iconSave = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`;
+        const iconDelete = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+        const iconReset = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>`;
+
         function loadConfigs() {
             loadInternalList();
             fetch('/config?action=get_config')
@@ -883,8 +922,8 @@ acestream://1234567890abcdef1234567890abcdef12345678
                             </td>
                             <td>
                                 <div class="action-cell">
-                                    <button class="btn-check" onclick="checkList('${plugin.id}', '${plugin.id}')">Comprobar</button>
-                                    <button class="btn-save" onclick="saveUrl('${plugin.id}', this)">Guardar</button>
+                                    <button class="btn-check" onclick="checkList('${plugin.id}', '${plugin.id}')" title="Comprobar (${plugin.name})">${iconCheck}</button>
+                                    <button class="btn-save" onclick="saveUrl('${plugin.id}', this)" title="Guardar (${plugin.name})">${iconSave}</button>
                                 </div>
                             </td>
                         `;
@@ -899,7 +938,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
                     if (customLists.length === 0) {
                         customTbody.innerHTML = `
                             <tr>
-                                <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 16px;">
+                                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 16px;">
                                     No hay listas personalizadas agregadas.
                                 </td>
                             </tr>
@@ -909,17 +948,21 @@ acestream://1234567890abcdef1234567890abcdef12345678
 
                     customLists.forEach(list => {
                         const row = document.createElement('tr');
+                        const displayTitle = list.title || list.name;
                         row.innerHTML = `
                             <td><span class="plugin-badge">${list.name}</span></td>
+                            <td>
+                                <input type="text" id="title-${list.name}" class="url-input" value="${displayTitle}" placeholder="Nombre visible">
+                            </td>
                             <td>
                                 <input type="text" id="url-${list.name}" class="url-input" value="${list.url}">
                                 <span id="status-${list.name}" class="status-msg"></span>
                             </td>
                             <td>
                                 <div class="action-cell">
-                                    <button class="btn-check" onclick="checkList('${list.name}', '${list.name}')">Comprobar</button>
-                                    <button class="btn-save" onclick="saveCustomUrl('${list.name}', this)">Guardar</button>
-                                    <button class="btn-delete" onclick="deleteCustomList('${list.name}', this)">Eliminar</button>
+                                    <button class="btn-check" onclick="checkList('${list.name}', '${list.name}')" title="Comprobar (${displayTitle})">${iconCheck}</button>
+                                    <button class="btn-save" onclick="saveCustomUrl('${list.name}', this)" title="Guardar (${displayTitle})">${iconSave}</button>
+                                    <button class="btn-delete" onclick="deleteCustomList('${list.name}', this)" title="Eliminar (${displayTitle})">${iconDelete}</button>
                                 </div>
                             </td>
                         `;
@@ -956,11 +999,11 @@ acestream://1234567890abcdef1234567890abcdef12345678
                                 </td>
                                 <td>
                                     <div class="action-cell">
-                                        <button class="btn-check" onclick="checkEpgSource('${src.name}')">Comprobar</button>
-                                        <button class="btn-save" onclick="saveEpgSource('${src.name}', '${src.title || src.name}')">Guardar</button>
-                                        ${isDefault ? 
-                                            `<button class="btn-delete" style="background:#4a4a52; color:#fff;" onclick="resetEpgDefault()">Restablecer</button>` : 
-                                            `<button class="btn-delete" onclick="deleteEpgSource('${src.name}')">Eliminar</button>`
+                                        <button class="btn-check" onclick="checkEpgSource('${src.name}')" title="Comprobar EPG (${src.title || src.name})">${iconCheck}</button>
+                                        <button class="btn-save" onclick="saveEpgSource('${src.name}', '${src.title || src.name}')" title="Guardar EPG (${src.title || src.name})">${iconSave}</button>
+                                        ${isDefault ?
+                                            `<button class="btn-delete" style="background:#4a4a52; color:#fff;" onclick="resetEpgDefault()" title="Restablecer EPG">${iconReset}</button>` :
+                                            `<button class="btn-delete" onclick="deleteEpgSource('${src.name}')" title="Eliminar EPG (${src.title || src.name})">${iconDelete}</button>`
                                         }
                                     </div>
                                 </td>
@@ -1178,30 +1221,51 @@ acestream://1234567890abcdef1234567890abcdef12345678
                 });
         }
 
+        function normalizeUrlGateway(url) {
+            if (!url) return '';
+            url = url.trim();
+            const match = url.match(/^https?:\/\/([a-zA-Z0-9]+)\.(ipns|ipfs)\.inbrowser\.link(\/.*)?$/i);
+            if (match) {
+                const hash = match[1];
+                const type = match[2].toLowerCase();
+                const path = match[3] || '';
+                return `https://ipfs.io/${type}/${hash}${path}`;
+            }
+            return url;
+        }
+
         function checkList(inputId, statusId) {
             const input = document.getElementById(`url-${inputId}`);
-            const urlVal = input.value.trim();
+            let rawUrl = input ? input.value.trim() : '';
+            let urlVal = normalizeUrlGateway(rawUrl);
+            if (input && urlVal !== rawUrl) {
+                input.value = urlVal;
+            }
             const statusSpan = document.getElementById(`status-${statusId}`);
-            const button = event.target;
+            let button = null;
+            try { button = event ? (event.currentTarget || event.target) : null; } catch(e) {}
 
             if (!urlVal) {
-                statusSpan.textContent = '⚠ URL vacía';
-                statusSpan.className = 'status-msg invalid';
+                if (statusSpan) {
+                    statusSpan.textContent = '⚠ URL vacía';
+                    statusSpan.className = 'status-msg invalid';
+                }
                 return;
             }
 
-            button.disabled = true;
-            statusSpan.textContent = 'Comprobando...';
-            statusSpan.className = 'status-msg checking';
+            if (button) button.disabled = true;
+            if (statusSpan) {
+                statusSpan.textContent = 'Comprobando...';
+                statusSpan.className = 'status-msg checking';
+            }
 
-            // Realiza el fetch del archivo M3U en segundo plano (soporta CORS si el host remoto lo permite)
             fetch(urlVal)
                 .then(res => {
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     return res.text();
                 })
                 .then(text => {
-                    button.disabled = false;
+                    if (button) button.disabled = false;
                     const lines = text.split('\n');
                     let channelsCount = 0;
                     const groups = new Set();
@@ -1218,33 +1282,50 @@ acestream://1234567890abcdef1234567890abcdef12345678
                     }
 
                     if (channelsCount > 0) {
-                        statusSpan.textContent = `✓ M3U Válido: ${channelsCount} canales, ${groups.size} grupos.`;
-                        statusSpan.className = 'status-msg valid';
+                        if (statusSpan) {
+                            statusSpan.textContent = `✓ M3U Válido: ${channelsCount} canales, ${groups.size} grupos.`;
+                            statusSpan.className = 'status-msg valid';
+                        }
                     } else {
-                        // Comprobar si es JSON
-                        try {
-                            const json = JSON.parse(text);
-                            if (json.channels || json.items) {
-                                const count = (json.channels || json.items).length;
-                                statusSpan.textContent = `✓ JSON Válido: ${count} canales.`;
-                                statusSpan.className = 'status-msg valid';
-                                return;
-                            }
-                        } catch (e) { }
-                        statusSpan.textContent = '⚠ Vacío o formato no reconocido';
-                        statusSpan.className = 'status-msg invalid';
+                        if (statusSpan) {
+                            statusSpan.textContent = '⚠ Vacío o formato no reconocido';
+                            statusSpan.className = 'status-msg invalid';
+                        }
                     }
                 })
                 .catch(err => {
-                    button.disabled = false;
-                    statusSpan.textContent = `✗ Error: ${err.message}`;
-                    statusSpan.className = 'status-msg error';
+                    fetch(`/config?action=check_list&url=${encodeURIComponent(urlVal)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (button) button.disabled = false;
+                            if (data.status === 'success' && data.channels_count > 0) {
+                                if (statusSpan) {
+                                    statusSpan.textContent = data.groups_count > 0 ? `✓ M3U Válido: ${data.channels_count} canales, ${data.groups_count} grupos.` : `✓ M3U Válido: ${data.channels_count} canales.`;
+                                    statusSpan.className = 'status-msg valid';
+                                }
+                            } else {
+                                if (statusSpan) {
+                                    statusSpan.textContent = `✗ Error: ${data.error || err.message}`;
+                                    statusSpan.className = 'status-msg invalid';
+                                }
+                            }
+                        })
+                        .catch(() => {
+                            if (button) button.disabled = false;
+                            if (statusSpan) {
+                                statusSpan.textContent = `✗ Error de red (${err.message})`;
+                                statusSpan.className = 'status-msg invalid';
+                            }
+                        });
                 });
         }
 
         function saveUrl(pluginId, button) {
             const input = document.getElementById(`url-${pluginId}`);
-            const urlVal = input.value.trim();
+            let urlVal = input ? normalizeUrlGateway(input.value.trim()) : '';
+            if (input && input.value.trim() !== urlVal) {
+                input.value = urlVal;
+            }
 
             if (!urlVal) {
                 showAlert('La URL no puede estar vacía.', 'error');
@@ -1252,13 +1333,14 @@ acestream://1234567890abcdef1234567890abcdef12345678
             }
 
             button.disabled = true;
-            button.textContent = '...';
+            button.style.opacity = '0.5';
 
             fetch(`/config?action=set_url&plugin=${pluginId}&url=${encodeURIComponent(urlVal)}`)
                 .then(res => res.json())
                 .then(data => {
                     button.disabled = false;
-                    button.textContent = 'Guardar';
+                    button.style.opacity = '1';
+                    button.innerHTML = iconSave;
                     if (data.status === 'success') {
                         showAlert(`URL de ${pluginId} guardada con éxito. El plugin recargará la lista en segundo plano.`, 'success');
                     } else {
@@ -1267,15 +1349,21 @@ acestream://1234567890abcdef1234567890abcdef12345678
                 })
                 .catch(err => {
                     button.disabled = false;
-                    button.textContent = 'Guardar';
+                    button.style.opacity = '1';
+                    button.innerHTML = iconSave;
                     console.error(err);
                     showAlert('Error de red al guardar la configuración.', 'error');
                 });
         }
 
         function saveCustomUrl(listName, button) {
-            const input = document.getElementById(`url-${listName}`);
-            const urlVal = input.value.trim();
+            const urlInput = document.getElementById(`url-${listName}`);
+            const titleInput = document.getElementById(`title-${listName}`);
+            let urlVal = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+            if (urlInput && urlInput.value.trim() !== urlVal) {
+                urlInput.value = urlVal;
+            }
+            const titleVal = titleInput ? titleInput.value.trim() : listName;
 
             if (!urlVal) {
                 showAlert('La URL no puede estar vacía.', 'error');
@@ -1283,15 +1371,16 @@ acestream://1234567890abcdef1234567890abcdef12345678
             }
 
             button.disabled = true;
-            button.textContent = '...';
+            button.style.opacity = '0.5';
 
-            fetch(`/config?action=save_custom_list&name=${listName}&url=${encodeURIComponent(urlVal)}&enabled=true`)
+            fetch(`/config?action=save_custom_list&name=${encodeURIComponent(listName)}&title=${encodeURIComponent(titleVal)}&url=${encodeURIComponent(urlVal)}&enabled=true`)
                 .then(res => res.json())
                 .then(data => {
                     button.disabled = false;
-                    button.textContent = 'Guardar';
+                    button.style.opacity = '1';
+                    button.innerHTML = iconSave;
                     if (data.status === 'success') {
-                        showAlert(`Lista personalizada "${listName}" guardada y cargada con éxito en el proxy.`, 'success');
+                        showAlert(`Lista personalizada "${titleVal || listName}" guardada y cargada con éxito en el proxy.`, 'success');
                         loadConfigs();
                     } else {
                         showAlert('Error en el servidor al guardar la lista.', 'error');
@@ -1299,7 +1388,8 @@ acestream://1234567890abcdef1234567890abcdef12345678
                 })
                 .catch(err => {
                     button.disabled = false;
-                    button.textContent = 'Guardar';
+                    button.style.opacity = '1';
+                    button.innerHTML = iconSave;
                     console.error(err);
                     showAlert('Error de red al guardar la lista.', 'error');
                 });
@@ -1307,21 +1397,27 @@ acestream://1234567890abcdef1234567890abcdef12345678
 
         function addCustomList() {
             const nameInput = document.getElementById('new-list-name');
+            const titleInput = document.getElementById('new-list-title');
             const urlInput = document.getElementById('new-list-url');
-            const name = nameInput.value.trim();
-            const url = urlInput.value.trim();
+            const name = nameInput ? nameInput.value.trim() : '';
+            const title = titleInput ? titleInput.value.trim() : name;
+            let url = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+            if (urlInput && urlInput.value.trim() !== url) {
+                urlInput.value = url;
+            }
 
             if (!name || !url) {
                 showAlert('El identificador y la URL son campos obligatorios.', 'error');
                 return;
             }
 
-            fetch(`/config?action=save_custom_list&name=${name}&url=${encodeURIComponent(url)}&enabled=true`)
+            fetch(`/config?action=save_custom_list&name=${encodeURIComponent(name)}&title=${encodeURIComponent(title || name)}&url=${encodeURIComponent(url)}&enabled=true`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        showAlert(`Lista "${name}" agregada con éxito en caliente.`, 'success');
+                        showAlert(`Lista "${title || name}" agregada con éxito en caliente.`, 'success');
                         nameInput.value = '';
+                        if (titleInput) titleInput.value = '';
                         urlInput.value = '';
                         loadConfigs();
                     } else {
@@ -1336,8 +1432,10 @@ acestream://1234567890abcdef1234567890abcdef12345678
 
         function uploadM3uFile() {
             const nameInput = document.getElementById('upload-list-name');
+            const titleInput = document.getElementById('upload-list-title');
             const fileInput = document.getElementById('upload-file-input');
-            const name = nameInput.value.trim();
+            const name = nameInput ? nameInput.value.trim() : '';
+            const title = titleInput ? titleInput.value.trim() : '';
             const file = fileInput.files[0];
 
             if (!file) {
@@ -1349,8 +1447,10 @@ acestream://1234567890abcdef1234567890abcdef12345678
             const reader = new FileReader();
             reader.onload = function (e) {
                 const content = e.target.result;
+                const targetName = name || filename.replace(/\.[^/.]+$/, "");
                 const payload = {
-                    name: name || filename.replace(/\.[^/.]+$/, ""),
+                    name: targetName,
+                    title: title || targetName,
                     filename: filename,
                     content: content
                 };
@@ -1363,8 +1463,9 @@ acestream://1234567890abcdef1234567890abcdef12345678
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            showAlert(`Fichero "${data.name}" subido y guardado con éxito.`, 'success');
-                            nameInput.value = '';
+                            showAlert(`Fichero "${data.title || data.name}" subido y guardado con éxito.`, 'success');
+                            if (nameInput) nameInput.value = '';
+                            if (titleInput) titleInput.value = '';
                             fileInput.value = '';
                             loadConfigs();
                         } else {

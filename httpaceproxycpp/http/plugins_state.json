@@ -10,8 +10,13 @@
     },
     {
       "enabled": true,
-      "name": "lista_acestream_unificada",
-      "url": "/listas/locales/lista_acestream_unificada.m3u"
+      "name": "ipfs1",
+      "url": "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "elcanotopbylucasmoom",
+      "url": "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u"
     }
   ],
   "elcano": true,

@@ -207,13 +207,16 @@
             padding: 4px 2px 14px 2px;
             margin-bottom: 20px;
             border-bottom: 1px solid var(--border-color);
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none; /* IE/Edge */
+            scrollbar-width: none;
+            /* Firefox */
+            -ms-overflow-style: none;
+            /* IE/Edge */
             -webkit-overflow-scrolling: touch;
         }
 
         .sources-tabs-container::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
+            display: none;
+            /* Chrome/Safari */
         }
 
         .source-tab-btn {
@@ -259,6 +262,7 @@
                 opacity: 0;
                 transform: translateY(12px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -373,6 +377,27 @@
             text-overflow: ellipsis;
             margin-bottom: 6px;
             letter-spacing: -0.2px;
+        }
+
+        /* AceStream ID Badge */
+        .channel-ace-id {
+            font-size: 11px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.25);
+            border-radius: 4px;
+            padding: 2px 6px;
+            display: inline-block;
+            margin-top: 2px;
+            margin-bottom: 4px;
+            user-select: all;
+            letter-spacing: 0.3px;
+        }
+
+        .channel-ace-id code {
+            font-family: inherit;
+            font-weight: 600;
         }
 
         /* EPG Info */
@@ -644,9 +669,20 @@
         }
 
         @keyframes pulse-red {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 59, 48, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 8px rgba(255, 59, 48, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0);
+            }
         }
 
         .player-title-text {
@@ -722,7 +758,8 @@
             transition: all 0.2s ease;
         }
 
-        .btn-nerd-stats:hover, .btn-nerd-stats.active {
+        .btn-nerd-stats:hover,
+        .btn-nerd-stats.active {
             background-color: #4CAF50;
             color: #ffffff;
             border-color: #4CAF50;
@@ -759,7 +796,7 @@
             grid-template-columns: 1fr 1fr 1.25fr;
             grid-template-rows: auto auto auto;
             gap: 10px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
         }
 
         .nerd-stat-box {
@@ -817,6 +854,7 @@
             .nerd-stats-overlay {
                 grid-template-columns: 1fr 1fr;
             }
+
             .nerd-chart-box {
                 grid-column: 1 / span 2;
                 grid-row: auto;
@@ -897,20 +935,27 @@
                     <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
                 </div>
                 <div class="player-info-right">
-                    <select id="player-audio-select" class="player-engine-select" onchange="switchAudioTrack(this.value)" style="display:none;" title="Seleccionar Pista de Audio">
+                    <select id="player-audio-select" class="player-engine-select"
+                        onchange="switchAudioTrack(this.value)" style="display:none;"
+                        title="Seleccionar Pista de Audio">
                         <option value="-1">🔊 Audio Automático</option>
                     </select>
-                    <button id="btn-nerd-stats" class="btn-nerd-stats" onclick="toggleNerdStats()" title="Ver Estadísticas Nerds del Streaming">
+                    <button id="btn-nerd-stats" class="btn-nerd-stats" onclick="toggleNerdStats()"
+                        title="Ver Estadísticas Nerds del Streaming">
                         📊 Stats for Nerds
                     </button>
-                    <select id="player-engine-select" class="player-engine-select" onchange="changePlayerEngine(this.value)" title="Seleccionar Motor AceStream">
+                    <select id="player-engine-select" class="player-engine-select"
+                        onchange="changePlayerEngine(this.value)" title="Seleccionar Motor AceStream">
                         <option value="auto">⚡ Engine Auto</option>
                         <option value="aceserve-modern">🚀 Modern (jopsis)</option>
                         <option value="aceserve-compat-light">🍃 Compat Light (wafy80)</option>
                         <option value="aceserve-compat-stable">🛡️ Compat Stable (blaiseio)</option>
                     </select>
                     <button class="player-close-btn" onclick="stopWebPlayer()" title="Cerrar reproductor">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -967,7 +1012,8 @@
             </div>
 
             <div class="video-container" style="background: #000; text-align: center;">
-                <video id="web-player" controls autoplay style="width: 100%; max-height: 480px; background: #000; border-radius: 0 0 8px 8px; display: block;"></video>
+                <video id="web-player" controls autoplay
+                    style="width: 100%; max-height: 480px; background: #000; border-radius: 0 0 8px 8px; display: block;"></video>
             </div>
         </div>
 
@@ -1094,11 +1140,11 @@
 
                 if (Array.isArray(config.custom_lists)) {
                     config.custom_lists.forEach(item => {
-                        if (item.enabled !== false && item.url) {
+                        if (item.enabled !== false && item.name) {
                             sources.push({
                                 key: 'custom_' + item.name,
                                 label: item.name + ' (Local)',
-                                url: item.url
+                                url: '/' + item.name
                             });
                         }
                     });
@@ -1345,7 +1391,7 @@
                         engineSelect.value = data.selected_engine;
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function changePlayerEngine(engineVal) {
@@ -1601,18 +1647,62 @@
             currentSourceUrl = sourceUrl || '/aio';
             fetch(currentSourceUrl)
                 .then(res => res.text())
-                .then(m3uText => {
+                .then(async m3uText => {
                     allChannels = parseM3U(m3uText);
                     renderChannels();
-                    setStatusText(`${allChannels.length} canales cargados. Descargando guía EPG...`);
-                    return fetch(EPG_XML_URL);
-                })
-                .then(res => res.text())
-                .then(xmlText => {
-                    setStatusText(`${allChannels.length} canales. Sincronizando guía EPG...`);
-                    parseEPG(xmlText);
-                    updateEPGForAll();
-                    setStatusText(`${allChannels.length} canales. Guía EPG sincronizada.`);
+                    setStatusText(`${allChannels.length} canales cargados. Sincronizando guía EPG...`);
+
+                    try {
+                        const cfgRes = await fetch('/config?action=get_config');
+                        const cfg = await cfgRes.json();
+                        let sources = (cfg && cfg.epg_sources) ? cfg.epg_sources.filter(s => s.enabled) : [];
+                        if (sources.length === 0) {
+                            const singleUrl = (cfg && cfg.urls && cfg.urls.epg) ? cfg.urls.epg : EPG_XML_URL;
+                            sources = [{ name: 'default', url: singleUrl }];
+                        }
+
+                        let combinedXml = '';
+                        for (const src of sources) {
+                            try {
+                                const response = await fetch(src.url);
+                                let xmlText = '';
+                                if (src.url.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
+                                    try {
+                                        const ds = new DecompressionStream('gzip');
+                                        const decompressedStream = response.clone().body.pipeThrough(ds);
+                                        xmlText = await new Response(decompressedStream).text();
+                                    } catch (e) {
+                                        xmlText = await response.text();
+                                    }
+                                } else {
+                                    xmlText = await response.text();
+                                }
+                                combinedXml += xmlText;
+                            } catch (e) {}
+                        }
+
+                        if (combinedXml) {
+                            xmltvData = combinedXml;
+                            parseEPG(combinedXml);
+                            updateEPGForAll();
+                            setStatusText(`${allChannels.length} canales. Guía EPG sincronizada.`);
+                        } else {
+                            setStatusText(`${allChannels.length} canales cargados.`);
+                        }
+                    } catch (e) {
+                        fetch(EPG_XML_URL)
+                            .then(r => r.text())
+                            .then(xmlText => {
+                                xmltvData = xmlText;
+                                parseEPG(xmlText);
+                                updateEPGForAll();
+                                setStatusText(`${allChannels.length} canales. Guía EPG sincronizada.`);
+                            })
+                            .catch(() => setStatusText(`${allChannels.length} canales cargados.`));
+                    }
+
+                    const loader = document.getElementById('loading-indicator');
+                    if (loader) loader.style.display = 'none';
                 })
                 .catch(err => {
                     console.error('Error cargando datos:', err);
@@ -1744,25 +1834,37 @@
                             <img class="channel-logo" src="${item.chan.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
                             <div class="channel-details">
                                 <div class="channel-name" title="${item.chan.name}">${item.chan.name}</div>
+                                ${extractAceId(item.chan.url) ? `<div class="channel-ace-id" title="AceStream ID: ${extractAceId(item.chan.url)}">ID: <code>${extractAceId(item.chan.url).substring(0, 8)}...${extractAceId(item.chan.url).substring(32)}</code></div>` : ''}
                                 <div class="epg-container" id="epg-info-${item.idx}">
                                     <div class="epg-now">Sin información de guía</div>
                                 </div>
                             </div>
                         </div>
                         <div class="card-actions">
-                            <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copiar enlace del canal">
+                            <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copiar enlace del canal${extractAceId(item.chan.url) ? ' (ID: ' + extractAceId(item.chan.url) + ')' : ''}">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                <span>Copiar</span>
                             </button>
                             <button class="btn-play" onclick="playChannelInWebPlayer(getExactStreamUrl('${item.chan.url}'), '${escapeJsString(item.chan.name)}'); event.preventDefault();" title="Reproducir en la web">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M8 5v14l11-7z"/></svg>
-                                <span>Ver Canal</span>
                             </button>
                         </div>
                     `;
                     grid.appendChild(card);
                 });
             });
+        }
+
+        function extractAceId(url) {
+            if (!url) return '';
+            const aceMatch = url.match(/acestream:\/\/([a-f0-9]{40})/i);
+            if (aceMatch) return aceMatch[1];
+            const idMatch = url.match(/[?&](?:id|infohash|hash|content_id)=([a-f0-9]{40})/i);
+            if (idMatch) return idMatch[1];
+            const pathMatch = url.match(/\/content_id\/([a-f0-9]{40})/i);
+            if (pathMatch) return pathMatch[1];
+            const hexMatch = url.match(/([a-f0-9]{40})/i);
+            if (hexMatch) return hexMatch[1];
+            return '';
         }
 
         function filterChannels() {
@@ -1822,70 +1924,113 @@
             copyTextToClipboard(url, button, '✓ Enlace copiado');
         }
 
-        // --- LÓGICA DE EPG & FUZZY MATCHING ---
+        // --- LÓGICA DE EPG & SMART MATCHING ---
 
-        function sanitizeForMatch(str) {
+        let channelKeyMap = {}; // Map: aliasKey -> primaryChannelId
+
+        function normalizeKey(str) {
             if (!str) return '';
             return str.toLowerCase()
-                .replace(/\([^)]*\)/g, '')      // Eliminar paréntesis y su contenido
-                .replace(/\[[^\]]*\]/g, '')      // Eliminar corchetes y su contenido
-                .replace(/720p|1080p|hd|sd/g, '') // Eliminar indicadores de resolución
-                .replace(/[^a-z0-9]/g, '')       // Dejar sólo caracteres alfanuméricos
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/\([^)]*\)/g, '')
+                .replace(/\[[^\]]*\]/g, '')
+                .replace(/\b(4k|uhd|fhd|1080p|720p|576p|sd|hd|hevc|h265|movistar|m\+|plus|laliga|tv|es|spain)\b/gi, '')
+                .replace(/[^a-z0-9]/g, '')
                 .trim();
+        }
+
+        function extractCleanName(str) {
+            if (!str) return '';
+            return str.toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/\([^)]*\)/g, '')
+                .replace(/\[[^\]]*\]/g, '')
+                .replace(/\b(4k|uhd|fhd|1080p|720p|576p|sd|hd|hevc|h265)\b/gi, '')
+                .replace(/[^a-z0-9]/g, '')
+                .trim();
+        }
+
+        function parseEPG(xmlText) {
+            indexEPG(xmlText);
         }
 
         function indexEPG(xmlText) {
             epgCache = {};
+            channelKeyMap = {};
             const nowTime = new Date();
             const minTime = new Date(nowTime.getTime() - 2 * 60 * 60 * 1000);
             const maxTime = new Date(nowTime.getTime() + 48 * 60 * 60 * 1000);
 
-            const regex = /<programme[^>]*channel="([^"]+)"[^>]*>([\s\S]*?)<\/programme>/g;
-            let match;
-            while ((match = regex.exec(xmlText)) !== null) {
-                const channelRaw = match[1];
-                const content = match[2];
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
 
-                const startMatch = match[0].match(/start="([^"]+)"/);
-                const stopMatch = match[0].match(/stop="([^"]+)"/);
-                const titleMatch = content.match(/<title[^>]*>([^<]+)<\/title>/);
+            // 1. Index channels & display names
+            const chanNodes = xmlDoc.getElementsByTagName('channel');
+            for (let i = 0; i < chanNodes.length; i++) {
+                const node = chanNodes[i];
+                const id = node.getAttribute('id');
+                if (!id) continue;
 
-                if (startMatch && stopMatch && titleMatch) {
-                    const startDate = parseXMLTVDate(startMatch[1]);
-                    const stopDate = parseXMLTVDate(stopMatch[1]);
+                const primaryKey = extractCleanName(id);
+                const softKey = normalizeKey(id);
+
+                if (primaryKey) channelKeyMap[primaryKey] = id;
+                if (softKey) channelKeyMap[softKey] = id;
+
+                const nameNodes = node.getElementsByTagName('display-name');
+                for (let j = 0; j < nameNodes.length; j++) {
+                    const nameText = nameNodes[j].textContent.trim();
+                    const cleanNameKey = extractCleanName(nameText);
+                    const softNameKey = normalizeKey(nameText);
+                    if (cleanNameKey) channelKeyMap[cleanNameKey] = id;
+                    if (softNameKey) channelKeyMap[softNameKey] = id;
+                }
+            }
+
+            // 2. Index programmes
+            const progNodes = xmlDoc.getElementsByTagName('programme');
+            for (let i = 0; i < progNodes.length; i++) {
+                const node = progNodes[i];
+                const channelId = node.getAttribute('channel');
+                const startStr = node.getAttribute('start');
+                const stopStr = node.getAttribute('stop');
+                const titleNode = node.getElementsByTagName('title')[0];
+
+                if (channelId && startStr && stopStr && titleNode) {
+                    const startDate = parseXMLTVDate(startStr);
+                    const stopDate = parseXMLTVDate(stopStr);
 
                     if (stopDate >= minTime && startDate <= maxTime) {
                         const prog = {
                             start: startDate,
                             stop: stopDate,
-                            title: titleMatch[1].trim()
+                            title: titleNode.textContent.trim()
                         };
 
-                        const key = sanitizeForMatch(channelRaw);
-                        if (!epgCache[key]) {
-                            epgCache[key] = [];
+                        if (!epgCache[channelId]) {
+                            epgCache[channelId] = [];
                         }
-                        epgCache[key].push(prog);
+                        epgCache[channelId].push(prog);
                     }
                 }
             }
 
-            for (const key in epgCache) {
-                epgCache[key].sort((a, b) => a.start - b.start);
+            for (const cid in epgCache) {
+                epgCache[cid].sort((a, b) => a.start - b.start);
             }
         }
 
         function updateEPGForAll() {
             if (!xmltvData) return;
-            allChannels.forEach((chan, idx) => {
+            allChannels.forEach((item, idx) => {
                 const card = document.getElementById(`card-${idx}`);
                 if (!card) return;
 
                 const epgEl = document.getElementById(`epg-info-${idx}`);
                 if (!epgEl) return;
 
-                const channelId = chan.tvgId || chan.name;
-                const programs = parseEPGForChannel(channelId);
+                const chan = item.chan || item;
+                const programs = parseEPGForChannel(chan);
 
                 if (programs.length === 0) return;
 
@@ -1922,9 +2067,49 @@
             });
         }
 
-        function parseEPGForChannel(channelId) {
-            const key = sanitizeForMatch(channelId);
-            return epgCache[key] || [];
+        function parseEPGForChannel(chan) {
+            if (!chan) return [];
+
+            const candidates = [];
+            if (typeof chan === 'object') {
+                if (chan.tvgId) candidates.push(extractCleanName(chan.tvgId), normalizeKey(chan.tvgId));
+                if (chan.tvgName) candidates.push(extractCleanName(chan.tvgName), normalizeKey(chan.tvgName));
+                if (chan.name) candidates.push(extractCleanName(chan.name), normalizeKey(chan.name));
+            } else if (typeof chan === 'string') {
+                candidates.push(extractCleanName(chan), normalizeKey(chan));
+            }
+
+            // 1. Direct match in channelKeyMap
+            for (const k of candidates) {
+                if (k && channelKeyMap[k]) {
+                    const targetId = channelKeyMap[k];
+                    if (epgCache[targetId] && epgCache[targetId].length > 0) {
+                        return epgCache[targetId];
+                    }
+                }
+            }
+
+            // 2. Direct match in epgCache keys
+            for (const k of candidates) {
+                if (k && epgCache[k] && epgCache[k].length > 0) {
+                    return epgCache[k];
+                }
+            }
+
+            // 3. Substring matching fallback
+            for (const k of candidates) {
+                if (!k || k.length < 3) continue;
+                for (const mappedKey in channelKeyMap) {
+                    if (mappedKey.length >= 3 && (mappedKey.includes(k) || k.includes(mappedKey))) {
+                        const targetId = channelKeyMap[mappedKey];
+                        if (epgCache[targetId] && epgCache[targetId].length > 0) {
+                            return epgCache[targetId];
+                        }
+                    }
+                }
+            }
+
+            return [];
         }
 
         function parseXMLTVDate(dateStr) {

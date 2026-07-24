@@ -803,12 +803,16 @@ public:
     CustomListPlugin(Config cfg, HttpClient& client, Proxy& proxy, std::string name, std::string url)
         : PlaylistPlugin(std::move(cfg), client, proxy, name, PlaylistGenerator::epg_header("", 0), 60),
           custom_url_(std::move(url)) {}
+
+    void set_custom_url(std::string url) {
+        custom_url_ = std::move(url);
+    }
 protected:
     bool refresh() override {
         if (!is_enabled()) {
             return false;
         }
-        auto url = proxy_.get_plugin_url(name(), custom_url_);
+        auto url = normalize_list_url(proxy_.get_plugin_url(name(), custom_url_));
         try {
             std::string content;
             if (starts_with(url, "/") || starts_with(url, "file://")) {
