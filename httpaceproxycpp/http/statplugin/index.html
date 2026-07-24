@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugin Status - HTTPAceProxy</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --border-color: #2d2d34;
+            --text-color: #e1e1e6;
+            --text-muted: #a8a8b2;
+            --header-bg: #1a1a1e;
+            --stat-bg: #202024;
+            --brand-color: #4CAF50;
+            --accent-color: #764ba2;
+            --input-bg: #1a1a1e;
+        }
+
+        body.light-theme {
+            --bg-color: #f4f4f5;
+            --card-bg: #ffffff;
+            --border-color: #e4e4e7;
+            --text-color: #18181b;
+            --text-muted: #71717a;
+            --header-bg: #ffffff;
+            --stat-bg: #f4f4f5;
+            --brand-color: #4CAF50;
+            --accent-color: #667eea;
+            --table-header: #e4e4e7;
+            --input-bg: #ffffff;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Navbar Plano Superior */
+        .navbar {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        body.light-theme .nav-brand {
+            color: #18181b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        /* Hamburger menu button */
+        .navbar-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 101;
+        }
+
+        .navbar-toggle .icon-bar {
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-color);
+            border-radius: 1px;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background-color: var(--header-bg);
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px 24px;
+                gap: 8px;
+                z-index: 99;
+            }
+
+            .nav-links.show {
+                display: flex;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
+        }
+
+        .header-section {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Unified Search Box */
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            fill: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 14px 10px 38px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--brand-color);
+            box-shadow: 0 0 0 2px rgba(76, 217, 100, 0.15);
+        }
+
+        /* Toast & Alert Notifications (Bottom Right) */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: rgba(12, 25, 14, 0.95);
+            border: 1px solid #4cd964;
+            color: #4cd964;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            z-index: 99999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            max-width: 450px;
+            word-break: break-word;
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-notification.error {
+            background-color: rgba(30, 12, 12, 0.95);
+            border: 1px solid #ff3b30;
+            color: #ff3b30;
+        }
+
+        /* Controls & Filter */
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .refresh-btn {
+            background-color: var(--brand-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background-color: #45a049;
+        }
+
+        .filter-box {
+            margin-bottom: 24px;
+        }
+
+        .filter-input {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .filter-input:focus {
+            border-color: var(--brand-color);
+        }
+
+        /* Connection Stats */
+        .stats {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-box {
+            padding: 16px;
+            background-color: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-box .label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .stat-box .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        /* Plugin container */
+        .plugin {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .plugin-header {
+            background-color: var(--stat-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .plugin-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+            text-transform: capitalize;
+        }
+
+        .plugin-header .count {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .plugin-header .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .plugin-header .bulk-btn {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .plugin-header .bulk-btn:hover {
+            background-color: var(--card-bg);
+        }
+
+        .plugin-header .bulk-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .collapse-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            fill: var(--text-color);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .plugin.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .collapse-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--text-color);
+        }
+
+        .progress-bar {
+            height: 3px;
+            background: var(--border-color);
+            border-radius: 1.5px;
+            overflow: hidden;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-bar .progress {
+            height: 100%;
+            background-color: var(--brand-color);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .channels {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .channel {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 64px minmax(150px, 1fr) 120px 80px 120px;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .channel:last-child {
+            border-bottom: none;
+        }
+
+        .channel-logo-wrapper {
+            width: 64px;
+            height: 64px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .channel-logo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .channel-logo-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .channel-info {
+            min-width: 0;
+        }
+
+        .channel-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-id {
+            font-family: monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .status.available {
+            background-color: rgba(76, 217, 100, 0.15);
+            color: #4cd964;
+            border: 1px solid rgba(76, 217, 100, 0.3);
+        }
+
+        .status.unavailable {
+            background-color: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+        }
+
+        .status.unknown {
+            background-color: var(--border-color);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .status.checking {
+            background-color: rgba(255, 149, 0, 0.15);
+            color: #ff9500;
+            border: 1px solid rgba(255, 149, 0, 0.3);
+            animation: pulse 1.5s infinite;
+        }
+
+        .check-btn,
+        .peers-btn,
+        .copy-btn {
+            padding: 6px 12px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: opacity 0.2s, background-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .check-btn {
+            background-color: #2196F3;
+        }
+
+        .check-btn:hover {
+            opacity: 0.9;
+        }
+
+        .peers-btn {
+            background-color: #9C27B0;
+        }
+
+        .peers-btn:hover {
+            opacity: 0.9;
+        }
+
+        .copy-btn {
+            background-color: #009688;
+        }
+
+        .copy-btn:hover {
+            opacity: 0.9;
+        }
+
+        .copy-btn.copied {
+            background-color: #4CAF50 !important;
+        }
+
+        .check-btn:disabled,
+        .peers-btn:disabled,
+        .copy-btn:disabled {
+            background-color: var(--border-color) !important;
+            color: var(--text-muted) !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .peers-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .peers-badge {
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            background-color: var(--border-color);
+            color: var(--text-color);
+            white-space: nowrap;
+        }
+
+        .peers-badge.has-peers {
+            background-color: rgba(76, 217, 100, 0.15);
+            color: #4cd964;
+        }
+
+        .peers-badge.no-peers {
+            background-color: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .error {
+            background-color: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+        }
+
+        /* Footer Bar */
+        .footer-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background-color: var(--header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .footer-left,
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 200px;
+        }
+
+        .footer-right {
+            justify-content: flex-end;
+        }
+
+        .footer-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .footer-left .val {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .footer-right .version-badge {
+            background-color: var(--border-color);
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .theme-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .theme-toggle-btn:hover {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .theme-toggle-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        @media (max-width: 768px) {
+            .channel {
+                grid-template-columns: 64px 1fr;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            .channel .status {
+                grid-column: span 2;
+            }
+
+            .channel .peers-info {
+                grid-column: span 2;
+            }
+
+            .channel .btn-group {
+                grid-column: span 2;
+                flex-direction: row;
+                width: 100%;
+            }
+
+            .channel .btn-group button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+            <a href="/stat">Dashboard</a>
+            <a href="/statplugin/" class="active">Canales</a>
+            <a href="/listas/">Fuentes</a>
+            <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html">Reproductor Legacy</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header-section">
+            <div class="header-title">
+                <h4>Estado y Disponibilidad de Canales por Lista</h4>
+                <p>Verifica canales de forma unitaria, o en bloque.</p>
+            </div>
+            <div class="controls">
+                <button class="refresh-btn" onclick="loadPlugins()">Actualizar Datos</button>
+            </div>
+        </div>
+
+        <div class="search-container" style="max-width: 100%; margin-bottom: 24px;">
+            <svg class="search-icon" viewBox="0 0 24 24">
+                <path
+                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <input type="text" class="search-input" id="filter-input" placeholder="Buscar canal por nombre..."
+                oninput="filterChannels()">
+        </div>
+
+        <div class="stats">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="label">TOTAL DE LISTAS</div>
+                    <div class="value" id="total-plugins">-</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">TOTAL DE CANALES</div>
+                    <div class="value" id="total-channels">-</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">RESULTADOS EN CACHÉ</div>
+                    <div class="value" id="cache-size">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="plugins-container">
+            <div class="loading">⏳ Cargando listas...</div>
+        </div>
+    </div>
+
+    <script>
+        let checkingChannels = new Set();
+        let pluginsData = null;
+
+        function loadPlugins() {
+            fetch('/statplugin?action=get_plugins')
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.version) {
+                        document.querySelectorAll('.app-version').forEach(el => el.textContent = data.version);
+                    }
+                    if (data.status === 'success') {
+                        pluginsData = data;
+                        renderPlugins(data);
+                    } else {
+                        showError('Failed to load lists');
+                    }
+                })
+                .catch(err => {
+                    showError('Error: ' + err.message);
+                });
+        }
+
+        function renderPlugins(data, filterText = '') {
+            // Update stats
+            document.getElementById('total-plugins').textContent = data.total_plugins || 0;
+            document.getElementById('cache-size').textContent = data.cache_size || 0;
+
+            let totalChannels = 0;
+            data.plugins.forEach(p => totalChannels += p.total_channels);
+            document.getElementById('total-channels').textContent = totalChannels;
+
+            // Render plugins
+            const container = document.getElementById('plugins-container');
+            container.innerHTML = '';
+
+            if (!data.plugins || data.plugins.length === 0) {
+                container.innerHTML = '<div class="loading">No plugins with channels found</div>';
+                return;
+            }
+
+            const filter = filterText.toLowerCase();
+
+            data.plugins.forEach(plugin => {
+                // Filter channels
+                let filteredChannels = plugin.channels;
+                if (filter) {
+                    filteredChannels = plugin.channels.filter(ch =>
+                        ch.name.toLowerCase().includes(filter)
+                    );
+                }
+
+                if (filteredChannels.length === 0) return;
+
+                const pluginDiv = document.createElement('div');
+                pluginDiv.className = 'plugin';
+
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'plugin-header';
+                headerDiv.title = 'Click to collapse/expand';
+                headerDiv.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+                        <div style="display:flex;align-items:center;">
+                            <span class="collapse-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                                </svg>
+                            </span>
+                            <h2 style="margin:0;">${plugin.name}</h2>
+                        </div>
+                        <div class="header-actions">
+                            <button class="bulk-btn" onclick="checkAllChannels('${plugin.name}', this)" data-plugin="${plugin.name}">
+                                ✓ Comprobar Todo
+                            </button>
+                            <button class="bulk-btn" onclick="checkAllPeers('${plugin.name}', this)" data-plugin="${plugin.name}">
+                                👥 Peers Todo
+                            </button>
+                            <button class="bulk-btn" onclick="checkAndPeersAll('${plugin.name}', this)" data-plugin="${plugin.name}" style="background:rgba(255,255,255,0.3)">
+                                ✓👥 Comprobación Completa
+                            </button>
+                            <span class="count">${filteredChannels.length} canales</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar" id="progress-${plugin.name}">
+                        <div class="progress"></div>
+                    </div>
+                `;
+
+                const channelsDiv = document.createElement('div');
+                channelsDiv.className = 'channels';
+
+                filteredChannels.forEach(channel => {
+                    const channelDiv = document.createElement('div');
+                    channelDiv.className = 'channel';
+                    channelDiv.dataset.contentId = channel.content_id;
+
+                    const logoHtml = channel.logo
+                        ? `<div class="channel-logo-wrapper"><img src="${channel.logo}" class="channel-logo" onerror="this.outerHTML='<div class=channel-logo-placeholder></div>'"></div>`
+                        : '<div class="channel-logo-wrapper"><div class="channel-logo-placeholder"></div></div>';
+
+                    const statusClass = channel.status || 'unknown';
+                    const statusText = {
+                        'available': '✓ Disponible',
+                        'unavailable': '✗ No Disponible',
+                        'unknown': '? Desconocido',
+                        'checking': '⟳ Comprobando...'
+                    }[statusClass] || '? Desconocido';
+
+                    // Peers info from cache (if available)
+                    let peersHtml = '<div class="peers-info"><span class="peers-badge">- peers</span></div>';
+                    if (channel.peers !== undefined) {
+                        const totalPeers = (channel.peers || 0) + (channel.http_peers || 0);
+                        const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
+                        peersHtml = `<div class="peers-info"><span class="peers-badge ${peersClass}">${totalPeers} peers</span></div>`;
+                    }
+
+                    const btnId = `check-${plugin.name}-${channel.content_id}`;
+                    const peersBtnId = `peers-${plugin.name}-${channel.content_id}`;
+                    const copyBtnId = `copy-${plugin.name}-${channel.content_id}`;
+
+                    channelDiv.innerHTML = `
+                        ${logoHtml}
+                        <div class="channel-info">
+                            <div class="channel-name" title="${channel.name}">${channel.name}</div>
+                            <div class="channel-id" title="${channel.content_id}">${channel.content_id}</div>
+                        </div>
+                        <div class="status ${statusClass}">${statusText}</div>
+                        ${peersHtml}
+                        <div class="btn-group">
+                            <button class="check-btn" id="${btnId}"
+                                    onclick="checkChannel('${plugin.name}', '${escapeHtml(channel.name)}', '${channel.content_id}', this)">
+                                Comprobar
+                            </button>
+                            <button class="peers-btn" id="${peersBtnId}"
+                                    onclick="checkPeers('${channel.content_id}', this)">
+                                Peers
+                            </button>
+                            <button class="copy-btn" id="${copyBtnId}"
+                                    onclick="copyChannelLink('${channel.content_id}', this)">
+                                Copiar Enlace
+                            </button>
+                        </div>
+                    `;
+
+                    channelsDiv.appendChild(channelDiv);
+                });
+
+                pluginDiv.appendChild(headerDiv);
+                pluginDiv.appendChild(channelsDiv);
+                container.appendChild(pluginDiv);
+
+                // Set the actual height of channels container for smooth animation
+                // This ensures all channels are visible regardless of how many there are
+                const actualHeight = channelsDiv.scrollHeight;
+
+                // Add collapse/expand functionality
+                const isCollapsed = localStorage.getItem(`plugin-${plugin.name}-collapsed`) === 'true';
+                if (isCollapsed) {
+                    pluginDiv.classList.add('collapsed');
+                    channelsDiv.style.maxHeight = '0';
+                } else {
+                    channelsDiv.style.maxHeight = actualHeight + 'px';
+                }
+
+                headerDiv.addEventListener('click', function (e) {
+                    // Don't toggle if clicking on buttons
+                    if (e.target.closest('.bulk-btn')) {
+                        return;
+                    }
+
+                    const isCurrentlyCollapsed = pluginDiv.classList.contains('collapsed');
+
+                    if (isCurrentlyCollapsed) {
+                        // Expanding
+                        channelsDiv.style.maxHeight = actualHeight + 'px';
+                        pluginDiv.classList.remove('collapsed');
+                    } else {
+                        // Collapsing
+                        channelsDiv.style.maxHeight = '0';
+                        pluginDiv.classList.add('collapsed');
+                    }
+
+                    localStorage.setItem(`plugin-${plugin.name}-collapsed`, !isCurrentlyCollapsed);
+                });
+            });
+        }
+
+        function filterChannels() {
+            const filterText = document.getElementById('filter-input').value;
+            if (pluginsData) {
+                renderPlugins(pluginsData, filterText);
+            }
+        }
+
+        async function checkChannel(pluginName, channelName, contentId, button, retries = 2) {
+            const key = `${pluginName}-${contentId}`;
+
+            if (checkingChannels.has(key)) {
+                return;
+            }
+
+            checkingChannels.add(key);
+            button.disabled = true;
+            button.textContent = 'Checking...';
+
+            const channelDiv = button.closest('.channel');
+            const statusDiv = channelDiv.querySelector('.status');
+            statusDiv.className = 'status checking';
+            statusDiv.textContent = '⟳ Checking...';
+
+            let lastError = null;
+
+            for (let attempt = 0; attempt <= retries; attempt++) {
+                try {
+                    if (attempt > 0) {
+                        button.textContent = `Retry ${attempt}...`;
+                        await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+                    }
+
+                    const response = await fetch(`/statplugin?action=check_channel&plugin=${pluginName}&channel=${encodeURIComponent(channelName)}&content_id=${contentId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        const available = data.available;
+                        statusDiv.className = 'status ' + (available ? 'available' : 'unavailable');
+                        statusDiv.textContent = available ? '✓ Available' : '✗ Unavailable';
+                        button.textContent = data.cached ? 'Cached' : 'Checked ✓';
+                        checkingChannels.delete(key);
+                        button.disabled = false;
+                        return; // Success, exit
+                    } else {
+                        lastError = data.error || 'Unknown error';
+                    }
+                } catch (err) {
+                    lastError = err.message;
+                }
+            }
+
+            // All retries failed
+            statusDiv.className = 'status unavailable';
+            statusDiv.textContent = '✗ Error';
+            console.error(`Check failed for ${contentId}: ${lastError}`);
+
+            checkingChannels.delete(key);
+            button.disabled = false;
+            button.textContent = 'Retry';
+        }
+
+        async function checkPeers(contentId, button, retries = 2) {
+            if (checkingChannels.has(`peers-${contentId}`)) {
+                return;
+            }
+
+            checkingChannels.add(`peers-${contentId}`);
+            button.disabled = true;
+            button.textContent = '...';
+
+            const channelDiv = button.closest('.channel');
+            const peersInfo = channelDiv.querySelector('.peers-info');
+            peersInfo.innerHTML = '<span class="peers-badge checking">Checking...</span>';
+
+            let lastError = null;
+
+            for (let attempt = 0; attempt <= retries; attempt++) {
+                try {
+                    if (attempt > 0) {
+                        peersInfo.innerHTML = `<span class="peers-badge checking">Retry ${attempt}...</span>`;
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+
+                    const response = await fetch(`/statplugin?action=check_peers&content_id=${contentId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        const totalPeers = data.total_peers || 0;
+                        const peers = data.peers || 0;
+                        const httpPeers = data.http_peers || 0;
+                        const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
+
+                        let badgeText = `${totalPeers} peers`;
+                        if (totalPeers > 0 && (peers > 0 || httpPeers > 0)) {
+                            badgeText = `${peers}P + ${httpPeers}H`;
+                        }
+                        peersInfo.innerHTML = `<span class="peers-badge ${peersClass}" title="P2P: ${peers}, HTTP: ${httpPeers}">${badgeText}</span>`;
+
+                        const statusDiv = channelDiv.querySelector('.status');
+                        if (data.available) {
+                            statusDiv.className = 'status available';
+                            statusDiv.textContent = '✓ Available';
+                        } else {
+                            statusDiv.className = 'status unavailable';
+                            statusDiv.textContent = '✗ Unavailable';
+                        }
+
+                        button.textContent = data.cached ? 'Cached' : 'Done';
+                        checkingChannels.delete(`peers-${contentId}`);
+                        button.disabled = false;
+                        setTimeout(() => {
+                            if (button.textContent === 'Done' || button.textContent === 'Cached') {
+                                button.textContent = 'Peers';
+                            }
+                        }, 2000);
+                        return; // Success
+                    } else {
+                        lastError = data.error || 'Unknown error';
+                    }
+                } catch (err) {
+                    lastError = err.message;
+                }
+            }
+
+            // All retries failed
+            peersInfo.innerHTML = '<span class="peers-badge no-peers">Error</span>';
+            console.error(`Peer check failed for ${contentId}: ${lastError}`);
+
+            checkingChannels.delete(`peers-${contentId}`);
+            button.disabled = false;
+            button.textContent = 'Retry';
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/'/g, "\\'");
+        }
+
+        function copyChannelLink(contentId, button) {
+            const url = window.location.origin + '/content_id/' + contentId + '/stream.ts';
+            const originalText = button.textContent;
+
+            const showSuccess = () => {
+                button.textContent = '¡Copiado!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 1500);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(showSuccess).catch(() => {
+                    fallbackCopyTextToClipboard(url, showSuccess);
+                });
+            } else {
+                fallbackCopyTextToClipboard(url, showSuccess);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text, callback) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                if (callback) callback();
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Bulk check state
+        let bulkCheckRunning = {};
+
+        async function checkAllChannels(pluginName, button) {
+            if (bulkCheckRunning[pluginName]) {
+                return;
+            }
+
+            const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
+            if (!plugin || !plugin.channels) {
+                alert('Plugin not found');
+                return;
+            }
+
+            bulkCheckRunning[pluginName] = true;
+            button.classList.add('running');
+            button.disabled = true;
+            const originalText = button.textContent;
+
+            const progressBar = document.getElementById(`progress-${pluginName}`);
+            const progressFill = progressBar?.querySelector('.progress');
+            if (progressBar) {
+                progressBar.classList.add('active');
+                progressFill.style.width = '0%';
+            }
+
+            const channels = plugin.channels;
+            const total = channels.length;
+            let completed = 0;
+            let failed = 0;
+
+            for (const channel of channels) {
+                if (!bulkCheckRunning[pluginName]) break;
+
+                button.textContent = `Checking ${completed + 1}/${total}...`;
+
+                let success = false;
+                // Retry up to 2 times
+                for (let attempt = 0; attempt < 3 && !success; attempt++) {
+                    try {
+                        if (attempt > 0) {
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+
+                        const response = await fetch(`/statplugin?action=check_channel&plugin=${pluginName}&content_id=${channel.content_id}`);
+                        const data = await response.json();
+
+                        const channelDiv = document.querySelector(`.channel[data-content-id="${channel.content_id}"]`);
+                        if (channelDiv && data.status === 'success') {
+                            const statusDiv = channelDiv.querySelector('.status');
+                            if (data.available) {
+                                statusDiv.className = 'status available';
+                                statusDiv.textContent = '✓ Available';
+                            } else {
+                                statusDiv.className = 'status unavailable';
+                                statusDiv.textContent = '✗ Unavailable';
+                            }
+                            success = true;
+                        }
+                    } catch (err) {
+                        console.error(`Attempt ${attempt + 1} failed for ${channel.name}:`, err);
+                    }
+                }
+
+                if (!success) failed++;
+                completed++;
+                if (progressFill) {
+                    progressFill.style.width = `${(completed / total) * 100}%`;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            bulkCheckRunning[pluginName] = false;
+            button.classList.remove('running');
+            button.disabled = false;
+            button.textContent = originalText;
+
+            if (progressBar) {
+                setTimeout(() => {
+                    progressBar.classList.remove('active');
+                    progressFill.style.width = '0%';
+                }, 1000);
+            }
+
+            if (failed > 0) {
+                console.log(`Check completed with ${failed} failures out of ${total}`);
+            }
+        }
+
+        async function checkAllPeers(pluginName, button) {
+            if (bulkCheckRunning[`peers-${pluginName}`]) {
+                return;
+            }
+
+            const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
+            if (!plugin || !plugin.channels) {
+                alert('Plugin not found');
+                return;
+            }
+
+            const channelCount = plugin.channels.length;
+            const estimatedTime = Math.ceil(channelCount * 10 / 60);
+            if (!confirm(`This will check peers for ${channelCount} channels.\nEstimated time: ${estimatedTime}+ minutes.\n\nContinue?`)) {
+                return;
+            }
+
+            bulkCheckRunning[`peers-${pluginName}`] = true;
+            button.classList.add('running');
+            button.disabled = true;
+            const originalText = button.textContent;
+
+            const progressBar = document.getElementById(`progress-${pluginName}`);
+            const progressFill = progressBar?.querySelector('.progress');
+            if (progressBar) {
+                progressBar.classList.add('active');
+                progressFill.style.width = '0%';
+            }
+
+            const channels = plugin.channels;
+            const total = channels.length;
+            let completed = 0;
+            let withPeers = 0;
+            let failed = 0;
+
+            for (const channel of channels) {
+                if (!bulkCheckRunning[`peers-${pluginName}`]) break;
+
+                button.textContent = `Peers ${completed + 1}/${total} (${withPeers} online)`;
+
+                let success = false;
+                // Retry up to 2 times
+                for (let attempt = 0; attempt < 3 && !success; attempt++) {
+                    try {
+                        if (attempt > 0) {
+                            await new Promise(r => setTimeout(r, 1000));
+                        }
+
+                        const response = await fetch(`/statplugin?action=check_peers&content_id=${channel.content_id}&max_wait=10`);
+                        const data = await response.json();
+
+                        const channelDiv = document.querySelector(`.channel[data-content-id="${channel.content_id}"]`);
+                        if (channelDiv && data.status === 'success') {
+                            const totalPeers = data.total_peers || 0;
+                            const peers = data.peers || 0;
+                            const httpPeers = data.http_peers || 0;
+
+                            if (totalPeers > 0) withPeers++;
+
+                            const statusDiv = channelDiv.querySelector('.status');
+                            if (data.available) {
+                                statusDiv.className = 'status available';
+                                statusDiv.textContent = '✓ Available';
+                            } else {
+                                statusDiv.className = 'status unavailable';
+                                statusDiv.textContent = '✗ Unavailable';
+                            }
+
+                            const peersInfo = channelDiv.querySelector('.peers-info');
+                            const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
+                            let badgeText = `${totalPeers} peers`;
+                            if (totalPeers > 0 && (peers > 0 || httpPeers > 0)) {
+                                badgeText = `${peers}P + ${httpPeers}H`;
+                            }
+                            peersInfo.innerHTML = `<span class="peers-badge ${peersClass}" title="P2P: ${peers}, HTTP: ${httpPeers}">${badgeText}</span>`;
+                            success = true;
+                        }
+                    } catch (err) {
+                        console.error(`Attempt ${attempt + 1} failed for peers ${channel.name}:`, err);
+                    }
+                }
+
+                if (!success) failed++;
+                completed++;
+                if (progressFill) {
+                    progressFill.style.width = `${(completed / total) * 100}%`;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            bulkCheckRunning[`peers-${pluginName}`] = false;
+            button.classList.remove('running');
+            button.disabled = false;
+            button.textContent = originalText;
+
+            if (progressBar) {
+                setTimeout(() => {
+                    progressBar.classList.remove('active');
+                    progressFill.style.width = '0%';
+                }, 1000);
+            }
+
+            alert(`Peer check complete!\n${withPeers} of ${total} channels have active peers.${failed > 0 ? `\n${failed} checks failed.` : ''}`);
+        }
+
+        async function checkAndPeersAll(pluginName, button) {
+            if (bulkCheckRunning[`full-${pluginName}`]) {
+                return;
+            }
+
+            const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
+            if (!plugin || !plugin.channels) {
+                alert('Plugin not found');
+                return;
+            }
+
+            const channelCount = plugin.channels.length;
+            const estimatedTime = Math.ceil(channelCount * 12 / 60);
+            if (!confirm(`Full check (availability + peers) for ${channelCount} channels.\nEstimated time: ${estimatedTime}+ minutes.\n\nContinue?`)) {
+                return;
+            }
+
+            bulkCheckRunning[`full-${pluginName}`] = true;
+            button.classList.add('running');
+            button.disabled = true;
+            const originalText = button.textContent;
+
+            const progressBar = document.getElementById(`progress-${pluginName}`);
+            const progressFill = progressBar?.querySelector('.progress');
+            if (progressBar) {
+                progressBar.classList.add('active');
+                progressFill.style.width = '0%';
+            }
+
+            const channels = plugin.channels;
+            const total = channels.length;
+            let completed = 0;
+            let available = 0;
+            let withPeers = 0;
+            let failed = 0;
+
+            for (const channel of channels) {
+                if (!bulkCheckRunning[`full-${pluginName}`]) break;
+
+                const channelDiv = document.querySelector(`.channel[data-content-id="${channel.content_id}"]`);
+                const statusDiv = channelDiv?.querySelector('.status');
+                const peersInfo = channelDiv?.querySelector('.peers-info');
+
+                // Phase 1: Check availability
+                button.textContent = `Check ${completed + 1}/${total}...`;
+
+                if (statusDiv) {
+                    statusDiv.className = 'status checking';
+                    statusDiv.textContent = '⟳ Checking...';
+                }
+
+                let isAvailable = false;
+                let checkSuccess = false;
+
+                for (let attempt = 0; attempt < 3 && !checkSuccess; attempt++) {
+                    try {
+                        if (attempt > 0) await new Promise(r => setTimeout(r, 500));
+
+                        const response = await fetch(`/statplugin?action=check_channel&plugin=${pluginName}&content_id=${channel.content_id}`);
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            isAvailable = data.available;
+                            if (statusDiv) {
+                                statusDiv.className = 'status ' + (isAvailable ? 'available' : 'unavailable');
+                                statusDiv.textContent = isAvailable ? '✓ Available' : '✗ Unavailable';
+                            }
+                            if (isAvailable) available++;
+                            checkSuccess = true;
+                        }
+                    } catch (err) {
+                        console.error(`Check attempt ${attempt + 1} failed for ${channel.name}:`, err);
+                    }
+                }
+
+                // Phase 2: Check peers (only if available or check succeeded)
+                if (checkSuccess) {
+                    button.textContent = `Peers ${completed + 1}/${total}...`;
+
+                    if (peersInfo) {
+                        peersInfo.innerHTML = '<span class="peers-badge checking">...</span>';
+                    }
+
+                    let peersSuccess = false;
+                    for (let attempt = 0; attempt < 3 && !peersSuccess; attempt++) {
+                        try {
+                            if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
+
+                            const response = await fetch(`/statplugin?action=check_peers&content_id=${channel.content_id}&max_wait=10`);
+                            const data = await response.json();
+
+                            if (data.status === 'success' && peersInfo) {
+                                const totalPeers = data.total_peers || 0;
+                                const peers = data.peers || 0;
+                                const httpPeers = data.http_peers || 0;
+
+                                if (totalPeers > 0) withPeers++;
+
+                                const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
+                                let badgeText = `${totalPeers} peers`;
+                                if (totalPeers > 0 && (peers > 0 || httpPeers > 0)) {
+                                    badgeText = `${peers}P + ${httpPeers}H`;
+                                }
+                                peersInfo.innerHTML = `<span class="peers-badge ${peersClass}" title="P2P: ${peers}, HTTP: ${httpPeers}">${badgeText}</span>`;
+
+                                // Update status from peer check (more accurate)
+                                if (statusDiv) {
+                                    if (data.available) {
+                                        statusDiv.className = 'status available';
+                                        statusDiv.textContent = '✓ Available';
+                                    } else {
+                                        statusDiv.className = 'status unavailable';
+                                        statusDiv.textContent = '✗ Unavailable';
+                                    }
+                                }
+                                peersSuccess = true;
+                            }
+                        } catch (err) {
+                            console.error(`Peers attempt ${attempt + 1} failed for ${channel.name}:`, err);
+                        }
+                    }
+
+                    if (!peersSuccess && peersInfo) {
+                        peersInfo.innerHTML = '<span class="peers-badge no-peers">Error</span>';
+                    }
+                } else {
+                    failed++;
+                    if (statusDiv) {
+                        statusDiv.className = 'status unavailable';
+                        statusDiv.textContent = '✗ Error';
+                    }
+                    if (peersInfo) {
+                        peersInfo.innerHTML = '<span class="peers-badge no-peers">-</span>';
+                    }
+                }
+
+                completed++;
+                if (progressFill) {
+                    progressFill.style.width = `${(completed / total) * 100}%`;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            bulkCheckRunning[`full-${pluginName}`] = false;
+            button.classList.remove('running');
+            button.disabled = false;
+            button.textContent = originalText;
+
+            if (progressBar) {
+                setTimeout(() => {
+                    progressBar.classList.remove('active');
+                    progressFill.style.width = '0%';
+                }, 1000);
+            }
+
+            alert(`Full check complete!\n\n✓ Available: ${available} of ${total}\n👥 With peers: ${withPeers} of ${total}${failed > 0 ? `\n⚠ Failed: ${failed}` : ''}`);
+        }
+
+        function showError(message) {
+            const container = document.getElementById('plugins-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Load on page load
+        loadPlugins();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadPlugins, 5 * 60 * 1000);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-theme');
+                setLightIcon(themeIcon);
+            }
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('light-theme');
+                    if (document.body.classList.contains('light-theme')) {
+                        localStorage.setItem('theme', 'light');
+                        setLightIcon(themeIcon);
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                        setDarkIcon(themeIcon);
+                    }
+                });
+            }
+
+            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+
+            // Hamburger menu toggle
+            const navbarToggle = document.getElementById('navbar-toggle');
+            const navLinks = document.getElementById('nav-links');
+            if (navbarToggle && navLinks) {
+                navbarToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('show');
+                });
+            }
+        });
+
+        function setLightIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
+        }
+
+        function setDarkIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
+        }
+
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.className = 'toast-notification ' + (type === 'error' ? 'error' : 'success');
+            toast.textContent = message || '✓ Enlace copiado';
+            toast.classList.add('show');
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        function showAlert(msg, type = 'success') {
+            showToast(msg, type);
+        }
+
+        function copyTextToClipboard(text, button, customMsg) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
+                showToast(customMsg || '✓ Enlace copiado al portapapeles');
+                if (button) {
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                    }, 2000);
+                }
+            }
+        }
+    </script>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        <div class="footer-left">
+            <span class="label">IP DEL SERVIDOR:</span>
+            <span id="server-ip" class="val">-</span>
+        </div>
+        <div class="footer-center">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
+                <svg id="theme-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
+                </svg>
+            </button>
+        </div>
+        <div class="footer-right">
+            <span class="label">VERSIÓN:</span>
+            <span class="val version-badge app-version">v07.23.02</span>
+        </div>
+    </div>
+</body>
+
+</html>

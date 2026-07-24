@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HTTPAceProxy IPTV Player">
+    <title>HTTPAceProxy - Reproductor Bento</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --border-color: #2d2d34;
+            --text-color: #e1e1e6;
+            --text-muted: #a8a8b2;
+            --header-bg: #1a1a1e;
+            --stat-bg: #202024;
+            --brand-color: #4CAF50;
+            --input-bg: #1a1a1e;
+        }
+
+        body.light-theme {
+            --bg-color: #f4f4f5;
+            --card-bg: #ffffff;
+            --border-color: #e4e4e7;
+            --text-color: #18181b;
+            --text-muted: #71717a;
+            --header-bg: #ffffff;
+            --stat-bg: #f4f4f5;
+            --input-bg: #ffffff;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Navbar Plano Superior */
+        .navbar {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: #ffffff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.light-theme .nav-brand {
+            color: #18181b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        /* Hamburger menu button */
+        .navbar-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 101;
+        }
+
+        .navbar-toggle .icon-bar {
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-color);
+            border-radius: 1px;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background-color: var(--header-bg);
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px 24px;
+                gap: 8px;
+                z-index: 99;
+            }
+
+            .nav-links.show {
+                display: flex;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
+        }
+
+        .header-section {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Unified Search Box */
+        .search-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            fill: var(--text-muted);
+            pointer-events: none;
+        }
+
+        /* Dynamic Tab Navigation for Sources */
+        .sources-tabs-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 4px 2px 14px 2px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .sources-tabs-container::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        .source-tab-btn {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            white-space: nowrap;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .source-tab-btn:hover {
+            color: var(--text-color);
+            border-color: #4CAF50;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15);
+        }
+
+        .source-tab-btn.active {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: #ffffff;
+            border-color: #4CAF50;
+            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Container Fade Animation */
+        .channels-fade-in {
+            animation: tabFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes tabFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-input {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 14px 10px 38px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--brand-color);
+            box-shadow: 0 0 0 2px rgba(76, 217, 100, 0.15);
+        }
+
+        /* Bento Grid */
+        .category-section {
+            margin-bottom: 40px;
+        }
+
+        .category-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 16px;
+            padding-left: 4px;
+            border-left: 3px solid #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .category-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            background-color: var(--stat-bg);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        /* Bento Card */
+        .bento-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            min-height: 150px;
+        }
+
+        .bento-card:hover {
+            border-color: #4CAF50;
+        }
+
+        .channel-info {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .channel-logo {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            border-radius: 6px;
+            background-color: var(--bg-color);
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+            padding: 4px;
+        }
+
+        .channel-details {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .channel-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* EPG Info */
+        .epg-container {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .epg-now {
+            font-weight: 500;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .epg-next {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .epg-progress-bar {
+            height: 3px;
+            background-color: var(--border-color);
+            border-radius: 1.5px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .epg-progress-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+        }
+
+        .card-actions {
+            margin-top: 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn-play {
+            background-color: #4CAF50;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-play:hover {
+            background-color: #45a049;
+        }
+
+        .btn-copy {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .btn-copy:hover {
+            background-color: var(--stat-bg);
+        }
+
+        .btn-copy.copied {
+            background-color: #4CAF50;
+            border-color: #45a049;
+            color: white;
+        }
+
+        /* Footer Bar */
+        .footer-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background-color: var(--header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .footer-left,
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 200px;
+        }
+
+        .footer-right {
+            justify-content: flex-end;
+        }
+
+        .footer-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .footer-left .val {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .footer-right .version-badge {
+            background-color: var(--border-color);
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .theme-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .theme-toggle-btn:hover {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .theme-toggle-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .loading-screen {
+            text-align: center;
+            padding: 40px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Toast & Alert Notifications (Bottom Right) */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: rgba(12, 25, 14, 0.95);
+            border: 1px solid #4cd964;
+            color: #4cd964;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            z-index: 99999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            max-width: 450px;
+            word-break: break-word;
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-notification.error {
+            background-color: rgba(30, 12, 12, 0.95);
+            border: 1px solid #ff3b30;
+            color: #ff3b30;
+        }
+
+        /* Web Video Player Bento Card */
+        .player-wrapper-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            margin-bottom: 24px;
+        }
+
+        .player-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: var(--stat-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .player-info-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-live-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ff3b30;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 59, 48, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+
+        .player-title-text {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-color);
+        }
+
+        .player-status-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .player-status-badge.loading {
+            background: rgba(255, 149, 0, 0.2);
+            color: #ff9500;
+            border: 1px solid rgba(255, 149, 0, 0.4);
+        }
+
+        .player-status-badge.live {
+            background: rgba(76, 217, 100, 0.2);
+            color: #4cd964;
+            border: 1px solid rgba(76, 217, 100, 0.4);
+        }
+
+        .player-status-badge.error {
+            background: rgba(255, 59, 48, 0.2);
+            color: #ff3b30;
+            border: 1px solid rgba(255, 59, 48, 0.4);
+        }
+
+        .player-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .player-close-btn:hover {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .player-info-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-nerd-stats {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-nerd-stats:hover, .btn-nerd-stats.active {
+            background-color: #4CAF50;
+            color: #ffffff;
+            border-color: #4CAF50;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .player-engine-select {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .player-engine-select:focus {
+            border-color: #4CAF50;
+        }
+
+        /* Stats for Nerds Panel Overlay - 3 Column Layout */
+        .nerd-stats-overlay {
+            background: rgba(18, 18, 20, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 18px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            color: #4cd964;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.25fr;
+            grid-template-rows: auto auto auto;
+            gap: 10px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        .nerd-stat-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .nerd-chart-box {
+            grid-column: 3;
+            grid-row: 1 / span 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .nerd-chart-legend {
+            font-size: 11px;
+            display: flex;
+            gap: 12px;
+            margin-top: 2px;
+            margin-bottom: 4px;
+        }
+
+        .legend-cpu {
+            color: #00e5ff;
+        }
+
+        .legend-cpu strong {
+            color: #ffffff;
+        }
+
+        .legend-ram {
+            color: #ff9f0a;
+        }
+
+        .legend-ram strong {
+            color: #ffffff;
+        }
+
+        .nerd-chart-canvas {
+            width: 100%;
+            height: 100px;
+            display: block;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @media (max-width: 900px) {
+            .nerd-stats-overlay {
+                grid-template-columns: 1fr 1fr;
+            }
+            .nerd-chart-box {
+                grid-column: 1 / span 2;
+                grid-row: auto;
+            }
+        }
+
+        .nerd-stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .nerd-stat-val {
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nerd-stat-val.highlight {
+            color: #4cd964;
+        }
+
+        @media (max-width: 600px) {
+            .header-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .search-input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+            <a href="/stat">Dashboard</a>
+            <a href="/statplugin/">Canales</a>
+            <a href="/listas/">Fuentes</a>
+            <a href="/player/index.html" class="active">Reproductor</a>
+            <a href="/player/legacy.html">Reproductor Legacy</a>
+        </div>
+    </nav>
+
+    <!-- Container -->
+    <div class="container">
+        <div class="header-section">
+            <div class="header-title">
+                <h4>Reproductor IPTV</h4>
+                <p>Canales organizados por grupos con guía de programación (EPG).</p>
+            </div>
+        </div>
+
+        <!-- Pestañas Horizontales de Fuentes con Animación -->
+        <div id="sources-tabs" class="sources-tabs-container"></div>
+
+        <!-- Web Video Player Bento Card -->
+        <div id="player-wrapper" class="player-wrapper-card" style="display: none;">
+            <div class="player-header-bar">
+                <div class="player-info-left">
+                    <span class="player-live-dot"></span>
+                    <span id="player-title" class="player-title-text">Canal en Directo</span>
+                    <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
+                </div>
+                <div class="player-info-right">
+                    <button id="btn-nerd-stats" class="btn-nerd-stats" onclick="toggleNerdStats()" title="Ver Estadísticas Nerds del Streaming">
+                        📊 Stats for Nerds
+                    </button>
+                    <select id="player-engine-select" class="player-engine-select" onchange="changePlayerEngine(this.value)" title="Seleccionar Motor AceStream">
+                        <option value="auto">⚡ Engine Auto</option>
+                        <option value="aceserve-modern">🚀 Modern (jopsis)</option>
+                        <option value="aceserve-compat-light">🍃 Compat Light (wafy80)</option>
+                        <option value="aceserve-compat-stable">🛡️ Compat Stable (blaiseio)</option>
+                    </select>
+                    <button class="player-close-btn" onclick="stopWebPlayer()" title="Cerrar reproductor">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats for Nerds Overlay Panel (3 Columns x 3 Rows) -->
+            <div id="nerd-stats-panel" class="nerd-stats-overlay" style="display: none;">
+                <!-- Fila 1 - Columna 1 -->
+                <div class="nerd-stat-box">
+                    <div class="nerd-stat-label">Tasa de Transferencia</div>
+                    <div id="stat-bitrate" class="nerd-stat-val highlight">0 Mbps (0 KB/s)</div>
+                </div>
+
+                <!-- Fila 1 - Columna 2 -->
+                <div class="nerd-stat-box">
+                    <div class="nerd-stat-label">Resolución & FPS</div>
+                    <div id="stat-res" class="nerd-stat-val">-</div>
+                </div>
+
+                <!-- Columna 3 (Spans Rows 1-3) - Gráfico unificado CPU y RAM -->
+                <div class="nerd-stat-box nerd-chart-box">
+                    <div>
+                        <div class="nerd-stat-label">Recursos Servidor (CPU & RAM)</div>
+                        <div class="nerd-chart-legend">
+                            <span class="legend-cpu">● CPU: <strong id="stat-chart-cpu">0%</strong></span>
+                            <span class="legend-ram">● RAM: <strong id="stat-chart-ram">0.0GB / 4.0GB</strong></span>
+                        </div>
+                    </div>
+                    <canvas id="nerd-chart-canvas" class="nerd-chart-canvas"></canvas>
+                </div>
+
+                <!-- Fila 2 - Columna 1 -->
+                <div class="nerd-stat-box">
+                    <div class="nerd-stat-label">Buffer MSE / Latencia</div>
+                    <div id="stat-buffer" class="nerd-stat-val">0.0s (Buffer MSE)</div>
+                </div>
+
+                <!-- Fila 2 - Columna 2 -->
+                <div class="nerd-stat-box">
+                    <div class="nerd-stat-label">Frames Decodificados / Perdidos</div>
+                    <div id="stat-frames" class="nerd-stat-val">0 decoded | 0 dropped</div>
+                </div>
+
+                <!-- Fila 3 - Columna 1 -->
+                <div class="nerd-stat-box">
+                    <div class="nerd-stat-label">Datos Descargados</div>
+                    <div id="stat-downloaded" class="nerd-stat-val">0.0 MB</div>
+                </div>
+
+                <!-- Fila 3 - Columna 2 -->
+                <div class="nerd-stat-box">
+                    <div class="nerd-stat-label">Motor AceStream Activo</div>
+                    <div id="stat-engine-active" class="nerd-stat-val highlight">-</div>
+                </div>
+            </div>
+
+            <div class="video-container" style="background: #000; text-align: center;">
+                <video id="web-player" controls autoplay style="width: 100%; max-height: 480px; background: #000; border-radius: 0 0 8px 8px; display: block;"></video>
+            </div>
+        </div>
+
+        <div class="search-container" style="max-width: 100%; margin-bottom: 24px;">
+            <svg class="search-icon" viewBox="0 0 24 24">
+                <path
+                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <input type="text" id="search" class="search-input" placeholder="Buscar canal o grupo..."
+                oninput="filterChannels()">
+        </div>
+
+        <div id="loading-indicator" class="loading-screen">
+            Cargando la lista de canales...
+        </div>
+
+        <div id="channels-container"></div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        <div class="footer-left">
+            <span class="label">IP DEL SERVIDOR:</span>
+            <span id="server-ip" class="val">-</span>
+        </div>
+        <div class="footer-center">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
+                <svg id="theme-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
+                </svg>
+            </button>
+        </div>
+        <div class="footer-right">
+            <span class="label">VERSIÓN:</span>
+            <span class="val version-badge app-version">v07.23.02</span>
+        </div>
+    </div>
+
+    <script>
+        let allChannels = [];
+        let xmltvData = null;
+        let epgCache = {};
+        let currentSourceUrl = '/aio';
+
+        // Configuración de URLs
+        const EPG_XML_URL = 'https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-theme');
+                setLightIcon(themeIcon);
+            }
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('light-theme');
+                    if (document.body.classList.contains('light-theme')) {
+                        localStorage.setItem('theme', 'light');
+                        setLightIcon(themeIcon);
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                        setDarkIcon(themeIcon);
+                    }
+                });
+            }
+
+            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+
+            // Hamburger menu toggle
+            const navbarToggle = document.getElementById('navbar-toggle');
+            const navLinks = document.getElementById('nav-links');
+            if (navbarToggle && navLinks) {
+                navbarToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('show');
+                });
+            }
+
+            initSourcesAndLoad();
+        });
+
+        let activeSourcesList = [];
+
+        async function initSourcesAndLoad() {
+            try {
+                const res = await fetch('/config?action=get_config');
+                const config = await res.json();
+                if (config && config.version) {
+                    document.querySelectorAll('.app-version').forEach(el => el.textContent = config.version);
+                }
+                const sources = [];
+
+                const knownPlugins = [
+                    { key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio' },
+                    { key: 'newera', label: 'Newera', url: '/newera' },
+                    { key: 'elcano', label: 'Elcano', url: '/elcano' },
+                    { key: 'af1c1onados', label: 'Af1c1onados', url: '/af1c1onados' },
+                    { key: 'acepl', label: 'Acepl', url: '/acepl' }
+                ];
+
+                knownPlugins.forEach(p => {
+                    if (p.key === 'aio') {
+                        if (config.aio !== false) sources.push(p);
+                    } else if (config[p.key] === true) {
+                        sources.push(p);
+                    }
+                });
+
+                if (Array.isArray(config.custom_lists)) {
+                    config.custom_lists.forEach(item => {
+                        if (item.enabled !== false && item.url) {
+                            sources.push({
+                                key: 'custom_' + item.name,
+                                label: item.name + ' (Local)',
+                                url: item.url
+                            });
+                        }
+                    });
+                }
+
+                if (sources.length === 0) {
+                    sources.push({ key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio' });
+                }
+
+                activeSourcesList = sources;
+                currentSourceUrl = sources[0].url;
+                renderTabs();
+                loadData(currentSourceUrl);
+            } catch (err) {
+                console.warn('No se pudo cargar la configuración de fuentes, usando AIO:', err);
+                activeSourcesList = [{ key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio' }];
+                currentSourceUrl = '/aio';
+                renderTabs();
+                loadData('/aio');
+            }
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('sources-tabs');
+            if (!container) return;
+            container.innerHTML = '';
+
+            activeSourcesList.forEach(src => {
+                const btn = document.createElement('button');
+                btn.className = 'source-tab-btn' + (src.url === currentSourceUrl ? ' active' : '');
+                btn.textContent = src.label;
+                btn.onclick = () => switchSource(src.url, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function setStatusText(msg) {
+            const el = document.getElementById('loading-status');
+            if (el) el.textContent = msg;
+        }
+
+        var webMpegtsPlayer = null;
+
+        function escapeJsString(str) {
+            if (!str) return '';
+            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        let nerdStatsInterval = null;
+        let nerdStatsVisible = false;
+        let lastDecodedFrames = 0;
+        let lastStatTime = Date.now();
+        let currentStreamStats = {
+            speedKBps: 0,
+            fps: 0,
+            totalBytes: 0,
+            droppedFrames: 0,
+            decodedFrames: 0
+        };
+
+        function toggleNerdStats() {
+            nerdStatsVisible = !nerdStatsVisible;
+            const panel = document.getElementById('nerd-stats-panel');
+            const btn = document.getElementById('btn-nerd-stats');
+
+            if (panel) panel.style.display = nerdStatsVisible ? 'grid' : 'none';
+            if (btn) btn.classList.toggle('active', nerdStatsVisible);
+
+            if (nerdStatsVisible) {
+                updateNerdStatsUI();
+                if (!nerdStatsInterval) {
+                    nerdStatsInterval = setInterval(updateNerdStatsUI, 1000);
+                }
+            } else {
+                if (nerdStatsInterval) {
+                    clearInterval(nerdStatsInterval);
+                    nerdStatsInterval = null;
+                }
+            }
+        }
+
+        let sysMetricsHistory = {
+            cpu: [],
+            ram: []
+        };
+
+        function drawNerdSysChart() {
+            const canvas = document.getElementById('nerd-chart-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width || 240;
+            const height = rect.height || 100;
+            const dpr = window.devicePixelRatio || 1;
+
+            if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+            }
+
+            ctx.save();
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, width, height);
+
+            // Lines guide
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+            ctx.lineWidth = 1;
+            [0.25, 0.5, 0.75].forEach(ratio => {
+                const y = height * ratio;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            });
+
+            const maxPoints = 30;
+            const stepX = width / (maxPoints - 1);
+
+            const drawSeries = (data, color, fillGradColor) => {
+                if (!data || data.length < 2) return;
+                const startOffset = (maxPoints - data.length) * stepX;
+                const points = data.map((val, idx) => {
+                    const norm = Math.min(100, Math.max(0, val)) / 100;
+                    return {
+                        x: startOffset + idx * stepX,
+                        y: height - (norm * (height - 10) + 5)
+                    };
+                });
+
+                if (fillGradColor) {
+                    const grad = ctx.createLinearGradient(0, 0, 0, height);
+                    grad.addColorStop(0, fillGradColor);
+                    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.moveTo(points[0].x, height);
+                    points.forEach(p => ctx.lineTo(p.x, p.y));
+                    ctx.lineTo(points[points.length - 1].x, height);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                points.forEach((p, i) => {
+                    if (i === 0) ctx.moveTo(p.x, p.y);
+                    else {
+                        const prev = points[i - 1];
+                        const cpx = (prev.x + p.x) / 2;
+                        ctx.quadraticCurveTo(prev.x, prev.y, cpx, (prev.y + p.y) / 2);
+                    }
+                });
+                ctx.stroke();
+            };
+
+            drawSeries(sysMetricsHistory.ram, '#ff9f0a', 'rgba(255, 159, 10, 0.15)');
+            drawSeries(sysMetricsHistory.cpu, '#00e5ff', 'rgba(0, 229, 255, 0.20)');
+
+            ctx.restore();
+        }
+
+        async function updateNerdStatsUI() {
+            const videoEl = document.getElementById('web-player');
+
+            // 1. Video resolution & FPS
+            const resEl = document.getElementById('stat-res');
+            if (resEl && videoEl) {
+                if (videoEl.videoWidth && videoEl.videoHeight) {
+                    resEl.textContent = `${videoEl.videoWidth}x${videoEl.videoHeight} @ ${currentStreamStats.fps || 25} FPS`;
+                } else {
+                    resEl.textContent = 'Analizando stream...';
+                }
+            }
+
+            // 2. Buffer MSE
+            const bufferEl = document.getElementById('stat-buffer');
+            if (bufferEl && videoEl) {
+                let bufLen = 0;
+                if (videoEl.buffered && videoEl.buffered.length > 0) {
+                    const end = videoEl.buffered.end(videoEl.buffered.length - 1);
+                    bufLen = Math.max(0, end - videoEl.currentTime);
+                }
+                bufferEl.textContent = `${bufLen.toFixed(1)}s (Buffer MSE)`;
+            }
+
+            // 3. Bitrate & Speed
+            const bitrateEl = document.getElementById('stat-bitrate');
+            if (bitrateEl) {
+                const mbps = (currentStreamStats.speedKBps * 8 / 1024).toFixed(2);
+                bitrateEl.textContent = `${mbps} Mbps (${Math.round(currentStreamStats.speedKBps)} KB/s)`;
+            }
+
+            // 4. Frames
+            const framesEl = document.getElementById('stat-frames');
+            if (framesEl) {
+                framesEl.textContent = `${currentStreamStats.decodedFrames} decoded | ${currentStreamStats.droppedFrames} dropped`;
+            }
+
+            // 5. Downloaded Total
+            const downEl = document.getElementById('stat-downloaded');
+            if (downEl) {
+                downEl.textContent = (currentStreamStats.totalBytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            // 6. Server & Engine status & CPU/RAM Chart update
+            try {
+                const res = await fetch('/stat?action=get_status');
+                const data = await res.json();
+                if (data) {
+                    const engineEl = document.getElementById('stat-engine-active');
+                    if (engineEl) {
+                        engineEl.textContent = `${data.selected_engine || 'auto'} (${data.engine_mode || 'auto'})`;
+                    }
+
+                    if (data.sys_info) {
+                        const cpuAvg = Math.round(data.sys_info.cpu_percent.reduce((a, b) => a + b, 0) / (data.sys_info.cpu_nums || 1));
+                        const ramPct = data.sys_info.mem_info.total > 0 ? Math.round((data.sys_info.mem_info.used / data.sys_info.mem_info.total) * 100) : 0;
+
+                        sysMetricsHistory.cpu.push(cpuAvg);
+                        sysMetricsHistory.ram.push(ramPct);
+                        if (sysMetricsHistory.cpu.length > 30) sysMetricsHistory.cpu.shift();
+                        if (sysMetricsHistory.ram.length > 30) sysMetricsHistory.ram.shift();
+
+                        const cpuTxtEl = document.getElementById('stat-chart-cpu');
+                        if (cpuTxtEl) cpuTxtEl.textContent = `${cpuAvg}%`;
+
+                        const ramTxtEl = document.getElementById('stat-chart-ram');
+                        if (ramTxtEl) {
+                            const ramUsed = (data.sys_info.mem_info.used / (1024 * 1024 * 1024)).toFixed(1);
+                            const ramTotal = (data.sys_info.mem_info.total / (1024 * 1024 * 1024)).toFixed(1);
+                            ramTxtEl.textContent = `${ramUsed}GB / ${ramTotal}GB`;
+                        }
+
+                        drawNerdSysChart();
+                    }
+
+                    const engineSelect = document.getElementById('player-engine-select');
+                    if (engineSelect && data.selected_engine && !engineSelect.dataset.userChanged) {
+                        engineSelect.value = data.selected_engine;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function changePlayerEngine(engineVal) {
+            const engineSelect = document.getElementById('player-engine-select');
+            if (engineSelect) engineSelect.dataset.userChanged = 'true';
+            try {
+                showToast(`Cambiando motor AceStream a ${engineVal}...`);
+                const res = await fetch(`/stat/?action=set_engine&name=${encodeURIComponent(engineVal)}`);
+                const data = await res.json();
+                if (data && data.status === 'success') {
+                    showToast(`✓ Motor cambiado exitosamente a ${engineVal}`);
+                    updateNerdStatsUI();
+                } else {
+                    showToast('⚠ Error cambiando motor', 'error');
+                }
+            } catch (e) {
+                console.error('Error al cambiar motor:', e);
+                showToast('⚠ Error de conexión al cambiar motor', 'error');
+            }
+        }
+
+        function stopWebPlayer() {
+            if (nerdStatsInterval) {
+                clearInterval(nerdStatsInterval);
+                nerdStatsInterval = null;
+            }
+            nerdStatsVisible = false;
+            const panel = document.getElementById('nerd-stats-panel');
+            if (panel) panel.style.display = 'none';
+            const btn = document.getElementById('btn-nerd-stats');
+            if (btn) btn.classList.remove('active');
+
+            const wrapper = document.getElementById('player-wrapper');
+            const videoEl = document.getElementById('web-player');
+
+            if (webMpegtsPlayer) {
+                try {
+                    webMpegtsPlayer.pause();
+                    webMpegtsPlayer.unload();
+                    webMpegtsPlayer.detachMediaElement();
+                    webMpegtsPlayer.destroy();
+                } catch (e) {
+                    console.warn('Error al destruir reproductor mpegts:', e);
+                }
+                webMpegtsPlayer = null;
+            }
+
+            if (videoEl) {
+                videoEl.pause();
+                videoEl.removeAttribute('src');
+                videoEl.load();
+            }
+
+            if (wrapper) {
+                wrapper.style.display = 'none';
+            }
+        }
+
+        function updatePlayerStatus(statusText, badgeClass) {
+            const badge = document.getElementById('player-status-badge');
+            if (badge) {
+                badge.textContent = statusText;
+                badge.className = 'player-status-badge ' + badgeClass;
+            }
+        }
+
+        function playChannelInWebPlayer(streamUrl, channelName) {
+            stopWebPlayer();
+
+            const wrapper = document.getElementById('player-wrapper');
+            const titleEl = document.getElementById('player-title');
+            const videoElement = document.getElementById('web-player');
+
+            if (wrapper) wrapper.style.display = 'block';
+            if (titleEl) titleEl.textContent = channelName || 'Canal en Directo';
+            updatePlayerStatus('Cargando stream...', 'loading');
+
+            currentStreamStats = { speedKBps: 0, fps: 0, totalBytes: 0, droppedFrames: 0, decodedFrames: 0 };
+            lastDecodedFrames = 0;
+            lastStatTime = Date.now();
+
+            if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
+                try {
+                    webMpegtsPlayer = mpegts.createPlayer({
+                        type: 'mse',
+                        isLive: true,
+                        url: streamUrl
+                    }, {
+                        enableStashBuffer: true,
+                        stashInitialSize: 384 * 1024,
+                        liveBufferLatencyChasing: false,
+                        autoCleanupSourceBuffer: true,
+                        lazyLoadMaxDuration: 3 * 60,
+                        deferLoadAfterError: false
+                    });
+
+                    webMpegtsPlayer.attachMediaElement(videoElement);
+                    webMpegtsPlayer.load();
+
+                    webMpegtsPlayer.on(mpegts.Events.STATISTICS_INFO, (stat) => {
+                        const now = Date.now();
+                        const dt = (now - lastStatTime) / 1000;
+                        if (stat.speed) {
+                            currentStreamStats.speedKBps = stat.speed;
+                        }
+                        if (stat.decodedFrames) {
+                            if (dt > 0) {
+                                currentStreamStats.fps = Math.round((stat.decodedFrames - lastDecodedFrames) / dt);
+                            }
+                            lastDecodedFrames = stat.decodedFrames;
+                            currentStreamStats.decodedFrames = stat.decodedFrames;
+                        }
+                        if (stat.droppedFrames) {
+                            currentStreamStats.droppedFrames = stat.droppedFrames;
+                        }
+                        if (stat.loaderSpeed) {
+                            currentStreamStats.totalBytes += (stat.loaderSpeed * dt * 1024);
+                        }
+                        lastStatTime = now;
+                    });
+
+                    webMpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+                        console.error('Error en mpegts player:', errorType, errorDetail, errorInfo);
+                        updatePlayerStatus('Reconectando...', 'loading');
+                        setTimeout(() => {
+                            if (webMpegtsPlayer) {
+                                try {
+                                    webMpegtsPlayer.unload();
+                                    webMpegtsPlayer.load();
+                                    webMpegtsPlayer.play();
+                                } catch(e) {}
+                            }
+                        }, 1000);
+                    });
+
+                    webMpegtsPlayer.play().then(() => {
+                        updatePlayerStatus('En directo', 'live');
+                    }).catch(err => {
+                        console.warn('Error reproduciendo stream:', err);
+                        updatePlayerStatus('Cargando...', 'loading');
+                    });
+
+                    videoElement.onplaying = () => {
+                        updatePlayerStatus('En directo', 'live');
+                    };
+
+                    videoElement.onwaiting = () => {
+                        if (videoElement.buffered && videoElement.buffered.length > 0) {
+                            const end = videoElement.buffered.end(videoElement.buffered.length - 1);
+                            if (end - videoElement.currentTime > 0.5) {
+                                videoElement.currentTime = end - 0.2;
+                            }
+                        }
+                    };
+
+                    videoElement.onerror = () => {
+                        updatePlayerStatus('Error al conectar', 'error');
+                    };
+
+                } catch (e) {
+                    console.error('Excepción al crear mpegts player:', e);
+                    updatePlayerStatus('Error al conectar', 'error');
+                }
+            } else {
+                videoElement.src = streamUrl;
+                videoElement.play().then(() => {
+                    updatePlayerStatus('En directo', 'live');
+                }).catch(() => {
+                    updatePlayerStatus('Error al conectar', 'error');
+                });
+            }
+
+            if (wrapper) {
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        window.addEventListener('beforeunload', () => {
+            stopWebPlayer();
+        });
+
+        function switchSource(url, clickedBtn) {
+            if (!url) return;
+            stopWebPlayer();
+
+            currentSourceUrl = url;
+
+            document.querySelectorAll('.source-tab-btn').forEach(b => b.classList.remove('active'));
+            if (clickedBtn) {
+                clickedBtn.classList.add('active');
+            }
+
+            const loader = document.getElementById('loading-indicator');
+            if (loader) loader.style.display = 'block';
+            setStatusText('Cargando canales de la fuente seleccionada...');
+            loadData(url);
+        }
+
+        function loadData(sourceUrl) {
+            currentSourceUrl = sourceUrl || '/aio';
+            fetch(currentSourceUrl)
+                .then(res => res.text())
+                .then(m3uText => {
+                    allChannels = parseM3U(m3uText);
+                    renderChannels();
+                    setStatusText(`${allChannels.length} canales cargados. Descargando guía EPG...`);
+                    return fetch(EPG_XML_URL);
+                })
+                .then(res => res.text())
+                .then(xmlText => {
+                    setStatusText(`${allChannels.length} canales. Sincronizando guía EPG...`);
+                    parseEPG(xmlText);
+                    updateEPGForAll();
+                    setStatusText(`${allChannels.length} canales. Guía EPG sincronizada.`);
+                })
+                .catch(err => {
+                    console.error('Error cargando datos:', err);
+                    setStatusText('Canales cargados sin guía EPG (error de descarga).');
+                    const loader = document.getElementById('loading-indicator');
+                    if (loader) loader.style.display = 'none';
+                });
+        }
+
+        function getExactStreamUrl(originalUrl) {
+            if (!originalUrl) return '';
+            if (originalUrl.indexOf('acestream://') === 0) {
+                const pid = originalUrl.replace('acestream://', '').trim();
+                return window.location.protocol + '//' + window.location.host + '/content_id/' + pid + '/stream.ts';
+            }
+            if (originalUrl.indexOf('infohash://') === 0) {
+                const hash = originalUrl.replace('infohash://', '').trim();
+                return window.location.protocol + '//' + window.location.host + '/infohash/' + hash + '/stream.ts';
+            }
+            try {
+                var urlObj = new URL(originalUrl);
+                var pathParts = urlObj.pathname.split('/');
+                if (pathParts.length >= 4) {
+                    var type = pathParts[1];
+                    var id = pathParts[2];
+                    if (type === 'content_id' || type === 'infohash' || type === 'url') {
+                        return urlObj.protocol + '//' + window.location.hostname + ':' + (urlObj.port || '8888') + '/' + type + '/' + id + '/stream.ts';
+                    }
+                }
+            } catch (e) { }
+            return originalUrl;
+        }
+
+        function parseM3U(text) {
+            const lines = text.split('\n');
+            const channels = [];
+            let currentItem = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    currentItem = {};
+
+                    const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+                    currentItem.logo = logoMatch ? logoMatch[1] : '';
+
+                    const groupMatch = line.match(/group-title="([^"]*)"/);
+                    currentItem.group = groupMatch ? groupMatch[1] : 'Otros';
+
+                    const idMatch = line.match(/tvg-id="([^"]*)"/);
+                    currentItem.tvgId = idMatch ? idMatch[1] : '';
+
+                    const commaIdx = line.lastIndexOf(',');
+                    currentItem.name = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : 'Canal';
+                } else if (!line.startsWith('#') && line.length > 0 && currentItem) {
+                    let streamUrl = line;
+                    if (line.startsWith('acestream://')) {
+                        const pid = line.replace('acestream://', '').trim();
+                        streamUrl = window.location.protocol + '//' + window.location.host + '/content_id/' + pid + '/stream.ts';
+                    } else if (line.startsWith('infohash://')) {
+                        const hash = line.replace('infohash://', '').trim();
+                        streamUrl = window.location.protocol + '//' + window.location.host + '/infohash/' + hash + '/stream.ts';
+                    } else if (line.startsWith('http://') || line.startsWith('https://')) {
+                        try {
+                            const urlObj = new URL(line);
+                            urlObj.host = window.location.host;
+                            streamUrl = urlObj.toString();
+                        } catch (e) {
+                            streamUrl = line;
+                        }
+                    }
+                    currentItem.url = streamUrl;
+                    channels.push(currentItem);
+                    currentItem = null;
+                }
+            }
+            return channels;
+        }
+
+        function renderChannels() {
+            const container = document.getElementById('channels-container');
+            const searchVal = document.getElementById('search').value.toLowerCase().trim();
+            document.getElementById('loading-indicator').style.display = 'none';
+            container.innerHTML = '';
+
+            container.classList.remove('channels-fade-in');
+            void container.offsetWidth; // Trigger reflow for animation restart
+            container.classList.add('channels-fade-in');
+
+            const grouped = {};
+            allChannels.forEach((chan, idx) => {
+                if (searchVal && !chan.name.toLowerCase().includes(searchVal) && !chan.group.toLowerCase().includes(searchVal)) {
+                    return;
+                }
+                if (!grouped[chan.group]) grouped[chan.group] = [];
+                grouped[chan.group].push({ chan, idx });
+            });
+
+            const groups = Object.keys(grouped).sort();
+            if (groups.length === 0) {
+                container.innerHTML = '<div class="loading-screen">No se encontraron canales.</div>';
+                return;
+            }
+
+            groups.forEach(groupName => {
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'category-section';
+
+                groupContainer.innerHTML = `
+                    <div class="category-title">
+                        <span>${groupName}</span>
+                        <span class="category-count">${grouped[groupName].length}</span>
+                    </div>
+                    <div class="bento-grid" id="grid-${groupName.replace(/\s+/g, '-')}"></div>
+                `;
+                container.appendChild(groupContainer);
+
+                const grid = groupContainer.querySelector('.bento-grid');
+                grouped[groupName].forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bento-card';
+                    card.id = `card-${item.idx}`;
+
+                    const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="system-ui" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">${item.chan.name.substring(0, 2).toUpperCase()}</text></svg>`;
+                    const fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
+
+                    card.innerHTML = `
+                        <div class="channel-info">
+                            <img class="channel-logo" src="${item.chan.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
+                            <div class="channel-details">
+                                <div class="channel-name" title="${item.chan.name}">${item.chan.name}</div>
+                                <div class="epg-container" id="epg-info-${item.idx}">
+                                    <div class="epg-now">Sin información de guía</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copiar enlace del canal">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                            <button class="btn-play" onclick="playChannelInWebPlayer(getExactStreamUrl('${item.chan.url}'), '${escapeJsString(item.chan.name)}'); event.preventDefault();" title="Reproducir en la web">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            });
+        }
+
+        function filterChannels() {
+            renderChannels();
+            if (xmltvData) {
+                updateEPGForAll();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.className = 'toast-notification ' + (type === 'error' ? 'error' : 'success');
+            toast.textContent = message || '✓ Enlace copiado';
+            toast.classList.add('show');
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        function showAlert(msg, type = 'success') {
+            showToast(msg, type);
+        }
+
+        function copyTextToClipboard(text, button, customMsg) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
+                showToast(customMsg || '✓ Enlace copiado');
+                if (button) {
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                    }, 2000);
+                }
+            }
+        }
+
+        function copyStreamUrl(url, button) {
+            copyTextToClipboard(url, button, '✓ Enlace copiado');
+        }
+
+        // --- LÓGICA DE EPG & FUZZY MATCHING ---
+
+        function sanitizeForMatch(str) {
+            if (!str) return '';
+            return str.toLowerCase()
+                .replace(/\([^)]*\)/g, '')      // Eliminar paréntesis y su contenido
+                .replace(/\[[^\]]*\]/g, '')      // Eliminar corchetes y su contenido
+                .replace(/720p|1080p|hd|sd/g, '') // Eliminar indicadores de resolución
+                .replace(/[^a-z0-9]/g, '')       // Dejar sólo caracteres alfanuméricos
+                .trim();
+        }
+
+        function indexEPG(xmlText) {
+            epgCache = {};
+            const regex = /<programme[^>]*channel="([^"]+)"[^>]*>([\s\S]*?)<\/programme>/g;
+            let match;
+            while ((match = regex.exec(xmlText)) !== null) {
+                const channelRaw = match[1];
+                const content = match[2];
+
+                const startMatch = match[0].match(/start="([^"]+)"/);
+                const stopMatch = match[0].match(/stop="([^"]+)"/);
+                const titleMatch = content.match(/<title[^>]*>([^<]+)<\/title>/);
+
+                if (startMatch && stopMatch && titleMatch) {
+                    const prog = {
+                        start: parseXMLTVDate(startMatch[1]),
+                        stop: parseXMLTVDate(stopMatch[1]),
+                        title: titleMatch[1].trim()
+                    };
+
+                    const key = sanitizeForMatch(channelRaw);
+                    if (!epgCache[key]) {
+                        epgCache[key] = [];
+                    }
+                    epgCache[key].push(prog);
+                }
+            }
+
+            for (const key in epgCache) {
+                epgCache[key].sort((a, b) => a.start - b.start);
+            }
+        }
+
+        function updateEPGForAll() {
+            if (!xmltvData) return;
+            allChannels.forEach((chan, idx) => {
+                const card = document.getElementById(`card-${idx}`);
+                if (!card) return;
+
+                const epgEl = document.getElementById(`epg-info-${idx}`);
+                if (!epgEl) return;
+
+                const channelId = chan.tvgId || chan.name;
+                const programs = parseEPGForChannel(channelId);
+
+                if (programs.length === 0) return;
+
+                const now = new Date();
+                const current = programs.find(p => now >= p.start && now < p.stop);
+                const next = programs.find(p => p.start > now);
+
+                if (current) {
+                    const totalDuration = current.stop - current.start;
+                    const elapsed = now - current.start;
+                    const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+                    const formatOptions = { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hour12: false };
+                    const startStr = current.start.toLocaleTimeString('es-ES', formatOptions);
+                    const stopStr = current.stop.toLocaleTimeString('es-ES', formatOptions);
+
+                    let nextHtml = '';
+                    if (next) {
+                        const nextStartStr = next.start.toLocaleTimeString('es-ES', formatOptions);
+                        nextHtml = `<div class="epg-next">Siguiente: ${nextStartStr} - ${next.title}</div>`;
+                    }
+
+                    epgEl.innerHTML = `
+                        <div class="epg-now" title="${current.title}">${startStr} - ${current.title}</div>
+                        <div class="epg-progress-bar">
+                            <div class="epg-progress-fill" style="width: ${progressPercent}%;"></div>
+                        </div>
+                        ${nextHtml}
+                    `;
+                }
+            });
+        }
+
+        function parseEPGForChannel(channelId) {
+            const key = sanitizeForMatch(channelId);
+            return epgCache[key] || [];
+        }
+
+        function parseXMLTVDate(dateStr) {
+            const parts = dateStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s+([+-]\d{4})$/);
+            if (!parts) return new Date(dateStr);
+
+            const year = parseInt(parts[1], 10);
+            const month = parseInt(parts[2], 10) - 1;
+            const day = parseInt(parts[3], 10);
+            const hour = parseInt(parts[4], 10);
+            const minute = parseInt(parts[5], 10);
+            const second = parseInt(parts[6], 10);
+
+            const tzStr = parts[7];
+            const tzSign = tzStr[0] === '+' ? 1 : -1;
+            const tzHours = parseInt(tzStr.substring(1, 3), 10);
+            const tzMinutes = parseInt(tzStr.substring(3, 5), 10);
+
+            const utcTime = Date.UTC(year, month, day, hour, minute, second);
+            const offsetMs = (tzHours * 60 + tzMinutes) * 60 * 1000 * tzSign;
+
+            return new Date(utcTime - offsetMs);
+        }
+        function setLightIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
+        }
+
+        function setDarkIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HTTPAceProxy Statistics Dashboard">
+    <title>HTTPAceProxy - Statistics</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --border-color: #2d2d34;
+            --text-color: #e1e1e6;
+            --text-muted: #a8a8b2;
+            --header-bg: #1a1a1e;
+            --stat-bg: #202024;
+            --brand-color: #4CAF50;
+            --accent-color: #764ba2;
+            --table-header: #202024;
+            --input-bg: #1a1a1e;
+        }
+
+        body.light-theme {
+            --bg-color: #f4f4f5;
+            --card-bg: #ffffff;
+            --border-color: #e4e4e7;
+            --text-color: #18181b;
+            --text-muted: #71717a;
+            --header-bg: #ffffff;
+            --stat-bg: #f4f4f5;
+            --brand-color: #4CAF50;
+            --accent-color: #667eea;
+            --table-header: #e4e4e7;
+            --input-bg: #ffffff;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Navbar Plano Superior */
+        .navbar {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        body.light-theme .nav-brand {
+            color: #18181b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        /* Hamburger menu button */
+        .navbar-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 101;
+        }
+
+        .navbar-toggle .icon-bar {
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-color);
+            border-radius: 1px;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background-color: var(--header-bg);
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px 24px;
+                gap: 8px;
+                z-index: 99;
+            }
+
+            .nav-links.show {
+                display: flex;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 24px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
+        }
+
+        .header-section {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Toast & Alert Notifications (Bottom Right) */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: rgba(12, 25, 14, 0.95);
+            border: 1px solid #4cd964;
+            color: #4cd964;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            z-index: 99999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            max-width: 450px;
+            word-break: break-word;
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-notification.error {
+            background-color: rgba(30, 12, 12, 0.95);
+            border: 1px solid #ff3b30;
+            color: #ff3b30;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Connection Stats */
+        .stats {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-box {
+            padding: 16px;
+            background-color: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-box.green {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .stat-box.green .value {
+            color: #4CAF50;
+        }
+
+        .stat-box.orange {
+            border-left: 4px solid #ff9800;
+        }
+
+        .stat-box.orange .value {
+            color: #ff9800;
+        }
+
+        .stat-box.blue {
+            border-left: 4px solid #2196F3;
+        }
+
+        .stat-box.blue .value {
+            color: #2196F3;
+        }
+
+        .stat-box.cyan {
+            border-left: 4px solid #00e5ff;
+        }
+
+        .stat-box.cyan .value {
+            color: #00e5ff;
+        }
+
+        .stat-box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .stat-box-header .label {
+            margin-bottom: 0;
+        }
+
+        .stat-percent-badge {
+            font-size: 11px;
+            font-weight: 700;
+            font-family: monospace;
+            padding: 2px 7px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .stat-percent-badge.green {
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.12);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .stat-percent-badge.cyan {
+            color: #00e5ff;
+            background: rgba(0, 229, 255, 0.12);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+        }
+
+        .stat-percent-badge.orange {
+            color: #ff9800;
+            background: rgba(255, 152, 0, 0.12);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .stat-percent-badge.blue {
+            color: #2196f3;
+            background: rgba(33, 150, 243, 0.12);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .progress-bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease-in-out;
+        }
+
+        .progress-bar-fill.green {
+            background: linear-gradient(90deg, #4caf50, #81c784);
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+        }
+
+        .progress-bar-fill.cyan {
+            background: linear-gradient(90deg, #00e5ff, #18ffff);
+            box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+        }
+
+        .progress-bar-fill.orange {
+            background: linear-gradient(90deg, #ff9800, #ffb74d);
+            box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
+        }
+
+        .progress-bar-fill.blue {
+            background: linear-gradient(90deg, #2196f3, #64b5f6);
+            box-shadow: 0 0 8px rgba(33, 150, 243, 0.5);
+        }
+
+        .stat-box .label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .stat-box .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .stat-value-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin: 2px 0 4px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box .sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .stat-value-row .sub {
+            margin-top: 0;
+        }
+
+        /* Historical Graphs (btop style) */
+        .stats-grid-record {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-box-record {
+            padding: 12px 14px;
+            background-color: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-box-record.green {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .stat-box-record.cyan {
+            border-left: 4px solid #00e5ff;
+        }
+
+        .stat-box-record.orange {
+            border-left: 4px solid #ff9800;
+        }
+
+        .stat-box-record.blue {
+            border-left: 4px solid #2196F3;
+        }
+
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .record-header .label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .record-val {
+            font-size: 12px;
+            font-weight: 700;
+            font-family: monospace;
+            color: var(--text-color);
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 75px;
+            position: relative;
+        }
+
+        .canvas-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        /* Panels (Bento Cards) */
+        .config-panel,
+        .system-panel,
+        .clients-panel {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .config-panel h3,
+        .system-panel h3,
+        .clients-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .config-section {
+            margin-bottom: 20px;
+        }
+
+        .config-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .config-section h4 {
+            font-size: 12px;
+            color: var(--brand-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .config-grid,
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .httpaceproxy-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 900px) {
+            .httpaceproxy-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .httpaceproxy-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .config-number-input {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+            background-color: var(--input-bg);
+            color: var(--brand-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 5px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .config-number-input:focus {
+            border-color: var(--brand-color);
+        }
+
+        .config-item,
+        .system-item {
+            background-color: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .system-item {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .config-item .label,
+        .system-item .label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .config-item .value,
+        .system-item .value {
+            font-size: 13px;
+            color: var(--text-color);
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .engine-control-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 2px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .engine-select {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .engine-select:focus {
+            border-color: #2196F3;
+        }
+
+        .save-engine-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .save-engine-btn:hover {
+            opacity: 0.9;
+        }
+
+        .save-engine-btn.saved {
+            background-color: #4CAF50 !important;
+        }
+
+        /* Consola de Eventos del Búnker */
+        .bunker-console-panel {
+            margin-top: 24px;
+            background-color: #0c0d10;
+            border: 1px solid #1e2029;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .bunker-console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #1e2029;
+            padding-bottom: 8px;
+        }
+
+        .bunker-console-header h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #00e5ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .clear-logs-btn {
+            background-color: transparent;
+            border: 1px solid #2d303e;
+            color: #a8a8b2;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clear-logs-btn:hover {
+            color: #fff;
+            border-color: #00e5ff;
+        }
+
+        .bunker-console-body {
+            background-color: #050507;
+            border: 1px solid #161822;
+            border-radius: 4px;
+            padding: 12px;
+            height: 220px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #00ff66;
+        }
+
+        .bunker-console-body .log-line {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .bunker-console-body .log-line.info {
+            color: #00ff66;
+        }
+
+        .bunker-console-body .log-line.warn {
+            color: #ffab00;
+        }
+
+        .bunker-console-body .log-line.error {
+            color: #ff5252;
+        }
+
+        /* Plugins list */
+        .plugins-list {
+            margin-top: 12px;
+        }
+
+        .plugin-card {
+            background-color: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--brand-color);
+        }
+
+        .plugin-header-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .plugin-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .plugin-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-color);
+            text-transform: capitalize;
+            min-width: 80px;
+        }
+
+        .plugin-card-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .plugin-channels-badge {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .handler-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px;
+            background-color: var(--card-bg);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            text-decoration: none;
+            transition: border-color 0.2s;
+        }
+
+        .handler-link:hover {
+            border-color: var(--brand-color);
+        }
+
+        .handler-icon {
+            width: 14px;
+            height: 14px;
+            fill: var(--brand-color);
+            flex-shrink: 0;
+        }
+
+        .handler-url {
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .handler-copy-btn {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .handler-copy-btn:hover {
+            background-color: var(--stat-bg);
+        }
+
+        .handler-copy-btn.copied {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        /* Switches */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 38px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: .2s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(18px);
+        }
+
+        /* Clients Table - Bento Card High Contrast */
+        .clients-panel {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .clients-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--card-bg);
+        }
+
+        .clients-header h2 {
+            margin-bottom: 0;
+            border-bottom: none;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .clients-header h2 svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--brand-color);
+        }
+
+        .clients-header .count {
+            background-color: rgba(76, 217, 100, 0.15);
+            color: var(--brand-color);
+            border: 1px solid rgba(76, 217, 100, 0.3);
+            padding: 4px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .clients-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .clients-table thead {
+            background-color: var(--stat-bg);
+        }
+
+        .clients-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .clients-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-color);
+            vertical-align: middle;
+        }
+
+        .clients-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .clients-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .channel-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .channel-icon {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            border-radius: 6px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        body.light-theme .channel-name {
+            color: #18181b;
+        }
+
+        .client-ip {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: #00BCD4;
+        }
+
+        .speed-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .speed-down {
+            color: #4cd964;
+        }
+
+        .speed-up {
+            color: #2196F3;
+        }
+
+        .speed-arrow {
+            width: 12px;
+            height: 12px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge.dl {
+            background: rgba(76, 217, 100, 0.15);
+            color: #4cd964;
+            border: 1px solid rgba(76, 217, 100, 0.3);
+        }
+
+        .status-badge.buf {
+            background: rgba(255, 149, 0, 0.15);
+            color: #ff9500;
+            border: 1px solid rgba(255, 149, 0, 0.3);
+        }
+
+        .status-badge.prebuf,
+        .status-badge.wait {
+            background: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+        }
+
+        .status-badge.check,
+        .status-badge.loading {
+            background: rgba(33, 150, 243, 0.15);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .status-badge.idle {
+            background: var(--stat-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .peers-cell {
+            text-align: left;
+        }
+
+        .peers-count {
+            font-weight: 700;
+            color: var(--text-color);
+            margin-right: 8px;
+            font-size: 13px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+            background-color: var(--card-bg);
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Error state */
+        .error-state {
+            text-align: center;
+            padding: 24px;
+            color: #ff3b30;
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 8px;
+            margin: 20px;
+            font-weight: 600;
+            display: none;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: white;
+            font-size: 18px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .clients-table {
+                font-size: 12px;
+            }
+
+            .clients-table th,
+            .clients-table td {
+                padding: 10px 12px;
+            }
+
+            .channel-icon {
+                width: 30px;
+                height: 22px;
+            }
+        }
+
+        /* Footer Bar */
+        .footer-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background-color: var(--header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .footer-left,
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 200px;
+        }
+
+        .footer-right {
+            justify-content: flex-end;
+        }
+
+        .footer-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .footer-left .val {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .footer-right .version-badge {
+            background-color: var(--border-color);
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .theme-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .theme-toggle-btn:hover {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .theme-toggle-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+            <a href="/stat" class="active">Dashboard</a>
+            <a href="/statplugin/">Canales</a>
+            <a href="/listas/">Fuentes</a>
+            <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html">Reproductor Legacy</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header-section">
+            <div class="header-title">
+                <h4>Estadísticas en Tiempo Real</h4>
+            </div>
+        </div>
+
+        <!-- Connection Stats -->
+        <div class="stats">
+            <div class="stats-grid">
+                <!-- CLIENTES CONECTADOS -->
+                <div class="stat-box green">
+                    <div class="stat-box-header">
+                        <div class="label">CLIENTES CONECTADOS</div>
+                        <span class="stat-percent-badge green" id="clients-percent-badge">0%</span>
+                    </div>
+                    <div class="stat-value-row">
+                        <span class="value" id="total-clients">-</span>
+                        <span class="sub">de <span id="max-clients">-</span> máx</span>
+                    </div>
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill green" id="clients-bar-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- ALMACENAMIENTO -->
+                <div class="stat-box blue">
+                    <div class="stat-box-header">
+                        <div class="label">ALMACENAMIENTO</div>
+                        <span class="stat-percent-badge blue" id="disk-percent-badge">0%</span>
+                    </div>
+                    <div class="stat-value-row">
+                        <span class="value" id="disk-used">-</span>
+                        <span class="sub">de <span id="disk-total">-</span></span>
+                    </div>
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill blue" id="disk-bar-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- USO DE CPU -->
+                <div class="stat-box cyan">
+                    <div class="stat-box-header">
+                        <div class="label">USO DE CPU</div>
+                        <span class="stat-percent-badge cyan" id="cpu-percent-badge">0%</span>
+                    </div>
+                    <div class="stat-value-row">
+                        <span class="value" id="cpu-usage">-</span>
+                        <span class="sub">de <span id="cpu-cores">-</span> cores</span>
+                    </div>
+                    <div class="canvas-container" style="height: 48px; margin-top: 4px;">
+                        <canvas id="chart-cpu"></canvas>
+                    </div>
+                </div>
+
+                <!-- MEMORIA RAM -->
+                <div class="stat-box orange">
+                    <div class="stat-box-header">
+                        <div class="label">MEMORIA RAM</div>
+                        <span class="stat-percent-badge orange" id="ram-percent-badge">0%</span>
+                    </div>
+                    <div class="stat-value-row">
+                        <span class="value" id="ram-used">-</span>
+                        <span class="sub">de <span id="ram-total">-</span></span>
+                    </div>
+                    <div class="canvas-container" style="height: 48px; margin-top: 4px;">
+                        <canvas id="chart-ram"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Configuration & Status -->
+        <div class="config-panel" id="config-panel" style="display:none;">
+            <h3>Configuración y Estado del Servidor</h3>
+
+            <!-- HTTPAceProxy Configuration -->
+            <div class="config-section">
+                <h4>HTTPAceProxy</h4>
+                <div class="httpaceproxy-grid">
+                    <div class="config-item">
+                        <span class="label">Servidor</span>
+                        <span class="value" id="config-proxy-host">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Puerto</span>
+                        <span class="value" id="config-proxy-port">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Conexiones Máximas</span>
+                        <div class="engine-control-group">
+                            <input type="number" id="config-max-connections-input" class="config-number-input" min="1"
+                                max="10" value="10">
+                        </div>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Canales Máximos</span>
+                        <div class="engine-control-group">
+                            <input type="number" id="config-max-channels-input" class="config-number-input" min="1"
+                                max="5" value="5">
+                            <button id="save-proxy-config-btn" class="save-engine-btn"
+                                onclick="saveProxyConfig()">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AceStream Engine Configuration -->
+            <div class="config-section">
+                <h4>Motor Ace Stream</h4>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <span class="label">CPU Detectada</span>
+                        <span class="value" id="config-cpu-detected">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Selector de Motor</span>
+                        <div class="engine-control-group">
+                            <select id="config-engine-select" class="engine-select">
+                                <option value="auto">Automático (Recomendado)</option>
+                                <option value="aceserve-modern">Modern (jopsis)</option>
+                                <option value="aceserve-compat-light">Compat Ligero (wafy80)</option>
+                                <option value="aceserve-compat-stable">Compat Estable (blaiseio)</option>
+                            </select>
+                            <button id="save-engine-btn" class="save-engine-btn" onclick="saveEngine()">Guardar</button>
+                        </div>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Motor Activo en Uso</span>
+                        <span class="value" id="config-active-engine" style="color: var(--brand-color);">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Puerto API</span>
+                        <span class="value" id="config-ace-api-port">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Puerto HTTP</span>
+                        <span class="value" id="config-ace-http-port">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="label">Estado Conexión</span>
+                        <div id="config-ace-status"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Probador de Motor AceStream y Generador .TS -->
+            <div class="config-section" style="margin-top: 16px;">
+                <h4 style="color: #00e5ff; display: flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    PROBADOR DE MOTOR Y GENERADOR DE ENLACE TS
+                </h4>
+                <div class="tester-box"
+                    style="background-color: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+                    <!-- Seleccionador de Motores a probar -->
+                    <div
+                        style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 4px; border: 1px solid var(--border-color);">
+                        <span
+                            style="font-size: 11px; font-weight: 700; color: #00e5ff; text-transform: uppercase; letter-spacing: 0.5px;">Motores
+                            a Probar:</span>
+                        <label
+                            style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; color: var(--text-color);">
+                            <input type="checkbox" id="chk-engine-modern" value="aceserve-modern" checked
+                                style="cursor: pointer; accent-color: #00e5ff;">
+                            <span>Modern <i>(jopsis)</i></span>
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; color: var(--text-color);">
+                            <input type="checkbox" id="chk-engine-compat-light" value="aceserve-compat-light" checked
+                                style="cursor: pointer; accent-color: #00e5ff;">
+                            <span>Compat Ligero <i>(wafy80)</i></span>
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; color: var(--text-color);">
+                            <input type="checkbox" id="chk-engine-compat-stable" value="aceserve-compat-stable" checked
+                                style="cursor: pointer; accent-color: #00e5ff;">
+                            <span>Compat Estable <i>(blaiseio)</i></span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="text" id="test-acestream-id"
+                            placeholder="Ingresa Content ID o enlace acestream:// (ej: 97df5b7824948972d041d8ca2a4d29c90b641bc9)"
+                            style="flex: 1; min-width: 280px; background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 8px 12px; font-size: 13px; font-family: monospace; outline: none;">
+                        <button onclick="generateTsLink()"
+                            style="background-color: #00e5ff; color: #000; border: none; border-radius: 4px; padding: 8px 16px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s;">
+                            Generar Enlace .TS
+                        </button>
+                        <button onclick="checkEnginePeers()" id="btn-check-peers"
+                            style="background-color: #2196F3; color: #fff; border: none; border-radius: 4px; padding: 8px 16px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s;">
+                            Comprobar Semillas / Peers
+                        </button>
+                    </div>
+
+                    <!-- Enlace Generado y Acciones -->
+                    <div id="ts-result-panel"
+                        style="display: none; background-color: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 6px; padding: 14px; flex-direction: column; gap: 10px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <span
+                                style="font-size: 11px; text-transform: uppercase; color: #00e5ff; font-weight: 700; letter-spacing: 0.5px;">Enlace
+                                Stream .TS Generado</span>
+                            <span id="peers-status-badge"
+                                style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: #333; color: #fff;">Esperando
+                                comprobación</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="generated-ts-url" readonly
+                                style="flex: 1; min-width: 250px; background: #0c0d10; border: 1px solid #1e2029; color: #00e5ff; font-family: monospace; font-size: 13px; padding: 8px 12px; border-radius: 4px;">
+                            <button onclick="copyTsLink()"
+                                style="background: #2d303e; color: #fff; border: 1px solid #3d4052; border-radius: 4px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer;">Copiar</button>
+                            <button onclick="openInVlc()"
+                                style="background: #ff9800; color: #000; border: none; border-radius: 4px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;">Abrir
+                                en VLC</button>
+                            <button onclick="downloadM3u()"
+                                style="background: #4caf50; color: #fff; border: none; border-radius: 4px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;">Descargar
+                                .m3u</button>
+                        </div>
+                        <div id="engine-peers-output"
+                            style="font-size: 12px; font-family: monospace; color: #a8a8b2; margin-top: 4px; line-height: 1.5;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listas -->
+            <div class="config-section">
+                <h4>Listas Cargadas</h4>
+                <div id="config-plugins-list"></div>
+            </div>
+        </div>
+
+        <!-- Clients Table -->
+        <div class="clients-panel">
+            <div class="clients-header">
+                <h2>
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                    </svg>
+                    Conexiones Activas
+                </h2>
+                <span class="count" id="clients-count">0 clientes</span>
+            </div>
+            <div id="clients-container">
+                <div class="empty-state" id="empty-state">
+                    <h3>No hay clientes conectados actualmente</h3>
+                    <p>Los clientes aparecerán aquí cuando se conecten para ver transmisiones.</p>
+                </div>
+                <table class="clients-table" id="clients-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Canal</th>
+                            <th>IP Cliente</th>
+                            <th>Ubicación</th>
+                            <th>Inicio</th>
+                            <th>Duración</th>
+                            <th>Velocidad (Bajada/Subida)</th>
+                            <th>Peers / Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clients-tbody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="error-state" id="error-state">
+                ¡El servidor no responde! Reintentando...
+            </div>
+        </div>
+
+        <!-- Consola de Eventos del Búnker -->
+        <div class="bunker-console-panel">
+            <div class="bunker-console-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;">
+                        <path
+                            d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z" />
+                    </svg>
+                    CONSOLA DE EVENTOS DEL BÚNKER
+                </h3>
+                <button class="clear-logs-btn" onclick="clearBunkerConsole()">Limpiar Consola</button>
+            </div>
+            <div class="bunker-console-body" id="bunker-console-body">
+                <div class="log-line info">[BÚNKER] Inicializando consola de monitoreo en tiempo real...</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        // Status polling
+        let statusInterval;
+        let enginePreferenceApplied = false;
+
+        const metricsHistory = {
+            clients: [],
+            cpu: [],
+            ram: [],
+            disk: []
+        };
+
+        function drawBtopChart(canvasId, data, strokeColor, fillColor) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width || 200;
+            const height = rect.height || 75;
+            const dpr = window.devicePixelRatio || 1;
+
+            if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+            }
+
+            ctx.save();
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw horizontal guide lines (btop style)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            [0.25, 0.5, 0.75].forEach(ratio => {
+                const y = height * ratio;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            });
+
+            if (!data || data.length < 2) {
+                ctx.restore();
+                return;
+            }
+
+            const maxPoints = 30;
+            const stepX = width / (maxPoints - 1);
+            const startOffset = (maxPoints - data.length) * stepX;
+
+            // Build path points
+            const points = data.map((val, idx) => {
+                const normalized = Math.min(100, Math.max(0, val)) / 100;
+                const x = startOffset + idx * stepX;
+                const y = height - (normalized * (height - 12) + 6);
+                return { x, y };
+            });
+
+            // Draw filled area gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, fillColor);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, height);
+            ctx.lineTo(points[0].x, points[0].y);
+
+            for (let i = 0; i < points.length - 1; i++) {
+                const xc = (points[i].x + points[i + 1].x) / 2;
+                const yc = (points[i].y + points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+            }
+            ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+            ctx.lineTo(points[points.length - 1].x, height);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Draw neon line
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 0; i < points.length - 1; i++) {
+                const xc = (points[i].x + points[i + 1].x) / 2;
+                const yc = (points[i].y + points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+            }
+            ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = strokeColor;
+            ctx.shadowBlur = 6;
+            ctx.stroke();
+
+            // Draw glowing tip dot at latest point
+            const lastPt = points[points.length - 1];
+            ctx.beginPath();
+            ctx.arc(lastPt.x, lastPt.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = strokeColor;
+            ctx.shadowColor = strokeColor;
+            ctx.shadowBlur = 8;
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function saveEngine() {
+            const select = document.getElementById('config-engine-select');
+            if (!select) return;
+            const engineValue = select.value;
+            const btn = document.getElementById('save-engine-btn');
+
+            localStorage.setItem('ace_engine_preference', engineValue);
+
+            fetch('/stat/?action=set_engine&name=' + encodeURIComponent(engineValue))
+                .then(r => r.json())
+                .then(data => {
+                    console.log('Engine routing updated:', data);
+                    if (btn) {
+                        const origText = btn.textContent;
+                        btn.textContent = '¡Guardado!';
+                        btn.classList.add('saved');
+                        setTimeout(() => {
+                            btn.textContent = origText;
+                            btn.classList.remove('saved');
+                        }, 1500);
+                    }
+                    getStatus();
+                })
+                .catch(err => {
+                    console.error('Error changing engine:', err);
+                    if (btn) btn.textContent = 'Error';
+                });
+        }
+
+        function saveProxyConfig() {
+            const connInput = document.getElementById('config-max-connections-input');
+            const chanInput = document.getElementById('config-max-channels-input');
+            const btn = document.getElementById('save-proxy-config-btn');
+            if (!connInput || !chanInput) return;
+
+            let connVal = parseInt(connInput.value, 10);
+            let chanVal = parseInt(chanInput.value, 10);
+
+            if (isNaN(connVal) || connVal < 1) connVal = 1;
+            if (connVal > 10) connVal = 10;
+            connInput.value = connVal;
+
+            if (isNaN(chanVal) || chanVal < 1) chanVal = 1;
+            if (chanVal > 5) chanVal = 5;
+            chanInput.value = chanVal;
+
+            fetch(`/stat/?action=set_limits&max_connections=${connVal}&max_channels=${chanVal}`)
+                .then(r => r.json())
+                .then(data => {
+                    console.log('Proxy limits updated:', data);
+                    if (btn) {
+                        const origText = btn.textContent;
+                        btn.textContent = '¡Guardado!';
+                        btn.classList.add('saved');
+                        setTimeout(() => {
+                            btn.textContent = origText;
+                            btn.classList.remove('saved');
+                        }, 1500);
+                    }
+                    fetchBunkerLogs();
+                    getStatus();
+                })
+                .catch(err => {
+                    console.error('Error saving proxy config:', err);
+                    if (btn) btn.textContent = 'Error';
+                });
+        }
+
+        function getStatus() {
+            fetch('/stat/?action=get_status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        renderPage(data);
+                        document.getElementById('error-state').style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Status error:', err);
+                    document.getElementById('error-state').style.display = 'block';
+                });
+            fetchBunkerLogs();
+        }
+
+        function fetchBunkerLogs() {
+            fetch('/stat/?action=get_bunker_logs')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success' && Array.isArray(data.logs)) {
+                        renderBunkerLogs(data.logs);
+                    }
+                })
+                .catch(err => console.error('Bunker logs fetch error:', err));
+        }
+
+        let lastLogsCount = 0;
+        function renderBunkerLogs(logs) {
+            const body = document.getElementById('bunker-console-body');
+            if (!body) return;
+            if (logs.length === lastLogsCount) return;
+            lastLogsCount = logs.length;
+
+            body.innerHTML = '';
+            logs.forEach(log => {
+                const line = document.createElement('div');
+                line.className = 'log-line info';
+                if (log.includes('ERROR') || log.includes('Fall') || log.includes('Aviso')) line.className = 'log-line error';
+                else if (log.includes('Solicitado') || log.includes('Deteniendo') || log.includes('Arrancando')) line.className = 'log-line warn';
+                line.textContent = log;
+                body.appendChild(line);
+            });
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function clearBunkerConsole() {
+            const body = document.getElementById('bunker-console-body');
+            if (body) body.innerHTML = '';
+            lastLogsCount = 0;
+        }
+
+        // Probador de Motor AceStream & Generador .TS
+        function getCleanContentId(raw) {
+            if (!raw) return '';
+            raw = raw.trim();
+            if (raw.startsWith('acestream://')) {
+                raw = raw.replace('acestream://', '');
+            }
+            const match = raw.match(/[a-fA-F0-9]{40}/);
+            return match ? match[0] : raw;
+        }
+
+        function generateTsLink() {
+            const rawInput = document.getElementById('test-acestream-id').value;
+            const cid = getCleanContentId(rawInput);
+            const panel = document.getElementById('ts-result-panel');
+            const inputUrl = document.getElementById('generated-ts-url');
+            const badge = document.getElementById('peers-status-badge');
+            const output = document.getElementById('engine-peers-output');
+
+            if (!cid || cid.length < 10) {
+                alert('Por favor, ingresa un Content ID válido de AceStream (hash de 40 caracteres).');
+                return;
+            }
+
+            const host = window.location.hostname || '127.0.0.1';
+            const port = window.location.port || '8888';
+            const tsUrl = `${window.location.protocol}//${host}:${port}/content_id/${cid}/stream.ts`;
+
+            inputUrl.value = tsUrl;
+            panel.style.display = 'flex';
+            badge.textContent = 'Enlace Listo';
+            badge.style.background = '#2196F3';
+            badge.style.color = '#fff';
+            output.innerHTML = `📌 <b>Enlace generado:</b> Puedes copiar la URL o presionar <b>"Abrir en VLC"</b> para reproducir directamente.`;
+        }
+
+        async function checkEnginePeers() {
+            const rawInput = document.getElementById('test-acestream-id').value;
+            const cid = getCleanContentId(rawInput);
+            if (!cid || cid.length < 10) {
+                alert('Por favor, ingresa un Content ID válido de AceStream.');
+                return;
+            }
+
+            const enginesToTest = [];
+            if (document.getElementById('chk-engine-modern')?.checked) enginesToTest.push({ id: 'aceserve-modern', label: 'Modern (jopsis)' });
+            if (document.getElementById('chk-engine-compat-light')?.checked) enginesToTest.push({ id: 'aceserve-compat-light', label: 'Compat Ligero (wafy80)' });
+            if (document.getElementById('chk-engine-compat-stable')?.checked) enginesToTest.push({ id: 'aceserve-compat-stable', label: 'Compat Estable (blaiseio)' });
+
+            if (enginesToTest.length === 0) {
+                alert('Selecciona al menos un motor de las casillas de verificación para probar.');
+                return;
+            }
+
+            generateTsLink();
+
+            const btn = document.getElementById('btn-check-peers');
+            const badge = document.getElementById('peers-status-badge');
+            const output = document.getElementById('engine-peers-output');
+
+            btn.disabled = true;
+            btn.textContent = 'Consultando motores...';
+            badge.textContent = 'Verificando red P2P...';
+            badge.style.background = '#ff9800';
+            badge.style.color = '#000';
+
+            // Save current active engine
+            const activeSelect = document.getElementById('config-engine-select');
+            const activeEngine = activeSelect ? activeSelect.value : 'auto';
+
+            let overallSuccessCount = 0;
+            let resultsHtml = `<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">`;
+
+            for (const eng of enginesToTest) {
+                output.innerHTML = `⏳ <b>Deteniendo motores inactivos, arrancando motor "${eng.label}" y probando...</b> (espera 5-8s)...`;
+                try {
+                    const res = await fetch(`/stat/?action=check_peers&content_id=${encodeURIComponent(cid)}&engine=${encodeURIComponent(eng.id)}&max_wait=6`);
+                    const data = await res.json();
+
+                    if (data.status === 'success') {
+                        const totalPeers = data.total_peers !== undefined ? data.total_peers : ((data.peers || 0) + (data.http_peers || 0));
+                        const isOnline = totalPeers > 0 || data.available;
+                        if (isOnline) overallSuccessCount++;
+
+                        const statusBadgeHtml = isOnline
+                            ? `<span style="background: #4CAF50; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">ONLINE (${totalPeers} Peers)</span>`
+                            : `<span style="background: #f44336; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">0 Peers (OFFLINE)</span>`;
+
+                        const switchBtn = `<button onclick="switchEngineTo('${eng.id}')" style="background: #2196F3; color: #fff; border: none; border-radius: 3px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 8px;">Usar este motor</button>`;
+
+                        resultsHtml += `
+                            <div style="background: rgba(0,0,0,0.3); border: 1px solid #1e2029; border-radius: 4px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                                <div>
+                                    <b style="color: #00e5ff;">${eng.label}:</b> ${statusBadgeHtml}
+                                    <span style="font-size: 11px; color: #a8a8b2; margin-left: 6px;">(${data.peers || 0} P2P / ${data.http_peers || 0} HTTP | Estado: ${data.status_text || 'prebuf'})</span>
+                                </div>
+                                <div>${switchBtn}</div>
+                            </div>`;
+                    } else {
+                        resultsHtml += `
+                            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(244, 67, 54, 0.4); border-radius: 4px; padding: 8px 12px;">
+                                <b style="color: #f44336;">${eng.label}:</b> <span style="color:#f44336;">Sin respuesta (${data.error || 'Error motor'})</span>
+                            </div>`;
+                    }
+                } catch (err) {
+                    resultsHtml += `
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(244, 67, 54, 0.4); border-radius: 4px; padding: 8px 12px;">
+                            <b style="color: #f44336;">${eng.label}:</b> <span style="color:#f44336;">Error de comunicación con el servidor proxy</span>
+                        </div>`;
+                }
+            }
+
+            // Restablecer el motor activo inicial
+            output.innerHTML = `⏳ <b>Restableciendo motor activo configurado...</b>`;
+            try {
+                await fetch(`/stat/?action=set_engine&name=${encodeURIComponent(activeEngine)}`);
+            } catch (e) { }
+
+            resultsHtml += `</div>`;
+            btn.disabled = false;
+            btn.textContent = 'Comprobar Semillas / Peers';
+
+            if (overallSuccessCount > 0) {
+                badge.textContent = `${overallSuccessCount}/${enginesToTest.length} Motores ONLINE`;
+                badge.style.background = '#4CAF50';
+                badge.style.color = '#fff';
+            } else {
+                badge.textContent = `0/${enginesToTest.length} Motores con Seeds`;
+                badge.style.background = '#f44336';
+                badge.style.color = '#fff';
+            }
+            output.innerHTML = resultsHtml;
+        }
+
+        function switchEngineTo(engineId) {
+            const select = document.getElementById('config-engine-select');
+            if (select) {
+                select.value = engineId;
+                saveEngine();
+            }
+        }
+
+        function copyTsLink() {
+            const inputUrl = document.getElementById('generated-ts-url');
+            if (!inputUrl || !inputUrl.value) return;
+            inputUrl.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(inputUrl.value).then(() => {
+                    alert('¡Enlace .TS copiado al portapapeles!');
+                }).catch(() => {
+                    document.execCommand('copy');
+                    alert('¡Enlace .TS copiado!');
+                });
+            } else {
+                document.execCommand('copy');
+                alert('¡Enlace .TS copiado!');
+            }
+        }
+
+        function openInVlc() {
+            const inputUrl = document.getElementById('generated-ts-url');
+            if (!inputUrl || !inputUrl.value) return;
+            window.open(inputUrl.value, '_blank');
+        }
+
+        function downloadM3u() {
+            const inputUrl = document.getElementById('generated-ts-url');
+            const rawInput = document.getElementById('test-acestream-id').value;
+            const cid = getCleanContentId(rawInput);
+            if (!inputUrl || !inputUrl.value) return;
+
+            const content = `#EXTM3U\n#EXTINF:-1,Prueba AceStream (${cid.substr(0, 8)})\n${inputUrl.value}\n`;
+            const blob = new Blob([content], { type: 'audio/x-mpegurl' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `acestream_test_${cid.substr(0, 8)}.m3u`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function renderPage(data) {
+            if (data.version || data.server_info?.version) {
+                const ver = data.version || data.server_info?.version;
+                document.querySelectorAll('.app-version').forEach(el => el.textContent = ver);
+            }
+
+            // CPU & Engine Selection
+            const cpuText = data.cpu_detected || data.server_info?.cpu_detected || '-';
+            const cpuEl = document.getElementById('config-cpu-detected');
+            if (cpuEl) cpuEl.textContent = cpuText;
+
+            const activeEngine = data.selected_engine || data.server_config?.acestream?.host || '-';
+            const engineMode = data.engine_mode || 'auto';
+            const modeLabel = engineMode === 'auto' ? ' (Modo Auto)' : ' (Modo Manual)';
+            const activeEl = document.getElementById('config-active-engine');
+            if (activeEl) {
+                activeEl.textContent = activeEngine + modeLabel;
+            }
+
+            const engineSelect = document.getElementById('config-engine-select');
+            if (engineSelect && (!document.activeElement || !document.activeElement.isSameNode(engineSelect))) {
+                const mode = data.engine_mode || 'auto';
+                const selected = data.selected_engine || '';
+                if (mode === 'auto') {
+                    engineSelect.value = 'auto';
+                } else if (selected === 'aceserve-modern' || mode === 'modern') {
+                    engineSelect.value = 'aceserve-modern';
+                } else if (selected === 'aceserve-compat-light' || mode === 'compat-light' || mode === 'light') {
+                    engineSelect.value = 'aceserve-compat-light';
+                } else if (selected === 'aceserve-compat-stable' || mode === 'compat-stable' || mode === 'stable' || mode === 'compat') {
+                    engineSelect.value = 'aceserve-compat-stable';
+                } else {
+                    engineSelect.value = 'auto';
+                }
+            }
+
+            // Apply saved LocalStorage preference on initial page load
+            const savedPref = localStorage.getItem('ace_engine_preference');
+            if (savedPref && !enginePreferenceApplied) {
+                enginePreferenceApplied = true;
+                const currentMode = data.engine_mode || 'auto';
+                const currentEngine = data.selected_engine || '';
+                const isMatch = (savedPref === 'auto' && currentMode === 'auto') ||
+                    (savedPref === 'aceserve-modern' && currentEngine === 'aceserve-modern') ||
+                    (savedPref === 'aceserve-compat-light' && currentEngine === 'aceserve-compat-light') ||
+                    (savedPref === 'aceserve-compat-stable' && currentEngine === 'aceserve-compat-stable');
+                if (!isMatch) {
+                    saveEngine();
+                }
+            }
+
+            // Server Configuration
+            if (data.server_config) {
+                const cfg = data.server_config;
+                document.getElementById('config-proxy-host').textContent = cfg.aceproxy.host;
+                document.getElementById('config-proxy-port').textContent = cfg.aceproxy.port;
+                document.getElementById('config-ace-api-port').textContent = cfg.acestream.api_port;
+                document.getElementById('config-ace-http-port').textContent = cfg.acestream.http_port;
+
+                const connInput = document.getElementById('config-max-connections-input');
+                if (connInput && document.activeElement !== connInput) {
+                    connInput.value = cfg.limits.max_connections;
+                }
+                const chanInput = document.getElementById('config-max-channels-input');
+                if (chanInput && document.activeElement !== chanInput) {
+                    chanInput.value = cfg.limits.max_concurrent_channels;
+                }
+            }
+
+            // Server Info
+            if (data.server_info) {
+                const info = data.server_info;
+
+                // AceStream Engine Status
+                const aceStatus = info.acestream_engine;
+                const statusEl = document.getElementById('config-ace-status');
+                if (aceStatus.status === 'connected') {
+                    statusEl.innerHTML = `
+                        <div class="status-indicator success">
+                            <span class="status-dot"></span>
+                            <span>Conectado ${aceStatus.version !== 'unknown' ? '(v' + aceStatus.version + ')' : ''}</span>
+                        </div>
+                    `;
+                } else {
+                    statusEl.innerHTML = `
+                        <div class="status-indicator error">
+                            <span class="status-dot"></span>
+                            <span>Desconectado</span>
+                        </div>
+                    `;
+                }
+
+                // Plugins
+                const pluginsList = document.getElementById('config-plugins-list');
+                const hiddenPlugins = ['listas', 'player', 'stat', 'statplugin'];
+                const visiblePlugins = (info.plugins_loaded || []).filter(p => !hiddenPlugins.includes(p.name.toLowerCase()));
+
+                // Sort: Aio first, then alphabetical
+                visiblePlugins.sort((a, b) => {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    if (nameA === 'aio') return -1;
+                    if (nameB === 'aio') return 1;
+                    return nameA.localeCompare(nameB);
+                });
+
+                if (visiblePlugins.length > 0) {
+                    pluginsList.innerHTML = visiblePlugins.map(p => {
+                        const copyButtonsHtml = p.handlers.map(handler => {
+                            const fullUrl = window.location.origin + '/' + handler;
+                            return `
+                                <button class="handler-copy-btn" onclick="copyTextToClipboard('${fullUrl}', this, '✓ Enlace copiado'); event.preventDefault();" title="Copiar enlace (${fullUrl})">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="plugin-card" data-plugin-name="${p.name}">
+                                <div class="plugin-header-line">
+                                    <div class="plugin-left">
+                                        ${(p.name.toLowerCase() !== 'stat' && p.name.toLowerCase() !== 'statplugin') ? `
+                                            <label class="switch" title="Activar/Desactivar Plugin">
+                                                <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePlugin('${p.name}', this.checked)">
+                                                <span class="slider round"></span>
+                                            </label>
+                                        ` : ''}
+                                        <span class="plugin-name">${p.name}</span>
+                                    </div>
+                                    <div class="plugin-card-header-right">
+                                        ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} canales</span>` : ''}
+                                        ${copyButtonsHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    pluginsList.innerHTML = '<div class="status-indicator warning"><span class="status-dot"></span><span>No hay listas cargadas</span></div>';
+                }
+
+                document.getElementById('config-panel').style.display = 'block';
+            }
+
+            // System info
+            const sys = data.sys_info;
+            const conn = data.connection_info;
+
+            // Clientes
+            document.getElementById('total-clients').textContent = conn.total_clients;
+            document.getElementById('max-clients').textContent = conn.max_clients;
+            document.getElementById('clients-count').textContent = conn.total_clients + ' cliente' + (conn.total_clients !== 1 ? 's' : '');
+            const clientsPct = conn.max_clients > 0 ? Math.min(100, Math.round((conn.total_clients / conn.max_clients) * 100)) : 0;
+            const clientsBadge = document.getElementById('clients-percent-badge');
+            if (clientsBadge) clientsBadge.textContent = clientsPct + '%';
+            const clientsBar = document.getElementById('clients-bar-fill');
+            if (clientsBar) clientsBar.style.width = clientsPct + '%';
+
+            // CPU
+            const cpuPercent = Math.round(sys.cpu_percent.reduce((a, b) => a + b, 0) / (sys.cpu_nums || 1));
+            document.getElementById('cpu-usage').textContent = cpuPercent + '%';
+            document.getElementById('cpu-cores').textContent = sys.cpu_nums;
+            const cpuBadge = document.getElementById('cpu-percent-badge');
+            if (cpuBadge) cpuBadge.textContent = cpuPercent + '%';
+
+            // RAM
+            document.getElementById('ram-used').textContent = bytes2human(sys.mem_info.used);
+            document.getElementById('ram-total').textContent = bytes2human(sys.mem_info.total);
+            const ramPct = sys.mem_info.total > 0 ? Math.min(100, Math.round((sys.mem_info.used / sys.mem_info.total) * 100)) : 0;
+            const ramBadge = document.getElementById('ram-percent-badge');
+            if (ramBadge) ramBadge.textContent = ramPct + '%';
+
+            // Disk
+            document.getElementById('disk-used').textContent = bytes2human(sys.disk_info.used);
+            document.getElementById('disk-total').textContent = bytes2human(sys.disk_info.total);
+            const diskPct = sys.disk_info.total > 0 ? Math.min(100, Math.round((sys.disk_info.used / sys.disk_info.total) * 100)) : 0;
+            const diskBadge = document.getElementById('disk-percent-badge');
+            if (diskBadge) diskBadge.textContent = diskPct + '%';
+            const diskBar = document.getElementById('disk-bar-fill');
+            if (diskBar) diskBar.style.width = diskPct + '%';
+
+            // Record history arrays & draw charts (btop style) for CPU and RAM
+            const maxHistory = 30;
+
+            metricsHistory.cpu.push(cpuPercent);
+            if (metricsHistory.cpu.length > maxHistory) metricsHistory.cpu.shift();
+
+            metricsHistory.ram.push(ramPct);
+            if (metricsHistory.ram.length > maxHistory) metricsHistory.ram.shift();
+
+            drawBtopChart('chart-cpu', metricsHistory.cpu, '#00E5FF', 'rgba(0, 229, 255, 0.25)');
+            drawBtopChart('chart-ram', metricsHistory.ram, '#FF9800', 'rgba(255, 152, 0, 0.25)');
+
+            // Clients table
+            renderClients(data.clients_data);
+        }
+
+        function renderClients(clients) {
+            const tbody = document.getElementById('clients-tbody');
+            const table = document.getElementById('clients-table');
+            const empty = document.getElementById('empty-state');
+
+            if (!clients || clients.length === 0) {
+                table.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+
+            table.style.display = 'table';
+            empty.style.display = 'none';
+
+            // Build rows
+            const existingRows = {};
+            tbody.querySelectorAll('tr').forEach(row => {
+                existingRows[row.id] = row;
+            });
+
+            const currentIds = new Set();
+
+            clients.forEach(client => {
+                const rowId = 'client-' + client.sessionID;
+                currentIds.add(rowId);
+
+                let row = existingRows[rowId];
+                const statusClass = getStatusClass(client.stat?.status);
+                const statusText = client.stat?.status || 'n/a';
+                const peers = client.stat?.peers ?? '-';
+                const speedDown = client.stat?.speed_down ?? '-';
+                const speedUp = client.stat?.speed_up ?? '-';
+
+                const clientLocation = client.clientInfo?.vendor ||
+                    (client.clientInfo?.country_name ?
+                        `${client.clientInfo.country_name}, ${client.clientInfo.city || 'Unknown'}` :
+                        'Local');
+
+                if (!row) {
+                    row = document.createElement('tr');
+                    row.id = rowId;
+                    row.innerHTML = `
+                        <td class="channel-cell">
+                            <img src="${client.channelIcon || '/stat/img/shesterenka.png'}" class="channel-icon" onerror="this.src='/stat/img/shesterenka.png'">
+                            <span class="channel-name">${escapeHtml(client.channelName || 'Unknown')}</span>
+                        </td>
+                        <td class="client-ip">${client.clientIP}</td>
+                        <td>${escapeHtml(clientLocation)}</td>
+                        <td>${client.startTime}</td>
+                        <td class="duration">${client.durationTime}</td>
+                        <td class="speed-cell">
+                            <span class="speed-down">${speedDown}</span>
+                            <svg class="speed-arrow" viewBox="0 0 24 24" fill="#4CAF50"><path d="M7 10l5 5 5-5z"/></svg>
+                            <svg class="speed-arrow" viewBox="0 0 24 24" fill="#2196F3"><path d="M7 14l5-5 5 5z"/></svg>
+                            <span class="speed-up">${speedUp}</span>
+                        </td>
+                        <td class="peers-cell">
+                            <span class="peers-count">${peers}</span>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                } else {
+                    // Update existing row
+                    row.querySelector('.duration').textContent = client.durationTime;
+                    row.querySelector('.speed-down').textContent = speedDown;
+                    row.querySelector('.speed-up').textContent = speedUp;
+                    row.querySelector('.peers-count').textContent = peers;
+                    const badge = row.querySelector('.status-badge');
+                    badge.className = 'status-badge ' + statusClass;
+                    badge.textContent = statusText;
+                }
+            });
+
+            // Remove disconnected clients
+            Object.keys(existingRows).forEach(id => {
+                if (!currentIds.has(id)) {
+                    existingRows[id].remove();
+                }
+            });
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                'dl': 'dl',
+                'buf': 'buf',
+                'prebuf': 'prebuf',
+                'wait': 'wait',
+                'check': 'check',
+                'idle': 'idle',
+                'loading': 'loading'
+            };
+            return classes[status] || 'idle';
+        }
+
+        function bytes2human(size) {
+            if (!size) return '0 B';
+            const i = size === 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+            return (size / Math.pow(1024, i)).toFixed(1) + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.className = 'toast-notification ' + (type === 'error' ? 'error' : 'success');
+            toast.textContent = message || '✓ Enlace copiado';
+            toast.classList.add('show');
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        function showAlert(msg, type = 'success') {
+            showToast(msg, type);
+        }
+
+        function copyTextToClipboard(text, button, customMsg) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
+                showToast(customMsg || '✓ Enlace copiado al portapapeles');
+                if (button) {
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                    }, 2000);
+                }
+            }
+        }
+
+        function copyToClipboard(text, button) {
+            copyTextToClipboard(text, button);
+        }
+
+        function togglePlugin(name, enabled) {
+            fetch(`/config?plugin=${name}&status=${enabled}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        getStatus();
+                    } else {
+                        alert('Failed to update plugin configuration');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error toggling plugin:', err);
+                    alert('Error updating plugin configuration');
+                });
+        }
+
+        // Start polling
+        getStatus();
+        statusInterval = setInterval(getStatus, 2000);
+
+        // Theme loading & setup
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-theme');
+                setLightIcon(themeIcon);
+            }
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('light-theme');
+                    if (document.body.classList.contains('light-theme')) {
+                        localStorage.setItem('theme', 'light');
+                        setLightIcon(themeIcon);
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                        setDarkIcon(themeIcon);
+                    }
+                });
+            }
+
+            // Hamburger menu toggle
+            const navbarToggle = document.getElementById('navbar-toggle');
+            const navLinks = document.getElementById('nav-links');
+            if (navbarToggle && navLinks) {
+                navbarToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('show');
+                });
+            }
+        });
+
+        function setLightIcon(themeIcon) {
+            themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
+        }
+
+        function setDarkIcon(themeIcon) {
+            themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
+        }
+    </script>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        <div class="footer-left">
+            <span class="label">IP DEL SERVIDOR:</span>
+            <span id="server-ip" class="val">-</span>
+        </div>
+        <div class="footer-center">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
+                <svg id="theme-icon" viewBox="0 0 24 24">
+                    <path
+                        d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
+                </svg>
+            </button>
+        </div>
+        <div class="footer-right">
+            <span class="label">VERSIÓN:</span>
+            <span class="val version-badge app-version">v07.23.02</span>
+        </div>
+    </div>
+</body>
+
+</html>

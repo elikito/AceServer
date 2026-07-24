@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HTTPAceProxy - Vista Legacy (iPad)</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <style>
+        /* Estilos ultra básicos, compatibles con WebKit antiguo (iOS 12.5.8) */
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: #121214;
+            color: #d1d1d6;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Navbar Plano Legacy */
+        .navbar {
+            background-color: #1a1a1e;
+            border-bottom: 1px solid #2d2d34;
+            padding: 10px 15px;
+            overflow: hidden;
+        }
+
+        .nav-brand {
+            float: left;
+            font-weight: bold;
+            font-size: 16px;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 5px 0;
+        }
+
+        .nav-links {
+            float: right;
+        }
+
+        .nav-links a {
+            color: #a8a8b2;
+            text-decoration: none;
+            font-size: 13px;
+            padding: 5px 10px;
+            display: inline-block;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #ffffff;
+            background-color: #29292e;
+            border-radius: 3px;
+        }
+
+        .container {
+            padding: 15px;
+        }
+
+        .header-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #2d2d34;
+            padding-bottom: 10px;
+        }
+
+        .header-section h2 {
+            font-size: 18px;
+            color: #ffffff;
+            margin: 0 0 5px 0;
+        }
+
+        .header-section p {
+            font-size: 12px;
+            color: #8e8e93;
+            margin: 0;
+        }
+
+        .source-select-legacy {
+            display: none;
+        }
+
+        /* Tabs de Fuentes Legacy */
+        .tabs-container-legacy {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            margin-bottom: 12px;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-btn-legacy {
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            color: #a8a8b2;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            outline: none;
+        }
+
+        .tab-btn-legacy:hover {
+            background-color: #2d2d34;
+            color: #ffffff;
+        }
+
+        .tab-btn-legacy.active {
+            background-color: #4cd964;
+            border-color: #4cd964;
+            color: #ffffff;
+        }
+
+        /* Controles de Paginación Legacy */
+        .pagination-container-legacy {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #a8a8b2;
+        }
+
+        .pagination-info-legacy {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-controls-legacy {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pagination-btn-legacy {
+            background-color: #2d2d34;
+            border: 1px solid #4a4a52;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .pagination-btn-legacy:hover:not(:disabled) {
+            background-color: #3f3f46;
+        }
+
+        .pagination-btn-legacy:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .items-per-page-legacy {
+            background-color: #2d2d34;
+            border: 1px solid #4a4a52;
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .search-container-legacy {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input-legacy {
+            width: 100%;
+            max-width: 320px;
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-input-legacy:focus {
+            border-color: #4cd964;
+        }
+
+        /* Lista Legacy de alto rendimiento */
+        .category-header {
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        .channel-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .channel-item {
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .channel-logo-container {
+            float: left;
+            width: 40px;
+            height: 40px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #2d2d34;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .channel-logo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .channel-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            padding-top: 8px;
+        }
+
+        .btn-play-legacy,
+        .btn-copy-legacy {
+            float: right;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 6px;
+            margin-top: 4px;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-play-legacy {
+            background-color: #4cd964;
+        }
+
+        .btn-play-legacy:hover {
+            background-color: #34c759;
+        }
+
+        .btn-copy-legacy {
+            background-color: #2d2d34;
+            border: 1px solid #4a4a52;
+            margin-right: 8px;
+        }
+
+        .btn-copy-legacy:hover {
+            background-color: #3f3f46;
+        }
+
+        .loading-screen {
+            text-align: center;
+            padding: 30px;
+            font-size: 13px;
+            color: #8e8e93;
+        }
+
+        .footer-bar {
+            background-color: #1a1a1e;
+            border-top: 1px solid #2d2d34;
+            padding: 8px 15px;
+            font-size: 11px;
+            color: #8e8e93;
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar Legacy -->
+    <div class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <div class="nav-links">
+            <a href="/stat">Dashboard</a>
+            <a href="/statplugin/">Canales</a>
+            <a href="/listas/">Fuentes</a>
+            <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html" class="active">Reproductor Legacy</a>
+        </div>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <div class="header-section">
+            <h2>Reproductor IPTV (Ligero)</h2>
+            <p id="loading-status">Cargando canales para WebKit ES5...</p>
+        </div>
+
+        <!-- Pestañas Horizontales de Fuentes -->
+        <div id="tabs-container-legacy" class="tabs-container-legacy"></div>
+
+        <!-- Buscador Legacy -->
+        <div class="search-container-legacy">
+            <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..."
+                onkeyup="filterChannelsLegacy()">
+        </div>
+
+        <!-- Controles de Paginación -->
+        <div id="pagination-container-legacy" class="pagination-container-legacy">
+            <div class="pagination-info-legacy">
+                <span>Mostrar:</span>
+                <select id="items-per-page-legacy" class="items-per-page-legacy"
+                    onchange="changeItemsPerPageLegacy(this.value)">
+                    <option value="10">10 por pág.</option>
+                    <option value="20" selected>20 por pág.</option>
+                    <option value="50">50 por pág.</option>
+                    <option value="100">100 por pág.</option>
+                </select>
+                <span id="pagination-status-legacy">Cargando paginación...</span>
+            </div>
+            <div class="pagination-controls-legacy">
+                <button id="btn-prev-legacy" class="pagination-btn-legacy" onclick="prevPageLegacy()" disabled>&laquo;
+                    Anterior</button>
+                <span id="page-indicator-legacy">Pág. 1/1</span>
+                <button id="btn-next-legacy" class="pagination-btn-legacy" onclick="nextPageLegacy()" disabled>Siguiente
+                    &raquo;</button>
+            </div>
+        </div>
+
+        <div id="loading-indicator" class="loading-screen">
+            Descargando lista de canales...
+        </div>
+
+        <div id="channels-container"></div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        SERVER IP: <span id="server-ip">-</span> | VERSION: <span class="app-version">v07.23.02</span> (Legacy)
+    </div>
+
+    <script>
+        // JS ES5 Estricto: SIN funciones flecha, SIN template literals, SIN let/const si se prefiere compatibilidad total
+        // Se usa exclusivamente var y XMLHttpRequest clásica
+
+        var allChannelsLegacy = [];
+        var filteredChannelsLegacy = [];
+        var currentSourceLegacy = '/aio';
+        var currentPageLegacy = 1;
+        var itemsPerPageLegacy = 20;
+        var activeSourcesListLegacy = [];
+
+        window.onload = function () {
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.className = 'light-theme';
+            }
+            document.getElementById('server-ip').innerHTML = window.location.hostname || '127.0.0.1';
+            initSourcesLegacy();
+        };
+
+        function initSourcesLegacy() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/config?action=get_config', true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    var sources = [];
+                    if (xhr.status === 200) {
+                        try {
+                            var config = JSON.parse(xhr.responseText);
+                            if (config && config.version) {
+                                var elems = document.querySelectorAll('.app-version');
+                                for (var k = 0; k < elems.length; k++) {
+                                    elems[k].textContent = config.version;
+                                }
+                            }
+                            var knownPlugins = [
+                                { key: 'aio', label: 'AIO', url: '/aio' },
+                                { key: 'newera', label: 'Newera', url: '/newera' },
+                                { key: 'elcano', label: 'Elcano', url: '/elcano' },
+                                { key: 'af1c1onados', label: 'Af1c1onados', url: '/af1c1onados' },
+                                { key: 'acepl', label: 'Acepl', url: '/acepl' }
+                            ];
+
+                            for (var i = 0; i < knownPlugins.length; i++) {
+                                var p = knownPlugins[i];
+                                if (p.key === 'aio') {
+                                    if (config.aio !== false) sources.push(p);
+                                } else if (config[p.key] === true) {
+                                    sources.push(p);
+                                }
+                            }
+
+                            if (config.custom_lists && config.custom_lists.length) {
+                                for (var j = 0; j < config.custom_lists.length; j++) {
+                                    var item = config.custom_lists[j];
+                                    if (item.enabled !== false && item.url) {
+                                        sources.push({
+                                            key: 'custom_' + item.name,
+                                            label: item.name,
+                                            url: item.url
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (e) { }
+                    }
+
+                    if (sources.length === 0) {
+                        sources.push({ key: 'aio', label: 'AIO', url: '/aio' });
+                    }
+
+                    activeSourcesListLegacy = sources;
+                    renderTabsLegacy();
+                    switchTabLegacy(sources[0].url);
+                }
+            };
+            xhr.send();
+        }
+
+        function renderTabsLegacy() {
+            var tabsContainer = document.getElementById('tabs-container-legacy');
+            if (!tabsContainer) return;
+            tabsContainer.innerHTML = '';
+
+            for (var k = 0; k < activeSourcesListLegacy.length; k++) {
+                var src = activeSourcesListLegacy[k];
+                var btn = document.createElement('button');
+                btn.className = 'tab-btn-legacy' + (src.url === currentSourceLegacy ? ' active' : '');
+                btn.setAttribute('data-url', src.url);
+                btn.innerHTML = src.label;
+                btn.onclick = (function (targetUrl) {
+                    return function () {
+                        switchTabLegacy(targetUrl);
+                    };
+                })(src.url);
+                tabsContainer.appendChild(btn);
+            }
+        }
+
+        function switchTabLegacy(url) {
+            if (!url) return;
+            currentSourceLegacy = url;
+            currentPageLegacy = 1;
+
+            var searchEl = document.getElementById('search-legacy');
+            if (searchEl) searchEl.value = '';
+
+            renderTabsLegacy();
+
+            document.getElementById('loading-indicator').style.display = 'block';
+            document.getElementById('loading-status').innerHTML = 'Cargando canales de la fuente seleccionada...';
+            loadLegacyData(url);
+        }
+
+        function loadLegacyData(sourceUrl) {
+            currentSourceLegacy = sourceUrl || '/aio';
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', currentSourceLegacy, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        var m3uText = xhr.responseText;
+                        allChannelsLegacy = parseM3ULegacy(m3uText);
+                        filteredChannelsLegacy = allChannelsLegacy;
+                        currentPageLegacy = 1;
+                        document.getElementById('loading-status').innerHTML = allChannelsLegacy.length + ' canales cargados.';
+                        renderCurrentPageLegacy();
+                    } else {
+                        document.getElementById('loading-status').innerHTML = 'Error al cargar canales (HTTP ' + xhr.status + ')';
+                        document.getElementById('loading-indicator').style.display = 'none';
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function parseM3ULegacy(text) {
+            var lines = text.split('\n');
+            var channels = [];
+            var currentItem = null;
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (line.indexOf('#EXTINF:') === 0) {
+                    currentItem = { logo: '', group: 'Otros', name: 'Canal', url: '' };
+
+                    // Parse logo
+                    var logoMatch = line.match(/tvg-logo="([^"]*)"/);
+                    if (logoMatch) {
+                        currentItem.logo = logoMatch[1];
+                    }
+
+                    // Parse group
+                    var groupMatch = line.match(/group-title="([^"]*)"/);
+                    if (groupMatch) {
+                        currentItem.group = groupMatch[1];
+                    }
+
+                    // Parse name
+                    var commaIdx = line.lastIndexOf(',');
+                    if (commaIdx !== -1) {
+                        currentItem.name = line.substring(commaIdx + 1).trim();
+                    }
+                } else if (line.indexOf('#') !== 0 && line.length > 0 && currentItem) {
+                    var streamUrl = line;
+                    if (line.indexOf('acestream://') === 0) {
+                        var pid = line.substring(12).trim();
+                        streamUrl = 'http://' + window.location.host + '/content_id/' + pid + '/stream.ts';
+                    } else if (line.indexOf('infohash://') === 0) {
+                        var hash = line.substring(11).trim();
+                        streamUrl = 'http://' + window.location.host + '/infohash/' + hash + '/stream.ts';
+                    } else if (line.indexOf('http://') === 0 || line.indexOf('https://') === 0) {
+                        try {
+                            var slashIdx = line.indexOf('//');
+                            if (slashIdx !== -1) {
+                                var rest = line.substring(slashIdx + 2);
+                                var nextSlash = rest.indexOf('/');
+                                if (nextSlash !== -1) {
+                                    streamUrl = 'http://' + window.location.host + rest.substring(nextSlash);
+                                }
+                            }
+                        } catch (e) { }
+                    }
+                    currentItem.url = streamUrl;
+                    channels.push(currentItem);
+                    currentItem = null;
+                }
+            }
+            return channels;
+        }
+
+        function filterChannelsLegacy() {
+            var query = document.getElementById('search-legacy').value.toLowerCase().trim();
+            var filtered = [];
+            for (var i = 0; i < allChannelsLegacy.length; i++) {
+                var chan = allChannelsLegacy[i];
+                if (!query || chan.name.toLowerCase().indexOf(query) !== -1 || chan.group.toLowerCase().indexOf(query) !== -1) {
+                    filtered.push(chan);
+                }
+            }
+            filteredChannelsLegacy = filtered;
+            currentPageLegacy = 1;
+            renderCurrentPageLegacy();
+        }
+
+        function changeItemsPerPageLegacy(val) {
+            itemsPerPageLegacy = parseInt(val, 10) || 20;
+            currentPageLegacy = 1;
+            renderCurrentPageLegacy();
+        }
+
+        function prevPageLegacy() {
+            if (currentPageLegacy > 1) {
+                currentPageLegacy--;
+                renderCurrentPageLegacy();
+            }
+        }
+
+        function nextPageLegacy() {
+            var totalPages = Math.ceil(filteredChannelsLegacy.length / itemsPerPageLegacy) || 1;
+            if (currentPageLegacy < totalPages) {
+                currentPageLegacy++;
+                renderCurrentPageLegacy();
+            }
+        }
+
+        function renderCurrentPageLegacy() {
+            var totalItems = filteredChannelsLegacy.length;
+            var totalPages = Math.ceil(totalItems / itemsPerPageLegacy) || 1;
+
+            if (currentPageLegacy < 1) currentPageLegacy = 1;
+            if (currentPageLegacy > totalPages) currentPageLegacy = totalPages;
+
+            var startIndex = (currentPageLegacy - 1) * itemsPerPageLegacy;
+            var endIndex = Math.min(startIndex + itemsPerPageLegacy, totalItems);
+
+            var pageSlice = filteredChannelsLegacy.slice(startIndex, endIndex);
+
+            var statusEl = document.getElementById('pagination-status-legacy');
+            var indicatorEl = document.getElementById('page-indicator-legacy');
+            var btnPrev = document.getElementById('btn-prev-legacy');
+            var btnNext = document.getElementById('btn-next-legacy');
+
+            if (statusEl) {
+                if (totalItems === 0) {
+                    statusEl.innerHTML = 'Sin canales disponibles';
+                } else {
+                    statusEl.innerHTML = 'Mostrando ' + (startIndex + 1) + '-' + endIndex + ' de ' + totalItems + ' canales';
+                }
+            }
+
+            if (indicatorEl) {
+                indicatorEl.innerHTML = 'Pág. ' + currentPageLegacy + '/' + totalPages;
+            }
+
+            if (btnPrev) btnPrev.disabled = (currentPageLegacy <= 1);
+            if (btnNext) btnNext.disabled = (currentPageLegacy >= totalPages);
+
+            renderChannelsLegacy(pageSlice);
+        }
+
+        function getExactStreamUrlLegacy(originalUrl) {
+            if (!originalUrl) return '';
+            if (originalUrl.indexOf('acestream://') === 0) {
+                var pid = originalUrl.substring(12).trim();
+                return 'http://' + window.location.host + '/content_id/' + pid + '/stream.ts';
+            }
+            if (originalUrl.indexOf('infohash://') === 0) {
+                var hash = originalUrl.substring(11).trim();
+                return 'http://' + window.location.host + '/infohash/' + hash + '/stream.ts';
+            }
+            var streamUrl = originalUrl;
+            try {
+                var slashIdx = streamUrl.indexOf('//');
+                if (slashIdx !== -1) {
+                    var rest = streamUrl.substring(slashIdx + 2);
+                    var nextSlash = rest.indexOf('/');
+                    if (nextSlash !== -1) {
+                        streamUrl = 'http://' + window.location.host + rest.substring(nextSlash);
+                    }
+                }
+            } catch (e) { }
+            return streamUrl;
+        }
+
+        function getVlcUrl(originalUrl) {
+            var directUrl = getExactStreamUrlLegacy(originalUrl);
+            if (directUrl.indexOf('http://') === 0) {
+                return 'vlc://' + directUrl;
+            } else if (directUrl.indexOf('https://') === 0) {
+                return 'vlc://' + directUrl.substring(8);
+            }
+            return directUrl;
+        }
+
+        function copyUrlLegacy(url, btn) {
+            var textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '0';
+            textarea.style.width = '1px';
+            textarea.style.height = '1px';
+            textarea.style.padding = '0';
+            textarea.style.border = 'none';
+            textarea.style.outline = 'none';
+            textarea.style.boxShadow = 'none';
+            textarea.style.background = 'transparent';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                var successful = document.execCommand('copy');
+                if (successful && btn) {
+                    var originalSvg = btn.innerHTML;
+                    btn.classList.add('copied');
+                    btn.innerHTML = '✓';
+                    setTimeout(function () {
+                        btn.classList.remove('copied');
+                        btn.innerHTML = originalSvg;
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('Legacy copy failed', err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function renderChannelsLegacy(channels) {
+            var container = document.getElementById('channels-container');
+            document.getElementById('loading-indicator').style.display = 'none';
+            container.innerHTML = '';
+
+            if (channels.length === 0) {
+                container.innerHTML = '<div class="loading-screen">No se encontraron canales.</div>';
+                return;
+            }
+
+            // Agrupar por categorías
+            var grouped = {};
+            var groups = [];
+            for (var i = 0; i < channels.length; i++) {
+                var chan = channels[i];
+                if (!grouped[chan.group]) {
+                    grouped[chan.group] = [];
+                    groups.push(chan.group);
+                }
+                grouped[chan.group].push(chan);
+            }
+
+            // Ordenar grupos alfabéticamente
+            groups.sort();
+
+            for (var g = 0; g < groups.length; g++) {
+                var groupName = groups[g];
+                var groupChannels = grouped[groupName];
+
+                // Crear cabecera de categoría
+                var catHeader = document.createElement('div');
+                catHeader.className = 'category-header';
+                catHeader.innerHTML = groupName + ' (' + groupChannels.length + ')';
+                container.appendChild(catHeader);
+
+                // Crear lista de canales
+                var list = document.createElement('ul');
+                list.className = 'channel-list';
+
+                for (var c = 0; c < groupChannels.length; c++) {
+                    var channel = groupChannels[c];
+                    var item = document.createElement('li');
+                    item.className = 'channel-item';
+
+                    var fallbackSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="sans-serif" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>';
+                    var fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
+                    var logoUrl = channel.logo || fallbackLogo;
+                    var copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+
+                    item.innerHTML =
+                        '<a href="' + getVlcUrl(channel.url) + '" class="btn-play-legacy" target="_blank" title="Abrir en VLC">&#9654;</a>' +
+                        '<button class="btn-copy-legacy" onclick="copyUrlLegacy(\'' + getExactStreamUrlLegacy(channel.url) + '\', this)" title="Copiar enlace del canal">' + copyIcon + '</button>' +
+                        '<div class="channel-logo-container">' +
+                        '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
+                        '</div>' +
+                        '<div class="channel-name">' + channel.name + '</div>';
+
+                    list.appendChild(item);
+                }
+                container.appendChild(list);
+            }
+        }
+    </script>
+</body>
+
+</html>

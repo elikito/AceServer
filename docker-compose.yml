@@ -1,0 +1,63 @@
+services:
+  # MOTOR MODERN: Para hardware moderno (N150, Asus) con soporte AVX/SSE4.2
+  aceserve-modern:
+    image: jopsis/aceserve:latest
+    container_name: aceserve-modern
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    ports:
+      - "6878:6878"
+      - "62062:62062"
+      - "8621:8621"
+    networks:
+      - aceproxy-net
+
+  # MOTOR COMPAT LIGHT: Para hardware antiguo (Core 2 Duo sin AVX - Imagen Ligera Wafy80)
+  aceserve-compat-light:
+    image: wafy80/acestream:latest
+    container_name: aceserve-compat-light
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    networks:
+      - aceproxy-net
+
+  # MOTOR COMPAT STABLE: Para hardware antiguo (Core 2 Duo sin AVX - Imagen Estable Blaiseio)
+  aceserve-compat-stable:
+    image: blaiseio/acelink:latest
+    container_name: aceserve-compat-stable
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    networks:
+      - aceproxy-net
+
+  httpaceproxy:
+    build:
+      context: .
+      dockerfile: httpaceproxycpp/Dockerfile
+    container_name: httpaceproxy
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      # Mapeo clave para desarrollo en tiempo real
+      - /opt/HTTPAceProxy/httpaceproxycpp/http:/app/http
+      # Socket de Docker para la gestión en caliente on-demand de los motores
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # --- SELECTOR DE MOTOR EN CALIENTE ---
+      - ACESTREAM_HOST=aceserve-modern
+      - ACESTREAM_API_PORT=62062
+      - ACESTREAM_HTTP_PORT=6878
+      - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
+    networks:
+      - aceproxy-net
+
+networks:
+  aceproxy-net:
+    driver: bridge

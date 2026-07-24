@@ -1,0 +1,58 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+.github
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Deprecated Python implementation is not needed for the C++ image.
+httpaceproxypy/**
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation (keep README.md for Docker Hub)
+# README.md
+LICENSE
+*.md
+!README.md
+
+# Temporary files
+*.tmp
+*.bak
+*.old
+
+# Disabled plugins (already renamed)
+plugins/*.disabled
+plugins/*_plugin.py.disabled
+httpaceproxypy/plugins/*.disabled
+httpaceproxypy/plugins/*_plugin.py.disabled
