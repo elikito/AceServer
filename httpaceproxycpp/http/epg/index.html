@@ -693,7 +693,7 @@
         </div>
         <div class="footer-right">
             <span class="label">VERSIÓN:</span>
-            <span class="val version-badge app-version">v07.24.03</span>
+            <span class="val version-badge app-version">-</span>
         </div>
     </div>
 
@@ -741,6 +741,10 @@
             try {
                 const cfgRes = await fetch('/config?action=get_config');
                 const cfg = await cfgRes.json();
+
+                if (cfg && cfg.version) {
+                    document.querySelectorAll('.app-version').forEach(el => el.textContent = cfg.version);
+                }
 
                 let sources = (cfg && cfg.epg_sources) ? cfg.epg_sources.filter(s => s.enabled) : [];
                 if (sources.length === 0) {

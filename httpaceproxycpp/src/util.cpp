@@ -181,7 +181,7 @@ std::string mime_type_for_path(std::string_view path) {
     if (ext == "png") return "image/png";
     if (ext == "jpg" || ext == "jpeg") return "image/jpeg";
     if (ext == "svg") return "image/svg+xml";
-    if (ext == "ts" || ext == "mpegts") return "video/MP2T";
+    if (ext == "ts" || ext == "mpegts") return "video/mp2t";
     if (ext == "mp4") return "video/mp4";
     if (ext == "mkv") return "video/x-matroska";
     if (ext == "avi") return "video/x-msvideo";

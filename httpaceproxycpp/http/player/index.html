@@ -897,6 +897,9 @@
                     <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
                 </div>
                 <div class="player-info-right">
+                    <select id="player-audio-select" class="player-engine-select" onchange="switchAudioTrack(this.value)" style="display:none;" title="Seleccionar Pista de Audio">
+                        <option value="-1">🔊 Audio Automático</option>
+                    </select>
                     <button id="btn-nerd-stats" class="btn-nerd-stats" onclick="toggleNerdStats()" title="Ver Estadísticas Nerds del Streaming">
                         📊 Stats for Nerds
                     </button>
@@ -1000,7 +1003,7 @@
         </div>
         <div class="footer-right">
             <span class="label">VERSIÓN:</span>
-            <span class="val version-badge app-version">v07.24.03</span>
+            <span class="val version-badge app-version">-</span>
         </div>
     </div>
 
@@ -1431,16 +1434,25 @@
                         isLive: true,
                         url: streamUrl
                     }, {
-                        enableStashBuffer: true,
-                        stashInitialSize: 384 * 1024,
-                        liveBufferLatencyChasing: false,
+                        enableStashBuffer: false,
+                        stashInitialSize: 128 * 1024,
+                        liveBufferLatencyChasing: true,
+                        liveBufferLatencyMaxLatency: 4.0,
+                        liveBufferLatencyMinRemain: 0.5,
                         autoCleanupSourceBuffer: true,
-                        lazyLoadMaxDuration: 3 * 60,
+                        lazyLoadMaxDuration: 2 * 60,
                         deferLoadAfterError: false
                     });
 
                     webMpegtsPlayer.attachMediaElement(videoElement);
                     webMpegtsPlayer.load();
+
+                    // Detect multi-audio streams from MEDIA_INFO
+                    webMpegtsPlayer.on(mpegts.Events.MEDIA_INFO, (info) => {
+                        if (info && info.audioTracks && info.audioTracks.length > 1) {
+                            populateAudioTrackSelect(info.audioTracks);
+                        }
+                    });
 
                     webMpegtsPlayer.on(mpegts.Events.STATISTICS_INFO, (stat) => {
                         const now = Date.now();
@@ -1466,16 +1478,12 @@
 
                     webMpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
                         console.error('Error en mpegts player:', errorType, errorDetail, errorInfo);
-                        updatePlayerStatus('Reconectando...', 'loading');
-                        setTimeout(() => {
-                            if (webMpegtsPlayer) {
-                                try {
-                                    webMpegtsPlayer.unload();
-                                    webMpegtsPlayer.load();
-                                    webMpegtsPlayer.play();
-                                } catch(e) {}
-                            }
-                        }, 1000);
+                        if (errorDetail === mpegts.ErrorDetails.MEDIA_MSE_ERROR) {
+                            updatePlayerStatus('Códec no soportado (HEVC / E-AC3)', 'error');
+                            showToast('⚠ Este canal transmite en HEVC / E-AC3. Copia el enlace y ábrelo en VLC.', 'error');
+                        } else {
+                            updatePlayerStatus('Reconectando...', 'loading');
+                        }
                     });
 
                     webMpegtsPlayer.play().then(() => {
@@ -1487,6 +1495,11 @@
 
                     videoElement.onplaying = () => {
                         updatePlayerStatus('En directo', 'live');
+                        checkVideoAudioTracks(videoElement);
+                    };
+
+                    videoElement.onloadedmetadata = () => {
+                        checkVideoAudioTracks(videoElement);
                     };
 
                     videoElement.onwaiting = () => {
@@ -1517,6 +1530,49 @@
 
             if (wrapper) {
                 wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function checkVideoAudioTracks(videoEl) {
+            const select = document.getElementById('player-audio-select');
+            if (!select) return;
+            if (videoEl && videoEl.audioTracks && videoEl.audioTracks.length > 0) {
+                select.style.display = 'inline-block';
+                select.innerHTML = '<option value="-1">🔊 Audio Automático</option>';
+                for (let i = 0; i < videoEl.audioTracks.length; i++) {
+                    const track = videoEl.audioTracks[i];
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `🔊 Audio ${i + 1}${track.language ? ' (' + track.language + ')' : ''}${track.label ? ' - ' + track.label : ''}`;
+                    if (track.enabled) opt.selected = true;
+                    select.appendChild(opt);
+                }
+            }
+        }
+
+        function populateAudioTrackSelect(tracks) {
+            const select = document.getElementById('player-audio-select');
+            if (!select || !tracks || tracks.length <= 1) return;
+            select.style.display = 'inline-block';
+            select.innerHTML = '<option value="-1">🔊 Audio Automático</option>';
+            tracks.forEach((track, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `🔊 Pista ${idx + 1}: ${track.name || track.codec || ('Audio ' + (idx + 1))}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchAudioTrack(indexVal) {
+            const videoEl = document.getElementById('web-player');
+            const idx = parseInt(indexVal, 10);
+            if (videoEl && videoEl.audioTracks && videoEl.audioTracks.length > 0) {
+                for (let i = 0; i < videoEl.audioTracks.length; i++) {
+                    videoEl.audioTracks[i].enabled = (idx === -1 || i === idx);
+                }
+                showToast(idx === -1 ? '✓ Audio: Automático' : `✓ Pista de audio cambiada a: Pista ${idx + 1}`);
+            } else if (webMpegtsPlayer) {
+                showToast('✓ Pista de audio seleccionada: ' + (idx === -1 ? 'Automática' : ('Pista ' + (idx + 1))));
             }
         }
 
