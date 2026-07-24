@@ -363,7 +363,7 @@
 
     <!-- Footer Bar -->
     <div class="footer-bar">
-        SERVER IP: <span id="server-ip">-</span> | VERSION: <span class="app-version">v07.23.02</span> (Legacy)
+        SERVER IP: <span id="server-ip">-</span> | VERSION: <span class="app-version">v07.24.01</span> (Legacy)
     </div>
 
     <script>
@@ -408,12 +408,27 @@
                                 { key: 'acepl', label: 'Acepl', url: '/acepl' }
                             ];
 
+                            var processedKeys = { aio: true, custom_lists: true, urls: true, version: true };
+                            for (var kp = 0; kp < knownPlugins.length; kp++) {
+                                processedKeys[knownPlugins[kp].key] = true;
+                            }
+
                             for (var i = 0; i < knownPlugins.length; i++) {
                                 var p = knownPlugins[i];
                                 if (p.key === 'aio') {
                                     if (config.aio !== false) sources.push(p);
                                 } else if (config[p.key] === true) {
                                     sources.push(p);
+                                }
+                            }
+
+                            for (var key in config) {
+                                if (config.hasOwnProperty(key) && !processedKeys[key] && config[key] === true) {
+                                    sources.push({
+                                        key: key,
+                                        label: key.charAt(0).toUpperCase() + key.slice(1),
+                                        url: '/' + key
+                                    });
                                 }
                             }
 

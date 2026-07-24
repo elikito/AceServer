@@ -51,7 +51,10 @@ bool Config::plugin_enabled(const std::string& name) const {
 bool Config::aio_includes(const std::string& name) const {
     auto enabled = lower(trim(aio_plugins));
     if (enabled.empty() || enabled == "all") return true;
-    return csv_set(enabled).contains(lower(name));
+    auto set = csv_set(enabled);
+    if (set.contains(lower(name))) return true;
+    if (starts_with(lower(name), "custom_")) return true;
+    return false;
 }
 
 Config load_config(int argc, char** argv) {

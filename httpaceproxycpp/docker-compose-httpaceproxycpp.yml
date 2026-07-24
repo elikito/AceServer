@@ -19,7 +19,7 @@ services:
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-10}
       - MAX_CONCURRENT_CHANNELS=${MAX_CONCURRENT_CHANNELS:-5}
       - ENABLED_PLUGINS=${ENABLED_PLUGINS:-newera,elcano,acepl,af1c1onados,aio,stat,statplugin}
-      - AIO_PLUGINS=${AIO_PLUGINS:-newera,elcano,acepl,af1c1onados}
+      - AIO_PLUGINS=${AIO_PLUGINS:-all}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8888/stat"]

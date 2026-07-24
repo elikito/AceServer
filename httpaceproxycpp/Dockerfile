@@ -49,7 +49,7 @@ ENV ACESTREAM_HTTP_PORT=6878
 ENV MAX_CONNECTIONS=10
 ENV MAX_CONCURRENT_CHANNELS=5
 ENV ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
-ENV AIO_PLUGINS=newera,elcano,acepl,af1c1onados
+ENV AIO_PLUGINS=all
 
 EXPOSE 8888
 

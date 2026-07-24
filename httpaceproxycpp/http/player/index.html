@@ -957,7 +957,7 @@
         </div>
         <div class="footer-right">
             <span class="label">VERSIÓN:</span>
-            <span class="val version-badge app-version">v07.23.02</span>
+            <span class="val version-badge app-version">v07.24.01</span>
         </div>
     </div>
 
@@ -1025,11 +1025,24 @@
                     { key: 'acepl', label: 'Acepl', url: '/acepl' }
                 ];
 
+                const processedKeys = new Set(['aio', 'custom_lists', 'urls', 'version']);
+                knownPlugins.forEach(p => processedKeys.add(p.key));
+
                 knownPlugins.forEach(p => {
                     if (p.key === 'aio') {
                         if (config.aio !== false) sources.push(p);
                     } else if (config[p.key] === true) {
                         sources.push(p);
+                    }
+                });
+
+                Object.keys(config).forEach(k => {
+                    if (!processedKeys.has(k) && config[k] === true) {
+                        sources.push({
+                            key: k,
+                            label: k.charAt(0).toUpperCase() + k.slice(1),
+                            url: '/' + k
+                        });
                     }
                 });
 
