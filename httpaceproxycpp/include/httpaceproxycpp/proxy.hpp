@@ -33,6 +33,7 @@ public:
     Json plugins_json();
     Json check_channel_light(const std::string& plugin, const std::string& channel, const std::string& content_id);
     Json check_channel_peers(const std::string& content_id, int max_wait, const std::string& engine_name = "");
+    Json check_epg_url(const std::string& url);
 
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);

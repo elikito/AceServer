@@ -717,6 +717,135 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             }
             return;
         }
+        else if (action == "check_epg") {
+            auto url = query_get(ctx.query, "url");
+            auto res = check_epg_url(url_decode(url));
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(res.dump(2));
+            return;
+        }
+        else if (action == "save_epg_source") {
+            auto name = query_get(ctx.query, "name");
+            auto url = query_get(ctx.query, "url");
+            auto title = query_get(ctx.query, "title");
+            auto enabled_str = query_get(ctx.query, "enabled");
+            if (!name.empty() && !url.empty()) {
+                bool enabled = (enabled_str != "false");
+                if (title.empty()) title = name;
+                {
+                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    Json::object obj;
+                    if (plugins_state_json_.is_object()) {
+                        obj = plugins_state_json_.as_object();
+                    }
+                    Json::array arr;
+                    if (obj.contains("epg_sources") && obj["epg_sources"].is_array()) {
+                        arr = obj["epg_sources"].as_array();
+                    }
+                    bool found = false;
+                    for (auto& item : arr) {
+                        if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                            Json::object item_obj = item.as_object();
+                            item_obj["url"] = url_decode(url);
+                            item_obj["title"] = url_decode(title);
+                            item_obj["enabled"] = enabled;
+                            item = item_obj;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        arr.push_back(Json::object{
+                            {"name", name},
+                            {"title", url_decode(title)},
+                            {"url", url_decode(url)},
+                            {"enabled", enabled}
+                        });
+                    }
+                    obj["epg_sources"] = arr;
+
+                    if (name == "epg_default" || arr.size() == 1) {
+                        Json::object urls_obj;
+                        if (obj.contains("urls") && obj["urls"].is_object()) {
+                            urls_obj = obj["urls"].as_object();
+                        }
+                        urls_obj["epg"] = url_decode(url);
+                        obj["urls"] = urls_obj;
+                    }
+
+                    plugins_state_json_ = obj;
+                }
+                save_plugins_state();
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing name or url parameter");
+            }
+            return;
+        }
+        else if (action == "delete_epg_source") {
+            auto name = query_get(ctx.query, "name");
+            if (!name.empty()) {
+                {
+                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    Json::object obj;
+                    if (plugins_state_json_.is_object()) {
+                        obj = plugins_state_json_.as_object();
+                    }
+                    if (obj.contains("epg_sources") && obj["epg_sources"].is_array()) {
+                        Json::array arr = obj["epg_sources"].as_array();
+                        Json::array new_arr;
+                        for (const auto& item : arr) {
+                            if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                                continue;
+                            }
+                            new_arr.push_back(item);
+                        }
+                        obj["epg_sources"] = new_arr;
+                        plugins_state_json_ = obj;
+                    }
+                }
+                save_plugins_state();
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing name parameter");
+            }
+            return;
+        }
+        else if (action == "toggle_epg_source") {
+            auto name = query_get(ctx.query, "name");
+            auto status_str = query_get(ctx.query, "status");
+            if (!name.empty() && !status_str.empty()) {
+                bool status = (status_str == "true");
+                {
+                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    Json::object obj;
+                    if (plugins_state_json_.is_object()) {
+                        obj = plugins_state_json_.as_object();
+                    }
+                    if (obj.contains("epg_sources") && obj["epg_sources"].is_array()) {
+                        Json::array arr = obj["epg_sources"].as_array();
+                        for (auto& item : arr) {
+                            if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
+                                Json::object item_obj = item.as_object();
+                                item_obj["enabled"] = status;
+                                item = item_obj;
+                                break;
+                            }
+                        }
+                        obj["epg_sources"] = arr;
+                        plugins_state_json_ = obj;
+                    }
+                }
+                save_plugins_state();
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\"}");
+            } else {
+                send_error(connection, 400, "Missing name or status parameter");
+            }
+            return;
+        }
         else {
             auto plugin = query_get(ctx.query, "plugin");
             auto status_str = query_get(ctx.query, "status");
@@ -746,6 +875,22 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             handle_core_stream(ctx);
             return;
         }
+
+        // Fallback for static subdirectories under http/
+        if (!ctx.reqtype.empty()) {
+            auto target_path = std::filesystem::path(config_.root_dir) / "http" / ctx.reqtype;
+            if (std::filesystem::exists(target_path)) {
+                std::string rel_file = "index.html";
+                if (ctx.parts.size() > 2) {
+                    std::vector<std::string> sub_parts(ctx.parts.begin() + 2, ctx.parts.end());
+                    rel_file = join(sub_parts, "/");
+                }
+                if (rel_file.empty()) rel_file = "index.html";
+                handle_static(request, connection, ctx.reqtype + "/" + rel_file);
+                return;
+            }
+        }
+
         send_error(connection, 400, "Bad Request");
         return;
     }
@@ -1358,6 +1503,40 @@ void Proxy::save_plugins_state() {
         file << plugins_state_json_.dump(2);
     } else {
         log_line("ERROR", "Failed to write plugins_state.json");
+    }
+}
+
+Json Proxy::check_epg_url(const std::string& target_url) {
+    auto url = target_url;
+    if (url.empty()) {
+        url = get_plugin_url("epg", "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz");
+    }
+    try {
+        auto response = http_client_.get(url, {{"User-Agent", "Mozilla/5.0"}}, 10, true);
+        if (response.status >= 200 && response.status < 400) {
+            std::string content_type = "unknown";
+            auto it = response.headers.find("content-type");
+            if (it != response.headers.end()) content_type = it->second;
+
+            return Json::object{
+                {"status", "success"},
+                {"http_status", static_cast<double>(response.status)},
+                {"size_bytes", static_cast<double>(response.body.size())},
+                {"url", response.url.empty() ? url : response.url},
+                {"content_type", content_type}
+            };
+        } else {
+            return Json::object{
+                {"status", "error"},
+                {"http_status", static_cast<double>(response.status)},
+                {"error", "HTTP " + std::to_string(response.status)}
+            };
+        }
+    } catch (const std::exception& e) {
+        return Json::object{
+            {"status", "error"},
+            {"error", e.what()}
+        };
     }
 }
 

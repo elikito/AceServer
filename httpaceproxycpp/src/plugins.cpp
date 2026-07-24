@@ -767,6 +767,37 @@ private:
     Config config_;
 };
 
+class EpgPlugin : public Plugin {
+public:
+    EpgPlugin(Config cfg) : config_(std::move(cfg)) {}
+    std::string name() const override { return "epg"; }
+    std::vector<std::string> handlers() const override { return {"epg"}; }
+    
+    bool handle(RequestContext& ctx) override {
+        std::string relative = "index.html";
+        if (ctx.path != "/epg") {
+            if (starts_with(ctx.path, "/epg/")) {
+                relative = ctx.path.substr(std::string("/epg/").size());
+            }
+        }
+        if (relative.empty()) relative = "index.html";
+        if (!path_is_safe_relative(relative)) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+            return true;
+        }
+        try {
+            auto full = std::filesystem::path(config_.root_dir) / "http" / "epg" / relative;
+            auto body = read_file_binary(full.string());
+            send_bytes(ctx.connection, 200, mime_type_for_path(relative), body);
+        } catch (...) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+        }
+        return true;
+    }
+private:
+    Config config_;
+};
+
 class CustomListPlugin : public PlaylistPlugin {
 public:
     CustomListPlugin(Config cfg, HttpClient& client, Proxy& proxy, std::string name, std::string url)
@@ -833,6 +864,7 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
 
     plugins.push_back(std::make_shared<PlayerPlugin>(config));
     plugins.push_back(std::make_shared<ListasPlugin>(config));
+    plugins.push_back(std::make_shared<EpgPlugin>(config));
 
     // Dynamic Custom Lists
     auto state = proxy.plugins_state_json();
