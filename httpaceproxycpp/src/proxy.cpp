@@ -780,16 +780,51 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 int http_status = 200;
                 auto decoded_url = url_decode(target_url);
 
-                if (starts_with(decoded_url, "/") || starts_with(decoded_url, "file://")) {
+                bool is_local = starts_with(decoded_url, "/") || starts_with(decoded_url, "file://") || decoded_url.find("/listas/locales/") != std::string::npos;
+                if (is_local) {
                     std::filesystem::path local_path;
                     if (starts_with(decoded_url, "file://")) {
                         local_path = decoded_url.substr(7);
-                    } else {
+                    } else if (starts_with(decoded_url, "/")) {
                         local_path = std::filesystem::path(config_.root_dir) / "http" / decoded_url.substr(1);
+                    } else {
+                        auto pos = decoded_url.find("/listas/locales/");
+                        local_path = std::filesystem::path(config_.root_dir) / "http" / decoded_url.substr(pos + 1);
                     }
                     if (std::filesystem::exists(local_path)) {
-                        content = read_file_binary(local_path.string());
+                        std::ifstream file_stream(local_path, std::ios::binary);
+                        if (file_stream.is_open()) {
+                            std::stringstream ss;
+                            ss << file_stream.rdbuf();
+                            content = ss.str();
+                        } else {
+                            content = read_file_binary(local_path.string());
+                        }
                     } else {
+                        if (!plugin_name.empty()) {
+                            auto lower_target = lower(plugin_name);
+                            for (auto& plugin : plugins_.unique_plugins()) {
+                                if (lower(plugin->name()) == lower_target) {
+                                    if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+                                        int c_count = playlist->channel_count();
+                                        std::set<std::string> grps;
+                                        for (const auto& item : playlist->playlist_items()) {
+                                            if (!item.group.empty()) grps.insert(item.group);
+                                        }
+                                        Json out = Json::object{
+                                            {"status", "success"},
+                                            {"http_status", 200},
+                                            {"channels_count", static_cast<double>(c_count)},
+                                            {"groups_count", static_cast<double>(grps.size())},
+                                            {"size_bytes", 0}
+                                        };
+                                        connection.send_response_headers(200, status_reason(200), headers);
+                                        connection.send_text(out.dump(2));
+                                        return;
+                                    }
+                                }
+                            }
+                        }
                         Json out = Json::object{
                             {"status", "error"},
                             {"error", "Archivo local no encontrado"}
@@ -802,7 +837,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     auto normalized_url = normalize_list_url(decoded_url);
                     normalized_url = replace_all(normalized_url, " ", "%20");
                     try {
-                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 20, true);
+                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 2, true);
                         http_status = res.status;
                         if (res.status >= 200 && res.status < 400) {
                             content = res.body;
@@ -819,7 +854,10 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     } catch (const std::exception& e) {
                         Json out = Json::object{
                             {"status", "error"},
-                            {"error", e.what()}
+                            {"error", "timeout"},
+                            {"http_status", 504},
+                            {"channels_count", 0},
+                            {"groups_count", 0}
                         };
                         connection.send_response_headers(200, status_reason(200), headers);
                         connection.send_text(out.dump(2));

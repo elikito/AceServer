@@ -1,1 +1,11 @@
 #EXTM3U
+#EXTINF:-1 group-title="DAZN",DAZN 1 1080p *
+acestream://b04372b9543d763bd2dbd2a1842d9723fd089076
+#EXTINF:-1 group-title="DAZN",DAZN F1 1080p *
+acestream://d719181097d256073844390b3e094fbcb1bceaa4
+#EXTINF:-1 group-title="DAZN",DAZN F1 1080p **
+acestream://b08e15bea3f5c72084f5ff8e3c30caze4d1ff6dt
+#EXTINF:-1 group-title="DAZN",DAZN F1 720p *
+acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a
+#EXTINF:-1 group-title="F1",Sky Sports F1 HD
+acestream://a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0
