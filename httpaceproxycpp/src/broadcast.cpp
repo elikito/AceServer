@@ -116,6 +116,7 @@ void Broadcast::start_once() {
     if (started_.compare_exchange_strong(expected, true)) {
         running_ = true;
         stream_thread_ = std::thread(&Broadcast::stream_loop, this);
+        keepalive_thread_ = std::thread(&Broadcast::keepalive_loop, this);
     }
 }
 
@@ -129,6 +130,21 @@ void Broadcast::stop() {
         try { ace_->shutdown(); } catch (...) {}
     }
     if (stream_thread_.joinable() && stream_thread_.get_id() != std::this_thread::get_id()) stream_thread_.join();
+    if (keepalive_thread_.joinable() && keepalive_thread_.get_id() != std::this_thread::get_id()) keepalive_thread_.join();
+}
+
+void Broadcast::keepalive_loop() {
+    while (running_) {
+        for (int i = 0; i < 50 && running_; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (!running_) break;
+        if (ace_) {
+            try {
+                ace_->status(3);
+            } catch (...) {}
+        }
+    }
 }
 
 void Broadcast::stream_loop() {

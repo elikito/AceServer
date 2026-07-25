@@ -802,7 +802,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     auto normalized_url = normalize_list_url(decoded_url);
                     normalized_url = replace_all(normalized_url, " ", "%20");
                     try {
-                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 5, true);
+                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 20, true);
                         http_status = res.status;
                         if (res.status >= 200 && res.status < 400) {
                             content = res.body;
@@ -1174,18 +1174,22 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         if (ctx.reqtype == "direct_url" || ctx.reqtype == "efile_url") {
             infohash = sha1_hex(ctx.path);
         } else {
-            auto info = get_content_info(params);
-            infohash = info["infohash"].as_string();
-            if (channel_name == "NoNameChannel" && info["files"].is_array()) {
-                int wanted = 0;
-                try { wanted = std::stoi(params["file_indexes"]); } catch (...) {}
-                for (const auto& file : info["files"].as_array()) {
-                    if (file.is_array() && file.as_array().size() >= 2 &&
-                        static_cast<int>(file[1].as_number(-1)) == wanted) {
-                        channel_name = file[0].as_string(channel_name);
-                        break;
+            try {
+                auto info = get_content_info(params);
+                infohash = info["infohash"].as_string();
+                if (channel_name == "NoNameChannel" && info["files"].is_array()) {
+                    int wanted = 0;
+                    try { wanted = std::stoi(params["file_indexes"]); } catch (...) {}
+                    for (const auto& file : info["files"].as_array()) {
+                        if (file.is_array() && file.as_array().size() >= 2 &&
+                            static_cast<int>(file[1].as_number(-1)) == wanted) {
+                            channel_name = file[0].as_string(channel_name);
+                            break;
+                        }
                     }
                 }
+            } catch (const std::exception& e) {
+                log_line("WARNING", "get_content_info failed, proceeding with direct stream start: " + std::string(e.what()));
             }
         }
         if (infohash.empty()) infohash = sha1_hex(ctx.reqtype + ":" + req_value);

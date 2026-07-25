@@ -4,9 +4,6 @@ services:
     image: jopsis/aceserve:latest
     container_name: aceserve-modern
     restart: unless-stopped
-    dns:
-      - 1.1.1.1
-      - 1.0.0.1
     ports:
       - "6878:6878"
       - "62062:62062"
@@ -19,9 +16,6 @@ services:
     image: wafy80/acestream:latest
     container_name: aceserve-compat-light
     restart: unless-stopped
-    dns:
-      - 1.1.1.1
-      - 1.0.0.1
     networks:
       - aceproxy-net
 
@@ -30,9 +24,6 @@ services:
     image: blaiseio/acelink:latest
     container_name: aceserve-compat-stable
     restart: unless-stopped
-    dns:
-      - 1.1.1.1
-      - 1.0.0.1
     networks:
       - aceproxy-net
 

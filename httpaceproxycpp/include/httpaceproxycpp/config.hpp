@@ -7,7 +7,7 @@
 
 namespace httpace {
 
-inline constexpr const char* kAppVersion = "v07.24.09";
+inline constexpr const char* kAppVersion = "v07.24.10";
 
 struct Config {
     std::string ace_host = "127.0.0.1";
@@ -17,8 +17,8 @@ struct Config {
     int http_port = 8888;
     int max_connections = 10;
     int max_concurrent_channels = 5;
-    int ace_connect_timeout = 5;
-    int ace_result_timeout = 5;
+    int ace_connect_timeout = 10;
+    int ace_result_timeout = 30;
     int video_timeout = 30;
     int video_seekback = 0;
     int client_queue_size = 256;

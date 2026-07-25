@@ -187,6 +187,7 @@ void AceClient::start_broadcast_async(const std::map<std::string, std::string>& 
 
 std::map<std::string, std::string> AceClient::status(int timeout_seconds) {
     try {
+        write_line("STATUS");
         auto msg = wait_for("STATUS", timeout_seconds);
         if (msg.size() < 2) return {{"status", "error"}};
         return parse_status(msg[1]);

@@ -73,6 +73,7 @@ public:
 
 private:
     void stream_loop();
+    void keepalive_loop();
     void stream_http_url(const std::string& url);
     void stream_hls_url(const std::string& url);
     void broadcast_chunk(const char* data, std::size_t size);
@@ -88,6 +89,7 @@ private:
     std::atomic<bool> started_{false};
     std::atomic<bool> stopped_{false};
     std::thread stream_thread_;
+    std::thread keepalive_thread_;
 };
 
 class BroadcastManager {

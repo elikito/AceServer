@@ -8,6 +8,11 @@
     <title>HTTPAceProxy - Reproductor Bento</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+    <script>
+        if (typeof mpegts === 'undefined') {
+            document.write('<script src="/player/js/mpegts.min.js"><\/script>');
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -1538,7 +1543,12 @@
                         console.error('Error en mpegts player:', errorType, errorDetail, errorInfo);
                         if (errorDetail === mpegts.ErrorDetails.MEDIA_MSE_ERROR) {
                             updatePlayerStatus('Códec no soportado (HEVC / E-AC3)', 'error');
-                            showToast('⚠ Este canal transmite en HEVC / E-AC3. Copia el enlace y ábrelo en VLC.', 'error');
+                            showToast('⚠ Este canal transmite en HEVC / E-AC3. Abre el enlace en VLC o tu cliente IPTV.', 'error');
+                            const vlcUrl = streamUrl.replace('http://', 'vlc://').replace('https://', 'vlc://');
+                            const playerStatus = document.getElementById('player-status-badge');
+                            if (playerStatus) {
+                                playerStatus.innerHTML = `Códec HEVC/E-AC3. <a href="${vlcUrl}" target="_blank" style="color:#4caf50;font-weight:bold;text-decoration:underline;margin-left:6px;">🚀 Abrir en VLC</a> | <a href="${streamUrl}" target="_blank" style="color:#64b5f6;font-weight:bold;text-decoration:underline;margin-left:4px;">Enlace Directo TS</a>`;
+                            }
                         } else {
                             updatePlayerStatus('Reconectando...', 'loading');
                         }
