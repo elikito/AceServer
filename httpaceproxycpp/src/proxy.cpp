@@ -676,6 +676,17 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             }
             return;
         }
+        else if (action == "set_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            if (engine.empty()) engine = query_get(ctx.query, "mode");
+            if (!engine.empty()) {
+                set_engine(engine);
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text("{\"status\":\"success\",\"engine\":\"" + engine_mode() + "\"}");
+                return;
+            }
+        }
         else if (action == "set_url") {
             auto plugin = query_get(ctx.query, "plugin");
             auto url = query_get(ctx.query, "url");

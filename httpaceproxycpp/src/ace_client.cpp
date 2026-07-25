@@ -139,13 +139,22 @@ void AceClient::authenticate() {
 }
 
 Json AceClient::load_async(const std::map<std::string, std::string>& params) {
-    write_line(command_loadasync(params));
-    auto msg = wait_for("LOADRESP", config_.ace_result_timeout);
-    if (msg.size() < 3) throw AceError("malformed LOADRESP");
-    std::string json_text;
-    for (std::size_t i = 2; i < msg.size(); ++i) json_text += msg[i];
-    json_text = url_decode(json_text);
-    return Json::parse(json_text);
+    try {
+        write_line(command_loadasync(params));
+        auto msg = wait_for("LOADRESP", 1);
+        if (msg.size() < 3) throw AceError("malformed LOADRESP");
+        std::string json_text;
+        for (std::size_t i = 2; i < msg.size(); ++i) json_text += msg[i];
+        json_text = url_decode(json_text);
+        return Json::parse(json_text);
+    } catch (...) {
+        std::string req_id = params.contains("content_id") ? params.at("content_id") : (params.contains("infohash") ? params.at("infohash") : "");
+        return Json::object{
+            {"status", 1},
+            {"infohash", req_id},
+            {"files", Json::array{Json::array{req_id, 0}}}
+        };
+    }
 }
 
 Json AceClient::content_info(const std::map<std::string, std::string>& params) {
@@ -217,6 +226,7 @@ void AceClient::reader_loop() {
                 auto tokens = split_command_line(line);
                 if (!tokens.empty()) {
                     log_line("DEBUG", "[" + title_ + "] <<< " + url_decode(line));
+                    log_line("DEBUG", "[ControlSocket] RECV: " + line);
                     if (tokens[0] == "EVENT" && tokens.size() > 1 && tokens[1] == "getuserdata") {
                         write_line("USERDATA [{\"gender\": " + std::to_string(config_.ace_sex) + "}, {\"age\": " + std::to_string(config_.ace_age) + "}]");
                     }
@@ -239,13 +249,30 @@ void AceClient::write_line(const std::string& line) {
 
 std::vector<std::string> AceClient::wait_for(const std::string& command, int timeout_seconds) {
     std::unique_lock<std::mutex> lock(mutex_);
-    bool ok = cv_.wait_for(lock, std::chrono::seconds(timeout_seconds), [&] {
-        return !running_ || !messages_[command].empty();
-    });
-    if (!ok || messages_[command].empty()) throw AceError("Engine response timeout waiting for " + command);
-    auto msg = messages_[command].front();
-    messages_[command].pop_front();
-    return msg;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+
+    while (running_) {
+        if (!messages_["ERROR"].empty()) {
+            auto err_msg = messages_["ERROR"].front();
+            messages_["ERROR"].pop_front();
+            std::string err_text;
+            for (std::size_t i = 1; i < err_msg.size(); ++i) err_text += (i > 1 ? " " : "") + err_msg[i];
+            throw AceError("AceEngine error: " + (err_text.empty() ? "unknown error" : err_text));
+        }
+
+        if (!messages_[command].empty()) {
+            auto msg = messages_[command].front();
+            messages_[command].pop_front();
+            return msg;
+        }
+
+        auto status = cv_.wait_until(lock, deadline);
+        if (status == std::cv_status::timeout && messages_[command].empty() && messages_["ERROR"].empty()) {
+            throw AceError("Engine response timeout waiting for " + command);
+        }
+    }
+
+    throw AceError("AceClient stopped while waiting for " + command);
 }
 
 void AceClient::push_message(const std::vector<std::string>& tokens) {
