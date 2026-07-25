@@ -1,4 +1,14 @@
 services:
+  # PROXY WARP DEDICADO: Canaliza el tráfico saliente por Cloudflare (Evita bloqueos de ISP y errores TLS en WSL2)
+  warp:
+    image: caa66/cloudflare-warp:latest
+    container_name: warp
+    restart: unless-stopped
+    environment:
+      - ACCEPT_TOS=y
+    networks:
+      - aceproxy-net
+
   # MOTOR MODERN: Para hardware moderno (N150, Asus) con soporte AVX/SSE4.2
   aceserve-modern:
     image: jopsis/aceserve:latest
@@ -46,6 +56,13 @@ services:
       - ACESTREAM_API_PORT=62062
       - ACESTREAM_HTTP_PORT=6878
       - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
+      # --- ENRUTAMIENTO POR WARP PARA PETICIONES HTTP/HTTPS ---
+      - HTTP_PROXY=socks5h://warp:1080
+      - HTTPS_PROXY=socks5h://warp:1080
+      - http_proxy=socks5h://warp:1080
+      - https_proxy=socks5h://warp:1080
+    depends_on:
+      - warp
     networks:
       - aceproxy-net
 
