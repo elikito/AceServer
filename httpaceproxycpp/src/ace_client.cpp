@@ -166,6 +166,7 @@ Json AceClient::content_info(const std::map<std::string, std::string>& params) {
 }
 
 AceStartParams AceClient::start_broadcast(const std::map<std::string, std::string>& params) {
+    start_issued_ = true;
     write_line(command_start(params));
     auto msg = wait_for("START", config_.video_timeout);
     auto kv = parse_key_values(msg, 1);
@@ -191,6 +192,7 @@ AceStartParams AceClient::start_broadcast(const std::map<std::string, std::strin
 }
 
 void AceClient::start_broadcast_async(const std::map<std::string, std::string>& params) {
+    start_issued_ = true;
     write_line(command_start(params));
 }
 
@@ -206,10 +208,12 @@ std::map<std::string, std::string> AceClient::status(int timeout_seconds) {
 }
 
 void AceClient::stop_broadcast() {
+    start_issued_ = false;
     try { write_line("STOP"); } catch (...) {}
 }
 
 void AceClient::shutdown() {
+    start_issued_ = false;
     try { write_line("SHUTDOWN"); } catch (...) {}
 }
 
@@ -227,10 +231,22 @@ void AceClient::reader_loop() {
                 if (!tokens.empty()) {
                     log_line("DEBUG", "[" + title_ + "] <<< " + url_decode(line));
                     log_line("DEBUG", "[ControlSocket] RECV: " + line);
-                    if (tokens[0] == "EVENT" && tokens.size() > 1 && tokens[1] == "getuserdata") {
-                        write_line("USERDATA [{\"gender\": " + std::to_string(config_.ace_sex) + "}, {\"age\": " + std::to_string(config_.ace_age) + "}]");
+
+                    bool is_error_pattern = (line.find("Cannot load transport file") != std::string::npos ||
+                                             line.find("Cannot retrieve torrent") != std::string::npos ||
+                                             line.find("ValueError") != std::string::npos ||
+                                             line.find("showdialog") != std::string::npos ||
+                                             (start_issued_.load() && tokens[0] == "STATUS" && tokens.size() > 1 && tokens[1] == "main:idle"));
+
+                    if (is_error_pattern) {
+                        log_line("ERROR", "[" + title_ + "] Fatal AceEngine error pattern detected: " + line);
+                        push_message({"ERROR", "AceEngine: Cannot retrieve torrent or hash offline"});
+                    } else {
+                        if (tokens[0] == "EVENT" && tokens.size() > 1 && tokens[1] == "getuserdata") {
+                            write_line("USERDATA [{\"gender\": " + std::to_string(config_.ace_sex) + "}, {\"age\": " + std::to_string(config_.ace_age) + "}]");
+                        }
+                        push_message(tokens);
                     }
-                    push_message(tokens);
                 }
             }
         } else if (c != '\r') {

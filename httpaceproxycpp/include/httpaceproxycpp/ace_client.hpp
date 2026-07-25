@@ -59,6 +59,7 @@ private:
     std::string title_;
     int fd_ = -1;
     std::atomic<bool> running_{false};
+    std::atomic<bool> start_issued_{false};
     std::thread reader_;
     mutable std::mutex mutex_;
     std::condition_variable cv_;

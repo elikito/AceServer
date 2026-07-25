@@ -1261,8 +1261,13 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         if (!client->queue->pop_timeout(first_chunk, std::chrono::seconds(30)) || first_chunk.empty()) {
             broadcast->remove_client(client);
             broadcasts_.remove_if_empty(infohash);
-            add_bunker_log("[ERROR REPRODUCTOR] Timeout de precarga AceStream (30s) para ID: " + req_value);
-            send_error(ctx.connection, 504, "Error: AceStream prebuffer timeout");
+            add_bunker_log("[ERROR REPRODUCTOR] Canal offline / Cannot retrieve torrent para ID: " + req_value);
+            std::map<std::string, std::string> err_headers = {
+                {"Content-Type", "application/json; charset=utf-8"},
+                {"Connection", "close"}
+            };
+            ctx.connection.send_response_headers(502, status_reason(502), err_headers);
+            ctx.connection.send_text("{\"error\":\"AceEngine: Cannot retrieve torrent or hash offline\",\"status\":502}");
             return;
         }
 
