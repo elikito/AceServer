@@ -24,6 +24,11 @@ public:
                            long timeout_seconds = 30,
                            bool follow_redirects = true) const;
 
+    HttpClientResponse get_single(const std::string& url,
+                                  const std::map<std::string, std::string>& headers = {},
+                                  long timeout_seconds = 30,
+                                  bool follow_redirects = true) const;
+
     bool stream(const std::string& url,
                 const std::function<bool(const char*, std::size_t)>& on_chunk,
                 const std::atomic<bool>& cancel,

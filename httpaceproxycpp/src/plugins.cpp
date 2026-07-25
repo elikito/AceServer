@@ -489,18 +489,28 @@ private:
 
     const std::vector<CatalogEntry>& catalog_entries() {
         if (!catalog_entries_.empty()) return catalog_entries_;
-        auto response = http_client_.get("https://api.github.com/repos/af1Series1/Tritolgia/git/trees/main?recursive=1",
-                                         {{"User-Agent", kBrowserUserAgent}}, 20, true);
-        auto tree = Json::parse(response.body)["tree"].as_array();
-        for (const auto& item : tree) {
-            if (item["type"].as_string() != "blob") continue;
-            auto path = item["path"].as_string();
-            if (path.empty() || path == "AcEStREAM iDs.w3u") continue;
-            catalog_entries_.push_back(CatalogEntry{
-                path,
-                normalize_catalog_name(path, false),
-                normalize_catalog_name(path, true)
-            });
+        try {
+            auto response = http_client_.get("https://api.github.com/repos/af1Series1/Tritolgia/git/trees/main?recursive=1",
+                                             {{"User-Agent", kBrowserUserAgent}}, 20, true);
+            if (response.status == 200) {
+                auto parsed = Json::parse(response.body);
+                if (parsed.is_object() && parsed.contains("tree") && parsed["tree"].is_array()) {
+                    for (const auto& item : parsed["tree"].as_array()) {
+                        if (item["type"].as_string() != "blob") continue;
+                        auto path = item["path"].as_string();
+                        if (path.empty() || path == "AcEStREAM iDs.w3u") continue;
+                        catalog_entries_.push_back(CatalogEntry{
+                            path,
+                            normalize_catalog_name(path, false),
+                            normalize_catalog_name(path, true)
+                        });
+                    }
+                }
+            } else {
+                log_line("WARNING", "[af1c1onados] GitHub API tree fetch returned status " + std::to_string(response.status));
+            }
+        } catch (const std::exception& e) {
+            log_line("ERROR", "[af1c1onados] catalog_entries tree fetch failed: " + std::string(e.what()));
         }
         return catalog_entries_;
     }

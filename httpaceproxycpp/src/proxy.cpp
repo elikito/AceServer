@@ -1207,6 +1207,17 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         auto client = broadcast->add_client(ctx.request.header("x-forwarded-for", ctx.request.client_ip), channel_name, ctx.channel_icon);
         broadcast->start_once();
 
+        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (TIMEOUT 30s)
+        std::vector<char> first_chunk;
+        if (!client->queue->pop_timeout(first_chunk, std::chrono::seconds(30)) || first_chunk.empty()) {
+            broadcast->remove_client(client);
+            broadcasts_.remove_if_empty(infohash);
+            add_bunker_log("[ERROR REPRODUCTOR] Timeout de precarga AceStream (30s) para ID: " + req_value);
+            send_error(ctx.connection, 504, "Error: AceStream prebuffer timeout");
+            return;
+        }
+
+        // 2. ENVIAR CABECERAS HTTP 200 OK TRAS CONFIRMAR DATOS REALES
         bool chunked = config_.use_chunked && ctx.request.version == "HTTP/1.1";
         std::map<std::string, std::string> headers = {
             {"Content-Type", mime_type_for_path(ctx.path)},
@@ -1219,20 +1230,35 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         }
         ctx.connection.send_response_headers(200, status_reason(200), headers);
 
-        std::vector<char> chunk;
-        while (client->queue->pop(chunk)) {
-            bool ok;
-            if (chunked) {
-                std::ostringstream prefix;
-                prefix << std::hex << chunk.size() << "\r\n";
-                ok = ctx.connection.send_text(prefix.str())
-                  && ctx.connection.send_all(chunk.data(), chunk.size())
-                  && ctx.connection.send_text("\r\n");
-            } else {
-                ok = ctx.connection.send_all(chunk.data(), chunk.size());
+        // 3. ENVIAR EL PRIMER CHUNK PRECARGADO
+        bool ok = true;
+        if (chunked) {
+            std::ostringstream prefix;
+            prefix << std::hex << first_chunk.size() << "\r\n";
+            ok = ctx.connection.send_text(prefix.str())
+              && ctx.connection.send_all(first_chunk.data(), first_chunk.size())
+              && ctx.connection.send_text("\r\n");
+        } else {
+            ok = ctx.connection.send_all(first_chunk.data(), first_chunk.size());
+        }
+        client->last_activity.store(unix_time(), std::memory_order_relaxed);
+
+        // 4. CONTINUAR STREAMING HABITUAL CON LOS SIGUIENTES CHUNKS
+        if (ok) {
+            std::vector<char> chunk;
+            while (client->queue->pop(chunk)) {
+                if (chunked) {
+                    std::ostringstream prefix;
+                    prefix << std::hex << chunk.size() << "\r\n";
+                    ok = ctx.connection.send_text(prefix.str())
+                      && ctx.connection.send_all(chunk.data(), chunk.size())
+                      && ctx.connection.send_text("\r\n");
+                } else {
+                    ok = ctx.connection.send_all(chunk.data(), chunk.size());
+                }
+                if (!ok) break;
+                client->last_activity.store(unix_time(), std::memory_order_relaxed);
             }
-            if (!ok) break;
-            client->last_activity.store(unix_time(), std::memory_order_relaxed);
         }
         if (chunked) ctx.connection.send_text("0\r\n\r\n");
         broadcast->remove_client(client);

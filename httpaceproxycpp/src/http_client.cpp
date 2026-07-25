@@ -54,10 +54,10 @@ HttpClient::HttpClient() {
 
 HttpClient::~HttpClient() = default;
 
-HttpClientResponse HttpClient::get(const std::string& url,
-                                   const std::map<std::string, std::string>& headers,
-                                   long timeout_seconds,
-                                   bool follow_redirects) const {
+HttpClientResponse HttpClient::get_single(const std::string& url,
+                                          const std::map<std::string, std::string>& headers,
+                                          long timeout_seconds,
+                                          bool follow_redirects) const {
     CURL* curl = curl_easy_init();
     if (!curl) throw std::runtime_error("curl_easy_init failed");
 
@@ -72,7 +72,7 @@ HttpClientResponse HttpClient::get(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, follow_redirects ? 1L : 0L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout_seconds);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_cb);
@@ -97,6 +97,38 @@ HttpClientResponse HttpClient::get(const std::string& url,
     curl_slist_free_all(header_list);
     curl_easy_cleanup(curl);
     return response;
+}
+
+HttpClientResponse HttpClient::get(const std::string& url,
+                                   const std::map<std::string, std::string>& headers,
+                                   long timeout_seconds,
+                                   bool follow_redirects) const {
+    if (url.find("/ipfs/") != std::string::npos || url.find("/ipns/") != std::string::npos) {
+        bool is_ipns = (url.find("/ipns/") != std::string::npos);
+        std::string token = is_ipns ? "/ipns/" : "/ipfs/";
+        auto pos = url.find(token);
+        if (pos != std::string::npos) {
+            std::string path_part = url.substr(pos + token.length());
+            if (!path_part.empty()) {
+                std::vector<std::string> gateways = {
+                    "https://ipfs.io",
+                    "https://dweb.link",
+                    "https://cloudflare-ipfs.com",
+                    "https://gateway.pinata.cloud"
+                };
+                for (const auto& gw : gateways) {
+                    std::string gw_url = gw + token + path_part;
+                    try {
+                        auto resp = get_single(gw_url, headers, 5, follow_redirects);
+                        if (resp.status == 200 && !resp.body.empty()) {
+                            return resp;
+                        }
+                    } catch (...) {}
+                }
+            }
+        }
+    }
+    return get_single(url, headers, timeout_seconds, follow_redirects);
 }
 
 bool HttpClient::stream(const std::string& url,

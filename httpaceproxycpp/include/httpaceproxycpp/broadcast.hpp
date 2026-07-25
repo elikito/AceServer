@@ -29,6 +29,7 @@ public:
     explicit ChunkQueue(std::size_t max_chunks);
     PushResult push(std::vector<char> chunk, std::chrono::milliseconds wait);
     bool pop(std::vector<char>& chunk);
+    bool pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout);
     void close();
     std::size_t size() const;
 

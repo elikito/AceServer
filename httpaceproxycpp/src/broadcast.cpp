@@ -39,6 +39,18 @@ bool ChunkQueue::pop(std::vector<char>& chunk) {
     return true;
 }
 
+bool ChunkQueue::pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!cv_data_.wait_for(lock, timeout, [&] { return closed_ || !chunks_.empty(); })) {
+        return false;
+    }
+    if (chunks_.empty()) return false;
+    chunk = std::move(chunks_.front());
+    chunks_.pop_front();
+    cv_space_.notify_one();
+    return true;
+}
+
 void ChunkQueue::close() {
     std::lock_guard<std::mutex> lock(mutex_);
     closed_ = true;
