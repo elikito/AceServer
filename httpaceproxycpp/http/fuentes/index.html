@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuentes de Canales - HTTPAceProxy</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --border-color: #2d2d34;
+            --text-color: #e1e1e6;
+            --text-muted: #a8a8b2;
+            --header-bg: #1a1a1e;
+            --stat-bg: #202024;
+            --brand-color: #4CAF50;
+            --accent-color: #764ba2;
+            --input-bg: #121214;
+            --badge-bg: #2a2a30;
+        }
+
+        body.light-theme {
+            --bg-color: #f4f4f5;
+            --card-bg: #ffffff;
+            --border-color: #e4e4e7;
+            --text-color: #18181b;
+            --text-muted: #71717a;
+            --header-bg: #ffffff;
+            --stat-bg: #f4f4f5;
+            --brand-color: #16a34a;
+            --accent-color: #667eea;
+            --input-bg: #ffffff;
+            --badge-bg: #e4e4e7;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
+
+        /* Navbar */
+        .navbar {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 18px;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        body.light-theme .nav-brand {
+            color: #18181b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--text-color);
+            background-color: var(--border-color);
+        }
+
+        .navbar-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 101;
+        }
+
+        .navbar-toggle .icon-bar {
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-color);
+            border-radius: 1px;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background-color: var(--header-bg);
+                border-bottom: 1px solid var(--border-color);
+                padding: 16px 24px;
+                gap: 8px;
+                z-index: 99;
+            }
+
+            .nav-links.show {
+                display: flex;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+            }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        /* Header Section */
+        .header-section {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Stats Overview Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: rgba(76, 175, 80, 0.12);
+            color: var(--brand-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .stat-info .stat-val {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .stat-info .stat-lbl {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Section Title */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 24px;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tables & Responsive Wrapper */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: var(--stat-bg);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Form elements inside tables */
+        .url-input {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            padding: 8px 12px;
+            font-size: 13.5px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .url-input:focus {
+            border-color: var(--brand-color);
+        }
+
+        /* Plugin Badge */
+        .plugin-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background-color: var(--badge-bg);
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+            vertical-align: middle;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #3f3f46;
+            transition: .3s;
+            border-radius: 22px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--brand-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        /* Channel & Group Counters */
+        .counters-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .counter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .counter-badge strong {
+            color: var(--brand-color);
+            font-weight: 700;
+        }
+
+        .counter-badge.groups strong {
+            color: var(--accent-color);
+        }
+
+        /* Action Buttons */
+        .action-cell {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-refresh {
+            background-color: #0284c7;
+            color: #ffffff;
+        }
+
+        .btn-refresh:hover {
+            background-color: #0369a1;
+        }
+
+        .btn-save {
+            background-color: #16a34a;
+            color: #ffffff;
+        }
+
+        .btn-save:hover {
+            background-color: #15803d;
+        }
+
+        .btn-delete {
+            background-color: #dc2626;
+            color: #ffffff;
+        }
+
+        .btn-delete:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-disabled {
+            background-color: #27272a;
+            color: #71717a;
+            cursor: not-allowed;
+            opacity: 0.6;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Card Form */
+        .config-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .add-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 2fr auto;
+            gap: 16px;
+            align-items: end;
+        }
+
+        @media (max-width: 900px) {
+            .add-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Status text below URL */
+        .status-msg {
+            font-size: 12px;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .status-msg.valid {
+            color: #4CAF50;
+        }
+
+        .status-msg.invalid {
+            color: #ff5252;
+        }
+
+        .status-msg.checking {
+            color: #ffb74d;
+        }
+
+        /* Footer */
+        .footer-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background-color: var(--header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            font-size: 13px;
+        }
+
+        .footer-left,
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-bar .label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .footer-bar .val {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .theme-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .theme-toggle-btn:hover {
+            background-color: var(--border-color);
+        }
+
+        .theme-toggle-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* Toast Notifications */
+        .toast-notification {
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            padding: 12px 20px;
+            background-color: #16a34a;
+            color: #ffffff;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .toast-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-notification.error {
+            background-color: #dc2626;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+            <a href="/stat">Dashboard</a>
+            <a href="/statplugin/">Canales</a>
+            <a href="/listas/">Listas</a>
+            <a href="/fuentes/" class="active">Fuentes</a>
+            <a href="/epg/">EPG</a>
+            <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html">Reproductor Legacy</a>
+        </div>
+    </nav>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header-section">
+            <div class="header-title">
+                <h1>
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                        <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                    </svg>
+                    Gestión de Fuentes M3U / URLs
+                </h1>
+                <p>Edita URLs, activa o apaga listas en caliente, analiza el contador de canales y grupos detectados.</p>
+            </div>
+            <div>
+                <button class="btn-action btn-refresh" style="padding: 10px 18px;" onclick="refreshAllSources()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" id="refresh-all-icon">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    Actualizar Todas las Fuentes
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📡</div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-sources">0</div>
+                    <div class="stat-lbl">Fuentes Totales</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(22, 163, 74, 0.15); color: #16a34a;">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-active-sources">0</div>
+                    <div class="stat-lbl">Fuentes Activas</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(2, 132, 199, 0.15); color: #0284c7;">📺</div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-channels">0</div>
+                    <div class="stat-lbl">Canales Detectados</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(118, 75, 162, 0.15); color: #764ba2;">📁</div>
+                <div class="stat-info">
+                    <div class="stat-val" id="stat-total-groups">0</div>
+                    <div class="stat-lbl">Grupos Detectados</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fuentes Predefinidas -->
+        <div class="section-header">
+            <div class="section-title">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M12 2l-5.5 9h11zM12 22l5.5-9h-11z"/>
+                </svg>
+                Fuentes Predefinidas
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 7%; text-align: center;">Estado</th>
+                        <th style="width: 13%;">Plugin</th>
+                        <th style="width: 42%;">Dirección URL</th>
+                        <th style="width: 20%;">Canales / Grupos</th>
+                        <th style="width: 18%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="predefined-sources-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                            Cargando fuentes predefinidas...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Fuentes Dinámicas Custom -->
+        <div class="section-header">
+            <div class="section-title">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                Fuentes Dinámicas Personalizadas
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 7%; text-align: center;">Estado</th>
+                        <th style="width: 13%;">ID / Nombre</th>
+                        <th style="width: 42%;">Dirección URL</th>
+                        <th style="width: 20%;">Canales / Grupos</th>
+                        <th style="width: 18%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="custom-sources-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                            No hay fuentes personalizadas añadidas.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Agregar Nueva Fuente por URL -->
+        <div class="section-header">
+            <div class="section-title">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                Agregar Nueva Fuente por URL
+            </div>
+        </div>
+        <div class="config-card">
+            <div class="add-form-grid">
+                <div class="form-group">
+                    <label for="new-source-id">Identificador (ID)</label>
+                    <input type="text" id="new-source-id" class="url-input" placeholder="ej: deports_m3u" oninput="sanitizeName(this)">
+                </div>
+                <div class="form-group">
+                    <label for="new-source-title">Nombre Visible</label>
+                    <input type="text" id="new-source-title" class="url-input" placeholder="ej: Deportes M3U Premium">
+                </div>
+                <div class="form-group">
+                    <label for="new-source-url">Dirección URL (M3U / M3U8 / TXT)</label>
+                    <input type="text" id="new-source-url" class="url-input" placeholder="http://servidor.com/lista.m3u">
+                </div>
+                <div>
+                    <button class="btn-action btn-save" style="padding: 10px 20px; width: 100%;" onclick="addCustomSource()">
+                        + Añadir Fuente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+        <div class="footer-left">
+            <span class="label">IP DEL SERVIDOR:</span>
+            <span id="server-ip" class="val">-</span>
+        </div>
+        <div class="footer-center">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
+                <svg id="theme-icon" viewBox="0 0 24 24">
+                    <path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
+                </svg>
+            </button>
+        </div>
+        <div class="footer-right">
+            <span class="label">VERSIÓN:</span>
+            <span class="val version-badge app-version">-</span>
+        </div>
+    </div>
+
+    <script>
+        const predefinedPlugins = [
+            { id: 'newera', name: 'NewEra', fallback: 'https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u' },
+            { id: 'elcano', name: 'Elcano', fallback: 'https://ipfs.io/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u,https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u' },
+            { id: 'af1c1onados', name: 'Af1c1onados', fallback: 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u' }
+        ];
+
+        // Icons
+        const iconRefresh = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
+        const iconSave = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`;
+        const iconDelete = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+        const iconLock = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
+
+        let globalConfig = null;
+        const listStatsCache = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-theme');
+                setLightIcon(themeIcon);
+            }
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('light-theme');
+                    if (document.body.classList.contains('light-theme')) {
+                        localStorage.setItem('theme', 'light');
+                        setLightIcon(themeIcon);
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                        setDarkIcon(themeIcon);
+                    }
+                });
+            }
+
+            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+
+            const navbarToggle = document.getElementById('navbar-toggle');
+            const navLinks = document.getElementById('nav-links');
+            if (navbarToggle && navLinks) {
+                navbarToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('show');
+                });
+            }
+
+            loadSources();
+        });
+
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.className = 'toast-notification ' + (type === 'error' ? 'error' : 'success');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        function sanitizeName(input) {
+            input.value = input.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        }
+
+        function normalizeUrlGateway(url) {
+            if (!url) return '';
+            url = url.trim();
+            if (url.startsWith('/') || url.startsWith('file://')) return url;
+            const match = url.match(/^https?:\/\/([a-zA-Z0-9]+)\.(ipns|ipfs)\.inbrowser\.link(\/.*)?$/i);
+            if (match) {
+                const hash = match[1];
+                const type = match[2].toLowerCase();
+                const path = match[3] || '';
+                return `https://ipfs.io/${type}/${hash}${path}`;
+            }
+            return url;
+        }
+
+        function loadSources() {
+            fetch('/config?action=get_config')
+                .then(res => res.json())
+                .then(config => {
+                    globalConfig = config;
+                    if (config && config.version) {
+                        document.querySelectorAll('.app-version').forEach(el => el.textContent = config.version);
+                    }
+
+                    renderPredefinedSources(config);
+                    renderCustomSources(config);
+                    updateSummaryCards(config);
+                })
+                .catch(err => {
+                    console.error('Error al cargar configuración de fuentes:', err);
+                    showToast('Error al conectar con la API de HTTPAceProxy', 'error');
+                });
+        }
+
+        function isPluginEnabled(config, name) {
+            if (!config) return true;
+            if (config.custom_lists && Array.isArray(config.custom_lists)) {
+                const foundCustom = config.custom_lists.find(c => c.name === name);
+                if (foundCustom && foundCustom.enabled !== undefined) return foundCustom.enabled;
+            }
+            if (config[name] !== undefined) return config[name];
+            return true;
+        }
+
+        function renderPredefinedSources(config) {
+            const tbody = document.getElementById('predefined-sources-body');
+            tbody.innerHTML = '';
+            const savedUrls = (config && config.urls) ? config.urls : {};
+
+            predefinedPlugins.forEach(plugin => {
+                const currentUrl = savedUrls[plugin.id] || plugin.fallback;
+                const enabled = isPluginEnabled(config, plugin.id);
+                const row = document.createElement('tr');
+                row.id = `row-${plugin.id}`;
+                row.innerHTML = `
+                    <td style="text-align: center;">
+                        <label class="switch" title="Encender / Apagar lista (${plugin.name})">
+                            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleSourceEnabled('${plugin.id}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td><span class="plugin-badge" style="background:#3f51b5; color:#ffffff;">${plugin.name}</span></td>
+                    <td>
+                        <input type="text" id="url-${plugin.id}" class="url-input" value="${currentUrl}" placeholder="${plugin.fallback}">
+                        <span id="status-${plugin.id}" class="status-msg"></span>
+                    </td>
+                    <td>
+                        <div class="counters-container" id="counters-${plugin.id}">
+                            <span class="counter-badge">Canales: <strong id="cnt-ch-${plugin.id}">-</strong></span>
+                            <span class="counter-badge groups">Grupos: <strong id="cnt-gr-${plugin.id}">-</strong></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            <button class="btn-action btn-refresh" onclick="refreshSource('${plugin.id}', true)" title="Actualizar y comprobar (${plugin.name})">
+                                ${iconRefresh} Actualizar
+                            </button>
+                            <button class="btn-action btn-save" onclick="savePredefinedSource('${plugin.id}')" title="Guardar URL (${plugin.name})">
+                                ${iconSave} Guardar
+                            </button>
+                            <button class="btn-action btn-disabled" title="Listas predefinidas no se pueden borrar" disabled>
+                                ${iconLock} Borrar
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                // Check stats for this source
+                checkSourceStats(plugin.id, currentUrl);
+            });
+        }
+
+        function renderCustomSources(config) {
+            const tbody = document.getElementById('custom-sources-body');
+            tbody.innerHTML = '';
+            const customLists = (config && config.custom_lists) ? config.custom_lists : [];
+
+            if (customLists.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                            No hay fuentes personalizadas añadidas. Usa el formulario de abajo para agregar una.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            customLists.forEach(list => {
+                const displayTitle = list.title || list.name;
+                const enabled = (list.enabled !== false);
+                const row = document.createElement('tr');
+                row.id = `row-${list.name}`;
+                row.innerHTML = `
+                    <td style="text-align: center;">
+                        <label class="switch" title="Encender / Apagar lista (${displayTitle})">
+                            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleSourceEnabled('${list.name}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td>
+                        <span class="plugin-badge" style="background:#764ba2; color:#ffffff; margin-bottom:4px;">${list.name}</span>
+                        <input type="text" id="title-${list.name}" class="url-input" style="font-size:12px; padding:4px 8px;" value="${displayTitle}" placeholder="Nombre visible">
+                    </td>
+                    <td>
+                        <input type="text" id="url-${list.name}" class="url-input" value="${list.url}">
+                        <span id="status-${list.name}" class="status-msg"></span>
+                    </td>
+                    <td>
+                        <div class="counters-container" id="counters-${list.name}">
+                            <span class="counter-badge">Canales: <strong id="cnt-ch-${list.name}">-</strong></span>
+                            <span class="counter-badge groups">Grupos: <strong id="cnt-gr-${list.name}">-</strong></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            <button class="btn-action btn-refresh" onclick="refreshSource('${list.name}', true)" title="Actualizar y comprobar (${displayTitle})">
+                                ${iconRefresh} Actualizar
+                            </button>
+                            <button class="btn-action btn-save" onclick="saveCustomSource('${list.name}')" title="Guardar cambios (${displayTitle})">
+                                ${iconSave} Guardar
+                            </button>
+                            <button class="btn-action btn-delete" onclick="deleteCustomSource('${list.name}')" title="Eliminar fuente (${displayTitle})">
+                                ${iconDelete} Borrar
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                checkSourceStats(list.name, list.url);
+            });
+        }
+
+        function updateSummaryCards(config) {
+            let total = predefinedPlugins.length;
+            let active = 0;
+            predefinedPlugins.forEach(p => {
+                if (isPluginEnabled(config, p.id)) active++;
+            });
+
+            const customLists = (config && config.custom_lists) ? config.custom_lists : [];
+            total += customLists.length;
+            customLists.forEach(c => {
+                if (c.enabled !== false) active++;
+            });
+
+            document.getElementById('stat-total-sources').textContent = total;
+            document.getElementById('stat-active-sources').textContent = active;
+        }
+
+        function checkSourceStats(id, url) {
+            const statusSpan = document.getElementById(`status-${id}`);
+            const chEl = document.getElementById(`cnt-ch-${id}`);
+            const grEl = document.getElementById(`cnt-gr-${id}`);
+
+            if (statusSpan) {
+                statusSpan.textContent = 'Comprobando...';
+                statusSpan.className = 'status-msg checking';
+            }
+
+            const cleanUrl = normalizeUrlGateway(url);
+            if (!cleanUrl) {
+                if (statusSpan) {
+                    statusSpan.textContent = '⚠ URL vacía';
+                    statusSpan.className = 'status-msg invalid';
+                }
+                if (chEl) chEl.textContent = '0';
+                if (grEl) grEl.textContent = '0';
+                return;
+            }
+
+            fetch(`/config?action=check_list&url=${encodeURIComponent(cleanUrl)}&plugin=${encodeURIComponent(id)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const channels = data.channels_count || 0;
+                        const groups = data.groups_count || 0;
+
+                        if (chEl) chEl.textContent = channels;
+                        if (grEl) grEl.textContent = groups;
+                        listStatsCache[id] = { channels, groups };
+                        recalculateTotalStats();
+
+                        if (statusSpan) {
+                            statusSpan.textContent = `✓ Accesible: ${channels} canales, ${groups} grupos`;
+                            statusSpan.className = 'status-msg valid';
+                        }
+                    } else {
+                        if (chEl) chEl.textContent = '0';
+                        if (grEl) grEl.textContent = '0';
+                        if (statusSpan) {
+                            statusSpan.textContent = `✗ ${data.error || 'No se pudo leer la lista'}`;
+                            statusSpan.className = 'status-msg invalid';
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (chEl) chEl.textContent = '0';
+                    if (grEl) grEl.textContent = '0';
+                    if (statusSpan) {
+                        statusSpan.textContent = `✗ Error de red (${err.message})`;
+                        statusSpan.className = 'status-msg invalid';
+                    }
+                });
+        }
+
+        function recalculateTotalStats() {
+            let totalChannels = 0;
+            let totalGroups = 0;
+            Object.values(listStatsCache).forEach(st => {
+                totalChannels += (st.channels || 0);
+                totalGroups += (st.groups || 0);
+            });
+            document.getElementById('stat-total-channels').textContent = totalChannels;
+            document.getElementById('stat-total-groups').textContent = totalGroups;
+        }
+
+        function toggleSourceEnabled(name, enabled) {
+            fetch(`/config?plugin=${encodeURIComponent(name)}&status=${enabled}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(enabled ? `✓ Fuente "${name}" encendida` : `Fuente "${name}" apagada`);
+                        if (globalConfig) {
+                            if (globalConfig.custom_lists) {
+                                const item = globalConfig.custom_lists.find(c => c.name === name);
+                                if (item) item.enabled = enabled;
+                            }
+                            globalConfig[name] = enabled;
+                            updateSummaryCards(globalConfig);
+                        }
+                    } else {
+                        showToast('Error al cambiar el estado de la fuente', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error toggling source:', err);
+                    showToast('Error de red al cambiar estado', 'error');
+                });
+        }
+
+        function refreshSource(name, isUserClick = false) {
+            const input = document.getElementById(`url-${name}`);
+            const urlVal = input ? input.value.trim() : '';
+
+            if (isUserClick) {
+                showToast(`Actualizando fuente "${name}"...`);
+            }
+
+            fetch(`/config?action=refresh_plugin&plugin=${encodeURIComponent(name)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (isUserClick) showToast(`✓ Fuente "${name}" actualizada (${data.channels_count || 0} canales, ${data.groups_count || 0} grupos)`);
+                        checkSourceStats(name, urlVal);
+                    } else {
+                        checkSourceStats(name, urlVal);
+                    }
+                })
+                .catch(() => {
+                    checkSourceStats(name, urlVal);
+                });
+        }
+
+        function refreshAllSources() {
+            const btnIcon = document.getElementById('refresh-all-icon');
+            if (btnIcon) btnIcon.classList.add('spinner');
+
+            showToast('Actualizando todas las fuentes de canales...');
+            fetch('/config?action=get_config')
+                .then(r => r.json())
+                .then(config => {
+                    globalConfig = config;
+                    const promises = [];
+
+                    predefinedPlugins.forEach(p => {
+                        promises.push(fetch(`/config?action=refresh_plugin&plugin=${encodeURIComponent(p.id)}`));
+                    });
+
+                    const customLists = (config && config.custom_lists) ? config.custom_lists : [];
+                    customLists.forEach(c => {
+                        promises.push(fetch(`/config?action=refresh_plugin&plugin=${encodeURIComponent(c.name)}`));
+                    });
+
+                    Promise.allSettled(promises).then(() => {
+                        if (btnIcon) btnIcon.classList.remove('spinner');
+                        showToast('✓ Todas las fuentes han sido actualizadas');
+                        loadSources();
+                    });
+                })
+                .catch(() => {
+                    if (btnIcon) btnIcon.classList.remove('spinner');
+                    loadSources();
+                });
+        }
+
+        function savePredefinedSource(pluginId) {
+            const input = document.getElementById(`url-${pluginId}`);
+            let urlVal = input ? normalizeUrlGateway(input.value.trim()) : '';
+            if (input && input.value.trim() !== urlVal) {
+                input.value = urlVal;
+            }
+
+            if (!urlVal) {
+                showToast('La URL de la fuente no puede estar vacía', 'error');
+                return;
+            }
+
+            fetch(`/config?action=set_url&plugin=${encodeURIComponent(pluginId)}&url=${encodeURIComponent(urlVal)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(`✓ URL de "${pluginId}" guardada con éxito`);
+                        refreshSource(pluginId);
+                    } else {
+                        showToast('Error al guardar la URL en el servidor', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('Error de red al guardar la URL', 'error');
+                });
+        }
+
+        function saveCustomSource(name) {
+            const urlInput = document.getElementById(`url-${name}`);
+            const titleInput = document.getElementById(`title-${name}`);
+            let urlVal = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+            if (urlInput && urlInput.value.trim() !== urlVal) {
+                urlInput.value = urlVal;
+            }
+            const titleVal = titleInput ? titleInput.value.trim() : name;
+
+            if (!urlVal) {
+                showToast('La URL no puede estar vacía', 'error');
+                return;
+            }
+
+            fetch(`/config?action=save_custom_list&name=${encodeURIComponent(name)}&title=${encodeURIComponent(titleVal)}&url=${encodeURIComponent(urlVal)}&enabled=true`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(`✓ Fuente personalizada "${titleVal || name}" guardada con éxito`);
+                        refreshSource(name);
+                    } else {
+                        showToast('Error al guardar la fuente personalizada', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('Error de red al guardar la fuente', 'error');
+                });
+        }
+
+        function addCustomSource() {
+            const idInput = document.getElementById('new-source-id');
+            const titleInput = document.getElementById('new-source-title');
+            const urlInput = document.getElementById('new-source-url');
+
+            const name = idInput ? idInput.value.trim() : '';
+            const title = titleInput ? titleInput.value.trim() : name;
+            let url = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+
+            if (!name || !url) {
+                showToast('El identificador (ID) y la URL son campos obligatorios', 'error');
+                return;
+            }
+
+            fetch(`/config?action=save_custom_list&name=${encodeURIComponent(name)}&title=${encodeURIComponent(title || name)}&url=${encodeURIComponent(url)}&enabled=true`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(`✓ Fuente "${title || name}" añadida con éxito`);
+                        idInput.value = '';
+                        if (titleInput) titleInput.value = '';
+                        urlInput.value = '';
+                        loadSources();
+                    } else {
+                        showToast('Error al agregar la fuente', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('Error de red al añadir la fuente', 'error');
+                });
+        }
+
+        function deleteCustomSource(name) {
+            if (!confirm(`¿Deseas eliminar permanentemente la fuente personalizada "${name}"?`)) return;
+
+            fetch(`/config?action=delete_custom_list&name=${encodeURIComponent(name)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(`✓ Fuente "${name}" eliminada correctamente`);
+                        delete listStatsCache[name];
+                        loadSources();
+                    } else {
+                        showToast('Error al eliminar la fuente', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('Error de red al eliminar la fuente', 'error');
+                });
+        }
+
+        function setLightIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
+        }
+
+        function setDarkIcon(themeIcon) {
+            if (!themeIcon) return;
+            themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
+        }
+    </script>
+</body>
+
+</html>

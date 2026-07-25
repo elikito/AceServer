@@ -48,6 +48,8 @@ std::string build_url(const ParsedUrl& parsed);
 std::string rewrite_url_host_port(std::string_view url, std::string_view host, std::string_view port);
 std::string normalize_list_url(const std::string& input_url);
 
+constexpr const char* kBrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 void log_line(const std::string& level, const std::string& message);
 
 } // namespace httpace

@@ -771,54 +771,146 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         }
         else if (action == "check_list") {
             auto target_url = query_get(ctx.query, "url");
+            auto plugin_name = query_get(ctx.query, "plugin");
+            if (target_url.empty() && !plugin_name.empty()) {
+                target_url = get_plugin_url(plugin_name, "");
+            }
             if (!target_url.empty()) {
-                auto decoded_url = normalize_list_url(url_decode(target_url));
-                try {
-                    auto res = http_client_.get(decoded_url, {{"User-Agent", "Mozilla/5.0"}}, 10, true);
-                    if (res.status >= 200 && res.status < 400) {
-                        std::istringstream stream(res.body);
-                        std::string line;
-                        int channel_count = 0;
-                        std::set<std::string> groups;
-                        while (std::getline(stream, line)) {
-                            line = trim(line);
-                            if (starts_with(line, "#EXTINF:")) {
-                                channel_count++;
-                                auto attrs = parse_extinf_attrs(line);
-                                if (attrs.contains("group-title") && !attrs["group-title"].empty()) {
-                                    groups.insert(attrs["group-title"]);
-                                }
-                            }
-                        }
-                        Json out = Json::object{
-                            {"status", "success"},
-                            {"http_status", static_cast<double>(res.status)},
-                            {"channels_count", static_cast<double>(channel_count)},
-                            {"groups_count", static_cast<double>(groups.size())},
-                            {"size_bytes", static_cast<double>(res.body.size())}
-                        };
-                        connection.send_response_headers(200, status_reason(200), headers);
-                        connection.send_text(out.dump(2));
-                        return;
+                std::string content;
+                int http_status = 200;
+                auto decoded_url = url_decode(target_url);
+
+                if (starts_with(decoded_url, "/") || starts_with(decoded_url, "file://")) {
+                    std::filesystem::path local_path;
+                    if (starts_with(decoded_url, "file://")) {
+                        local_path = decoded_url.substr(7);
+                    } else {
+                        local_path = std::filesystem::path(config_.root_dir) / "http" / decoded_url.substr(1);
+                    }
+                    if (std::filesystem::exists(local_path)) {
+                        content = read_file_binary(local_path.string());
                     } else {
                         Json out = Json::object{
                             {"status", "error"},
-                            {"http_status", static_cast<double>(res.status)},
-                            {"error", "HTTP " + std::to_string(res.status)}
+                            {"error", "Archivo local no encontrado"}
                         };
                         connection.send_response_headers(200, status_reason(200), headers);
                         connection.send_text(out.dump(2));
                         return;
                     }
-                } catch (const std::exception& e) {
-                    Json out = Json::object{
-                        {"status", "error"},
-                        {"error", e.what()}
-                    };
-                    connection.send_response_headers(200, status_reason(200), headers);
-                    connection.send_text(out.dump(2));
-                    return;
+                } else {
+                    auto normalized_url = normalize_list_url(decoded_url);
+                    normalized_url = replace_all(normalized_url, " ", "%20");
+                    try {
+                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 15, true);
+                        http_status = res.status;
+                        if (res.status >= 200 && res.status < 400) {
+                            content = res.body;
+                        } else {
+                            Json out = Json::object{
+                                {"status", "error"},
+                                {"http_status", static_cast<double>(res.status)},
+                                {"error", "HTTP " + std::to_string(res.status)}
+                            };
+                            connection.send_response_headers(200, status_reason(200), headers);
+                            connection.send_text(out.dump(2));
+                            return;
+                        }
+                    } catch (const std::exception& e) {
+                        Json out = Json::object{
+                            {"status", "error"},
+                            {"error", e.what()}
+                        };
+                        connection.send_response_headers(200, status_reason(200), headers);
+                        connection.send_text(out.dump(2));
+                        return;
+                    }
                 }
+
+                int channel_count = 0;
+                std::set<std::string> groups;
+                std::string trimmed_content = trim(content);
+
+                if (starts_with(trimmed_content, "{") || starts_with(trimmed_content, "[")) {
+                    try {
+                        auto j = Json::parse(trimmed_content);
+                        std::function<void(const Json&, const std::string&)> count_json = [&](const Json& node, const std::string& current_grp) {
+                            if (node.is_object()) {
+                                std::string grp = node.contains("name") ? node["name"].as_string() : current_grp;
+                                if (node.contains("stations") && node["stations"].is_array()) {
+                                    for (const auto& st : node["stations"].as_array()) {
+                                        if (st.is_object() && st.contains("name")) {
+                                            channel_count++;
+                                            if (!grp.empty()) groups.insert(grp);
+                                        }
+                                    }
+                                }
+                                if (node.contains("groups") && node["groups"].is_array()) {
+                                    for (const auto& g : node["groups"].as_array()) {
+                                        if (g.is_object()) {
+                                            if (g.contains("name") && !g["name"].as_string().empty()) {
+                                                groups.insert(g["name"].as_string());
+                                            }
+                                            if (g.contains("url") && !g.contains("stations")) {
+                                                channel_count++;
+                                            }
+                                        }
+                                        count_json(g, grp);
+                                    }
+                                }
+                            }
+                        };
+                        count_json(j, "");
+                    } catch (...) {}
+                }
+
+                if (channel_count == 0) {
+                    std::istringstream stream(content);
+                    std::string line;
+                    while (std::getline(stream, line)) {
+                        line = trim(line);
+                        if (starts_with(line, "#EXTINF:")) {
+                            channel_count++;
+                            auto attrs = parse_extinf_attrs(line);
+                            if (attrs.contains("group-title") && !attrs["group-title"].empty()) {
+                                groups.insert(attrs["group-title"]);
+                            }
+                        } else if (starts_with(line, "#EXTGRP:")) {
+                            auto grp = trim(line.substr(8));
+                            if (!grp.empty()) groups.insert(grp);
+                        } else if (!line.empty() && !starts_with(line, "#")) {
+                            if (starts_with(line, "http://") || starts_with(line, "https://") || starts_with(line, "acestream://") || std::regex_search(line, std::regex(R"([a-fA-F0-9]{40})"))) {
+                                channel_count++;
+                            }
+                        }
+                    }
+                }
+
+                if (channel_count == 0 && !plugin_name.empty()) {
+                    auto lower_target = lower(plugin_name);
+                    for (auto& plugin : plugins_.unique_plugins()) {
+                        if (lower(plugin->name()) == lower_target) {
+                            if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+                                channel_count = playlist->channel_count();
+                                for (const auto& item : playlist->playlist_items()) {
+                                    if (!item.group.empty()) groups.insert(item.group);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                Json out = Json::object{
+                    {"status", "success"},
+                    {"http_status", static_cast<double>(http_status)},
+                    {"channels_count", static_cast<double>(channel_count)},
+                    {"groups_count", static_cast<double>(groups.size())},
+                    {"size_bytes", static_cast<double>(content.size())}
+                };
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text(out.dump(2));
+                return;
             } else {
                 send_error(connection, 400, "Missing url parameter");
             }

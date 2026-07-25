@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="HTTPAceProxy Sources Management">
-    <title>HTTPAceProxy - Fuentes</title>
+    <title>HTTPAceProxy - Listas</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <style>
         * {
@@ -588,7 +588,8 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/" class="active">Fuentes</a>
+            <a href="/listas/" class="active">Listas</a>
+            <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
             <a href="/player/legacy.html">Reproductor Legacy</a>
@@ -602,10 +603,15 @@
                 <h4>Gestión de Fuentes de Canales</h4>
                 <p>Edita o añade listas de canales M3U dinámicamente y comprueba su estado en caliente.</p>
             </div>
+            <div>
+                <a href="/fuentes/" class="btn-save" style="text-decoration: none; padding: 10px 18px; display: inline-flex; align-items: center; gap: 8px;">
+                    📡 Ir a Gestión Avanzada de Fuentes
+                </a>
+            </div>
         </div>
 
         <!-- Fuentes Predefinidas -->
-        <div class="section-title">Listas Predefinidas de Plugins</div>
+        <div class="section-title">Listas Predefinidas</div>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -1002,9 +1008,9 @@ acestream://1234567890abcdef1234567890abcdef12345678
                                         <button class="btn-check" onclick="checkEpgSource('${src.name}')" title="Comprobar EPG (${src.title || src.name})">${iconCheck}</button>
                                         <button class="btn-save" onclick="saveEpgSource('${src.name}', '${src.title || src.name}')" title="Guardar EPG (${src.title || src.name})">${iconSave}</button>
                                         ${isDefault ?
-                                            `<button class="btn-delete" style="background:#4a4a52; color:#fff;" onclick="resetEpgDefault()" title="Restablecer EPG">${iconReset}</button>` :
-                                            `<button class="btn-delete" onclick="deleteEpgSource('${src.name}')" title="Eliminar EPG (${src.title || src.name})">${iconDelete}</button>`
-                                        }
+                                    `<button class="btn-delete" style="background:#4a4a52; color:#fff;" onclick="resetEpgDefault()" title="Restablecer EPG">${iconReset}</button>` :
+                                    `<button class="btn-delete" onclick="deleteEpgSource('${src.name}')" title="Eliminar EPG (${src.title || src.name})">${iconDelete}</button>`
+                                }
                                     </div>
                                 </td>
                             `;
@@ -1224,6 +1230,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
         function normalizeUrlGateway(url) {
             if (!url) return '';
             url = url.trim();
+            if (url.startsWith('/') || url.startsWith('file://')) return url;
             const match = url.match(/^https?:\/\/([a-zA-Z0-9]+)\.(ipns|ipfs)\.inbrowser\.link(\/.*)?$/i);
             if (match) {
                 const hash = match[1];
@@ -1243,7 +1250,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
             }
             const statusSpan = document.getElementById(`status-${statusId}`);
             let button = null;
-            try { button = event ? (event.currentTarget || event.target) : null; } catch(e) {}
+            try { button = event ? (event.currentTarget || event.target) : null; } catch (e) { }
 
             if (!urlVal) {
                 if (statusSpan) {
@@ -1259,64 +1266,30 @@ acestream://1234567890abcdef1234567890abcdef12345678
                 statusSpan.className = 'status-msg checking';
             }
 
-            fetch(urlVal)
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return res.text();
-                })
-                .then(text => {
+            fetch(`/config?action=check_list&url=${encodeURIComponent(urlVal)}&plugin=${encodeURIComponent(inputId)}`)
+                .then(r => r.json())
+                .then(data => {
                     if (button) button.disabled = false;
-                    const lines = text.split('\n');
-                    let channelsCount = 0;
-                    const groups = new Set();
-
-                    for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (line.startsWith('#EXTINF:')) {
-                            channelsCount++;
-                            const groupMatch = line.match(/group-title="([^"]*)"/);
-                            if (groupMatch && groupMatch[1]) {
-                                groups.add(groupMatch[1]);
-                            }
-                        }
-                    }
-
-                    if (channelsCount > 0) {
+                    if (data.status === 'success') {
                         if (statusSpan) {
-                            statusSpan.textContent = `✓ M3U Válido: ${channelsCount} canales, ${groups.size} grupos.`;
+                            statusSpan.textContent = data.groups_count > 0 
+                                ? `✓ Válido: ${data.channels_count} canales, ${data.groups_count} grupos.` 
+                                : `✓ Válido: ${data.channels_count} canales.`;
                             statusSpan.className = 'status-msg valid';
                         }
                     } else {
                         if (statusSpan) {
-                            statusSpan.textContent = '⚠ Vacío o formato no reconocido';
+                            statusSpan.textContent = `✗ Error: ${data.error || 'No se pudo leer la lista'}`;
                             statusSpan.className = 'status-msg invalid';
                         }
                     }
                 })
                 .catch(err => {
-                    fetch(`/config?action=check_list&url=${encodeURIComponent(urlVal)}`)
-                        .then(r => r.json())
-                        .then(data => {
-                            if (button) button.disabled = false;
-                            if (data.status === 'success' && data.channels_count > 0) {
-                                if (statusSpan) {
-                                    statusSpan.textContent = data.groups_count > 0 ? `✓ M3U Válido: ${data.channels_count} canales, ${data.groups_count} grupos.` : `✓ M3U Válido: ${data.channels_count} canales.`;
-                                    statusSpan.className = 'status-msg valid';
-                                }
-                            } else {
-                                if (statusSpan) {
-                                    statusSpan.textContent = `✗ Error: ${data.error || err.message}`;
-                                    statusSpan.className = 'status-msg invalid';
-                                }
-                            }
-                        })
-                        .catch(() => {
-                            if (button) button.disabled = false;
-                            if (statusSpan) {
-                                statusSpan.textContent = `✗ Error de red (${err.message})`;
-                                statusSpan.className = 'status-msg invalid';
-                            }
-                        });
+                    if (button) button.disabled = false;
+                    if (statusSpan) {
+                        statusSpan.textContent = `✗ Error de red (${err.message})`;
+                        statusSpan.className = 'status-msg invalid';
+                    }
                 });
         }
 

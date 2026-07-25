@@ -12,7 +12,6 @@ namespace httpace {
 namespace {
 
 constexpr const char* kEpgUrl = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz";
-constexpr const char* kBrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
 std::string env_or(const char* name, const std::string& fallback) {
     const char* value = std::getenv(name);
@@ -767,6 +766,37 @@ private:
     Config config_;
 };
 
+class FuentesPlugin : public Plugin {
+public:
+    FuentesPlugin(Config cfg) : config_(std::move(cfg)) {}
+    std::string name() const override { return "fuentes"; }
+    std::vector<std::string> handlers() const override { return {"fuentes"}; }
+    
+    bool handle(RequestContext& ctx) override {
+        std::string relative = "index.html";
+        if (ctx.path != "/fuentes") {
+            if (starts_with(ctx.path, "/fuentes/")) {
+                relative = ctx.path.substr(std::string("/fuentes/").size());
+            }
+        }
+        if (relative.empty()) relative = "index.html";
+        if (!path_is_safe_relative(relative)) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+            return true;
+        }
+        try {
+            auto full = std::filesystem::path(config_.root_dir) / "http" / "fuentes" / relative;
+            auto body = read_file_binary(full.string());
+            send_bytes(ctx.connection, 200, mime_type_for_path(relative), body);
+        } catch (...) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+        }
+        return true;
+    }
+private:
+    Config config_;
+};
+
 class EpgPlugin : public Plugin {
 public:
     EpgPlugin(Config cfg) : config_(std::move(cfg)) {}
@@ -824,14 +854,50 @@ protected:
                 }
                 content = read_file_binary(local_path.string());
             } else {
+                url = replace_all(url, " ", "%20");
                 auto response = http_client_.get(url, {{"User-Agent", kBrowserUserAgent}}, 60);
                 content = response.body;
             }
             PlaylistGenerator playlist(header_);
             std::map<std::string, std::string> channels;
             std::map<std::string, std::string> picons;
-            for (auto& item : parse_m3u_acestream_items(content, channels, picons)) {
-                playlist.add_item(item);
+            std::string trimmed_content = trim(content);
+
+            if (starts_with(trimmed_content, "{") || starts_with(trimmed_content, "[")) {
+                try {
+                    auto j = Json::parse(trimmed_content);
+                    std::function<void(const Json&, const std::string&)> process_json = [&](const Json& node, const std::string& current_grp) {
+                        if (node.is_object()) {
+                            std::string grp = node.contains("name") ? node["name"].as_string() : current_grp;
+                            if (node.contains("stations") && node["stations"].is_array()) {
+                                for (const auto& station : node["stations"].as_array()) {
+                                    if (station.is_object() && station.contains("name") && station.contains("url")) {
+                                        auto st_name = station["name"].as_string();
+                                        auto st_url = station["url"].as_string();
+                                        if (st_name.empty() || st_url.empty()) continue;
+                                        auto logo = station.contains("image") ? station["image"].as_string() : "";
+                                        PlaylistItem item{st_name, url_encode(st_name, ""), grp, st_name, "", logo};
+                                        channels[st_name] = st_url;
+                                        if (!logo.empty()) picons[st_name] = logo;
+                                        playlist.add_item(item);
+                                    }
+                                }
+                            }
+                            if (node.contains("groups") && node["groups"].is_array()) {
+                                for (const auto& g : node["groups"].as_array()) {
+                                    process_json(g, grp);
+                                }
+                            }
+                        }
+                    };
+                    process_json(j, "");
+                } catch (...) {}
+            }
+
+            if (channels.empty()) {
+                for (auto& item : parse_m3u_acestream_items(content, channels, picons)) {
+                    playlist.add_item(item);
+                }
             }
             set_playlist(std::move(playlist), std::move(channels), std::move(picons));
             log_line("INFO", "[" + name() + "] dynamic playlist generated with " + std::to_string(channel_count()) + " channels");
@@ -868,6 +934,7 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
 
     plugins.push_back(std::make_shared<PlayerPlugin>(config));
     plugins.push_back(std::make_shared<ListasPlugin>(config));
+    plugins.push_back(std::make_shared<FuentesPlugin>(config));
     plugins.push_back(std::make_shared<EpgPlugin>(config));
 
     // Dynamic Custom Lists

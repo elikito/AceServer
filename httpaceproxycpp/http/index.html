@@ -837,7 +837,9 @@
         }
 
         @keyframes spin {
-            100% { transform: rotate(360deg); }
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .drag-handle {
@@ -1289,7 +1291,8 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat" class="active">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/">Fuentes</a>
+            <a href="/listas/">Listas</a>
+            <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
             <a href="/player/legacy.html">Reproductor Legacy</a>
@@ -2098,7 +2101,7 @@
                 let storedOrder = [];
                 try {
                     storedOrder = JSON.parse(localStorage.getItem('pluginsOrder') || '[]');
-                } catch (e) {}
+                } catch (e) { }
 
                 visiblePlugins.sort((a, b) => {
                     const nameA = a.name.toLowerCase();
@@ -2407,7 +2410,7 @@
                         epgUrlLoaded = true;
                     }
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
 
         function saveEpgUrl() {
