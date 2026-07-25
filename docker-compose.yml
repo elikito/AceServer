@@ -1,7 +1,7 @@
 services:
   # PROXY WARP DEDICADO: Canaliza el tráfico saliente por Cloudflare (Evita bloqueos de ISP y errores TLS en WSL2)
   warp:
-    image: cmulk/cloudflare-warp:latest
+    image: monlor/cloudflare-warp:latest
     container_name: warp
     restart: unless-stopped
     environment:
