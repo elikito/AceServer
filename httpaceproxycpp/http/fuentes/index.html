@@ -346,11 +346,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: var(--brand-color);
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(22px);
         }
 
@@ -414,6 +414,15 @@
 
         .btn-refresh:hover {
             background-color: #0369a1;
+        }
+
+        .btn-copy {
+            background-color: #6366f1;
+            color: #ffffff;
+        }
+
+        .btn-copy:hover {
+            background-color: #4f46e5;
         }
 
         .btn-save {
@@ -492,8 +501,54 @@
             color: #ff5252;
         }
 
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner-icon {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(0, 229, 255, 0.25);
+            border-top-color: #00e5ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
         .status-msg.checking {
-            color: #ffb74d;
+            color: #00e5ff;
+            background-color: rgba(0, 229, 255, 0.08);
+            border: 1px solid rgba(0, 229, 255, 0.25);
+            display: inline-flex;
+            align-items: center;
+        }
+
+        @keyframes pulse-opacity {
+            0% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.3;
+            }
+        }
+
+        .counter-loading {
+            display: inline-block;
+            animation: pulse-opacity 1.2s infinite ease-in-out;
+            color: #00e5ff;
         }
 
         /* Footer */
@@ -605,7 +660,6 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/">Listas</a>
             <a href="/fuentes/" class="active">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
@@ -620,18 +674,19 @@
             <div class="header-title">
                 <h1>
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                        <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                        <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
                     </svg>
                     Gestión de Fuentes M3U / URLs
                 </h1>
-                <p>Edita URLs, activa o apaga listas en caliente, analiza el contador de canales y grupos detectados.</p>
+                <p>Edita URLs, activa o apaga listas en caliente, analiza el contador de canales y grupos detectados.
+                </p>
             </div>
             <div>
                 <button class="btn-action btn-refresh" style="padding: 10px 18px;" onclick="refreshAllSources()">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" id="refresh-all-icon">
-                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        <path
+                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                     </svg>
-                    Actualizar Todas las Fuentes
                 </button>
             </div>
         </div>
@@ -672,7 +727,7 @@
         <div class="section-header">
             <div class="section-title">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M12 2l-5.5 9h11zM12 22l5.5-9h-11z"/>
+                    <path d="M12 2l-5.5 9h11zM12 22l5.5-9h-11z" />
                 </svg>
                 Fuentes Predefinidas
             </div>
@@ -702,7 +757,7 @@
         <div class="section-header">
             <div class="section-title">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
                 Fuentes Dinámicas Personalizadas
             </div>
@@ -732,7 +787,7 @@
         <div class="section-header">
             <div class="section-title">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
                 Agregar Nueva Fuente por URL
             </div>
@@ -741,7 +796,8 @@
             <div class="add-form-grid">
                 <div class="form-group">
                     <label for="new-source-id">Identificador (ID)</label>
-                    <input type="text" id="new-source-id" class="url-input" placeholder="ej: deports_m3u" oninput="sanitizeName(this)">
+                    <input type="text" id="new-source-id" class="url-input" placeholder="ej: deports_m3u"
+                        oninput="sanitizeName(this)">
                 </div>
                 <div class="form-group">
                     <label for="new-source-title">Nombre Visible</label>
@@ -749,13 +805,71 @@
                 </div>
                 <div class="form-group">
                     <label for="new-source-url">Dirección URL (M3U / M3U8 / TXT)</label>
-                    <input type="text" id="new-source-url" class="url-input" placeholder="http://servidor.com/lista.m3u">
+                    <input type="text" id="new-source-url" class="url-input"
+                        placeholder="http://servidor.com/lista.m3u">
                 </div>
                 <div>
-                    <button class="btn-action btn-save" style="padding: 10px 20px; width: 100%;" onclick="addCustomSource()">
+                    <button class="btn-action btn-save" style="padding: 10px 20px; width: 100%;"
+                        onclick="addCustomSource()">
                         + Añadir Fuente
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Subir Fichero M3U Local -->
+        <div class="section-header">
+            <div class="section-title">
+                📁 Subir Fichero M3U Local
+            </div>
+        </div>
+        <div class="config-card">
+            <div class="add-form-grid" style="grid-template-columns: 1fr 1.2fr 2fr auto;">
+                <div class="form-group">
+                    <label for="upload-list-name">Identificador (ID)</label>
+                    <input type="text" id="upload-list-name" class="url-input" placeholder="ej: miscanales"
+                        oninput="sanitizeName(this)">
+                </div>
+                <div class="form-group">
+                    <label for="upload-list-title">Nombre Visible</label>
+                    <input type="text" id="upload-list-title" class="url-input" placeholder="ej: Mis Canales Locales">
+                </div>
+                <div class="form-group">
+                    <label for="upload-file-input">Seleccionar Archivo (.M3U, .M3U8, .TXT)</label>
+                    <input type="file" id="upload-file-input" class="url-input" accept=".m3u,.m3u8,.txt"
+                        style="padding: 6px;">
+                </div>
+                <div>
+                    <button class="btn-action btn-save" style="padding: 10px 20px; width: 100%;"
+                        onclick="uploadM3uFile()">
+                        Subir Fichero
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pegar Canales Directos (Lista Interna) -->
+        <div class="section-header">
+            <div class="section-title">
+                📝 Pegar Canales Directos (Lista Interna, se sobreescribe)
+            </div>
+        </div>
+        <div class="config-card">
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label for="paste-channels-text">Pega tus canales (Formatos flexibles: "Nombre - Hash", "Nombre, Hash",
+                    "acestream://Hash", o Hash directo por línea)</label>
+                <textarea id="paste-channels-text" class="url-input" rows="6"
+                    style="width: 100%; font-family: monospace; font-size: 13px; padding: 10px; resize: vertical;"
+                    placeholder="Ejemplos de formatos aceptados por línea:
+Sky Sports f1 DE - acestream://b04372b9543d763bd2dbd2a1842d9723fd080076
+DAZN F1 1080p * - acestream://d719181097d256073844390b3e094fbcb1bceaa4
+DAZN F1 1080p ** - acestream://b08e158ea3f5c72084f5ff8e3c30ca2e4d1ff6d1
+DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+                <button class="btn-action btn-save" style="padding: 10px 24px;" onclick="saveInternalList()">
+                    Guardar en Lista Interna
+                </button>
             </div>
         </div>
     </div>
@@ -763,13 +877,14 @@
     <!-- Footer Bar -->
     <div class="footer-bar">
         <div class="footer-left">
-            <span class="label">IP DEL SERVIDOR:</span>
+            <span class="label">IP:</span>
             <span id="server-ip" class="val">-</span>
         </div>
         <div class="footer-center">
             <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
                 <svg id="theme-icon" viewBox="0 0 24 24">
-                    <path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
+                    <path
+                        d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
                 </svg>
             </button>
         </div>
@@ -783,10 +898,12 @@
         const predefinedPlugins = [
             { id: 'newera', name: 'NewEra', fallback: 'https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u' },
             { id: 'elcano', name: 'Elcano', fallback: 'https://ipfs.io/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u,https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u' },
-            { id: 'af1c1onados', name: 'Af1c1onados', fallback: 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u' }
+            { id: 'af1c1onados', name: 'Af1c1onados', fallback: 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u' },
+            { id: 'acepl', name: 'Acepl', fallback: 'https://api.acestream.me/all?api_version=1.0&api_key=test_api_key' }
         ];
 
         // Icons
+        const iconCopy = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
         const iconRefresh = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
         const iconSave = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`;
         const iconDelete = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
@@ -817,7 +934,16 @@
                 });
             }
 
-            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+            const hostIp = window.location.hostname || '127.0.0.1';
+            document.getElementById('server-ip').textContent = hostIp;
+            fetch('/stat/?action=get_status')
+                .then(r => r.json())
+                .then(data => {
+                    const sysHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
+                    if (sysHostname) {
+                        document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
+                    }
+                }).catch(() => { });
 
             const navbarToggle = document.getElementById('navbar-toggle');
             const navLinks = document.getElementById('nav-links');
@@ -864,7 +990,31 @@
             return url;
         }
 
+        function copySourceUrl(id, button) {
+            const fullUrl = window.location.origin + '/' + encodeURIComponent(id);
+            var textarea = document.createElement('textarea');
+            textarea.value = fullUrl;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+            document.body.removeChild(textarea);
+
+            if (success) {
+                showToast(`✓ Enlace (${fullUrl}) copiado al portapapeles`);
+            } else {
+                showToast('No se pudo copiar el enlace', 'error');
+            }
+        }
+
         function loadSources() {
+            loadInternalList();
             fetch('/config?action=get_config')
                 .then(res => res.json())
                 .then(config => {
@@ -923,14 +1073,17 @@
                     </td>
                     <td>
                         <div class="action-cell">
+                            <button class="btn-action btn-copy" onclick="copySourceUrl('${plugin.id}', this)" title="Copiar enlace M3U (${plugin.name})">
+                                ${iconCopy}
+                            </button>
                             <button class="btn-action btn-refresh" onclick="refreshSource('${plugin.id}', true)" title="Actualizar y comprobar (${plugin.name})">
-                                ${iconRefresh} Actualizar
+                                ${iconRefresh}
                             </button>
                             <button class="btn-action btn-save" onclick="savePredefinedSource('${plugin.id}')" title="Guardar URL (${plugin.name})">
-                                ${iconSave} Guardar
+                                ${iconSave}
                             </button>
                             <button class="btn-action btn-disabled" title="Listas predefinidas no se pueden borrar" disabled>
-                                ${iconLock} Borrar
+                                ${iconLock}
                             </button>
                         </div>
                     </td>
@@ -985,14 +1138,17 @@
                     </td>
                     <td>
                         <div class="action-cell">
+                            <button class="btn-action btn-copy" onclick="copySourceUrl('${list.name}', this)" title="Copiar enlace M3U (${displayTitle})">
+                                ${iconCopy}
+                            </button>
                             <button class="btn-action btn-refresh" onclick="refreshSource('${list.name}', true)" title="Actualizar y comprobar (${displayTitle})">
-                                ${iconRefresh} Actualizar
+                                ${iconRefresh}
                             </button>
                             <button class="btn-action btn-save" onclick="saveCustomSource('${list.name}')" title="Guardar cambios (${displayTitle})">
-                                ${iconSave} Guardar
+                                ${iconSave}
                             </button>
                             <button class="btn-action btn-delete" onclick="deleteCustomSource('${list.name}')" title="Eliminar fuente (${displayTitle})">
-                                ${iconDelete} Borrar
+                                ${iconDelete}
                             </button>
                         </div>
                     </td>
@@ -1024,8 +1180,16 @@
             const chEl = document.getElementById(`cnt-ch-${id}`);
             const grEl = document.getElementById(`cnt-gr-${id}`);
 
+            if (listStatsCache[id]) {
+                if (chEl) chEl.textContent = listStatsCache[id].channels;
+                if (grEl) grEl.textContent = listStatsCache[id].groups;
+            } else {
+                if (chEl) chEl.innerHTML = '<span class="counter-loading">...</span>';
+                if (grEl) grEl.innerHTML = '<span class="counter-loading">...</span>';
+            }
+
             if (statusSpan) {
-                statusSpan.textContent = 'Comprobando...';
+                statusSpan.innerHTML = '<span class="spinner-icon"></span>Comprobando...';
                 statusSpan.className = 'status-msg checking';
             }
 
@@ -1040,9 +1204,15 @@
                 return;
             }
 
-            fetch(`/config?action=check_list&url=${encodeURIComponent(cleanUrl)}&plugin=${encodeURIComponent(id)}`)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+            fetch(`/config?action=check_list&url=${encodeURIComponent(cleanUrl)}&plugin=${encodeURIComponent(id)}`, {
+                signal: controller.signal
+            })
                 .then(r => r.json())
                 .then(data => {
+                    clearTimeout(timeoutId);
                     if (data.status === 'success') {
                         const channels = data.channels_count || 0;
                         const groups = data.groups_count || 0;
@@ -1066,10 +1236,12 @@
                     }
                 })
                 .catch(err => {
+                    clearTimeout(timeoutId);
                     if (chEl) chEl.textContent = '0';
                     if (grEl) grEl.textContent = '0';
                     if (statusSpan) {
-                        statusSpan.textContent = `✗ Error de red (${err.message})`;
+                        const errMsg = (err.name === 'AbortError') ? 'Tiempo de espera agotado' : (err.message || 'Error de red');
+                        statusSpan.textContent = `✗ ${errMsg}`;
                         statusSpan.className = 'status-msg invalid';
                     }
                 });
@@ -1273,6 +1445,128 @@
                 .catch(err => {
                     console.error(err);
                     showToast('Error de red al eliminar la fuente', 'error');
+                });
+        }
+
+        function loadInternalList() {
+            fetch('/listas/locales/Interna.m3u?t=' + Date.now())
+                .then(res => {
+                    if (!res.ok) return '';
+                    return res.text();
+                })
+                .then(m3uText => {
+                    if (!m3uText) return;
+                    const lines = m3uText.split('\n');
+                    const formattedLines = [];
+                    let lastTitle = '';
+
+                    for (let i = 0; i < lines.length; i++) {
+                        let line = lines[i].trim();
+                        if (!line || line.startsWith('#EXTM3U') || line.startsWith('#EXTVLCOPT') || line.startsWith('#EXTHTTP') || line.startsWith('#EXT-X-')) continue;
+                        if (line.startsWith('#EXTINF:')) {
+                            const idx = line.lastIndexOf(',');
+                            if (idx !== -1) {
+                                lastTitle = line.substring(idx + 1).trim();
+                            }
+                        } else if (!line.startsWith('#')) {
+                            const streamUrl = line;
+                            if (lastTitle) {
+                                formattedLines.push(`${lastTitle} - ${streamUrl}`);
+                                lastTitle = '';
+                            } else {
+                                formattedLines.push(streamUrl);
+                            }
+                        }
+                    }
+
+                    const textarea = document.getElementById('paste-channels-text');
+                    if (textarea && formattedLines.length > 0) {
+                        textarea.value = formattedLines.join('\n');
+                    }
+                })
+                .catch(err => {
+                    console.warn('No se pudo cargar la lista Interna existente:', err);
+                });
+        }
+
+        function uploadM3uFile() {
+            const nameInput = document.getElementById('upload-list-name');
+            const titleInput = document.getElementById('upload-list-title');
+            const fileInput = document.getElementById('upload-file-input');
+            const name = nameInput ? nameInput.value.trim() : '';
+            const title = titleInput ? titleInput.value.trim() : '';
+            const file = fileInput ? fileInput.files[0] : null;
+
+            if (!file) {
+                showToast('Por favor, selecciona un archivo .m3u, .m3u8 o .txt para subir.', 'error');
+                return;
+            }
+
+            const filename = file.name;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+                const targetName = name || filename.replace(/\.[^/.]+$/, "");
+                const payload = {
+                    name: targetName,
+                    title: title || targetName,
+                    filename: filename,
+                    content: content
+                };
+
+                fetch(`/config?action=upload_list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showToast(`Fichero "${data.title || data.name}" subido y guardado con éxito.`);
+                            if (nameInput) nameInput.value = '';
+                            if (titleInput) titleInput.value = '';
+                            if (fileInput) fileInput.value = '';
+                            loadSources();
+                        } else {
+                            showToast('Error en el servidor al subir el fichero.', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        showToast('Error de red al subir el fichero.', 'error');
+                    });
+            };
+            reader.readAsText(file);
+        }
+
+        function saveInternalList() {
+            const textarea = document.getElementById('paste-channels-text');
+            const text = textarea ? textarea.value.trim() : '';
+
+            if (!text) {
+                showToast('Por favor, pega el texto con los canales para generar la lista Interna.', 'error');
+                return;
+            }
+
+            const payload = { content: text };
+
+            fetch(`/config?action=save_internal`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(`Lista "Interna" actualizada con éxito (${data.channels_count} canales generados).`);
+                        loadSources();
+                    } else {
+                        showToast('Error en el servidor al generar la lista Interna.', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('Error de red al generar la lista Interna.', 'error');
                 });
         }
 

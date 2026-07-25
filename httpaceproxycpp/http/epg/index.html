@@ -706,7 +706,6 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/">Listas</a>
             <a href="/fuentes/">Fuentes</a>
             <a href="/epg/" class="active">EPG</a>
             <a href="/player/index.html">Reproductor</a>
@@ -840,7 +839,16 @@
                 navbarToggle.addEventListener('click', () => navLinks.classList.toggle('show'));
             }
 
-            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+            const hostIp = window.location.hostname || '127.0.0.1';
+            document.getElementById('server-ip').textContent = hostIp;
+            fetch('/stat/?action=get_status')
+                .then(r => r.json())
+                .then(data => {
+                    const sysHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
+                    if (sysHostname) {
+                        document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
+                    }
+                }).catch(() => {});
 
             // Theme toggle
             const themeToggle = document.getElementById('theme-toggle');

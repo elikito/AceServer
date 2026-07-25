@@ -497,25 +497,22 @@
         }
 
         .config-grid,
+        .httpaceproxy-grid,
         .system-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
-        }
-
-        .httpaceproxy-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 16px;
         }
 
         @media (max-width: 900px) {
+            .config-grid,
             .httpaceproxy-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
 
         @media (max-width: 500px) {
+            .config-grid,
             .httpaceproxy-grid {
                 grid-template-columns: 1fr;
             }
@@ -709,6 +706,49 @@
         /* Plugins list */
         .plugins-list {
             margin-top: 12px;
+        }
+
+        .plugin-category-group {
+            margin-bottom: 24px;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .category-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+        }
+
+        .category-badge {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .plugin-card.card-predefined {
+            border-left-color: #3f51b5;
+        }
+
+        .plugin-card.card-url {
+            border-left-color: #0284c7;
+        }
+
+        .plugin-card.card-local {
+            border-left-color: #764ba2;
         }
 
         .plugin-card {
@@ -1276,10 +1316,70 @@
             height: 16px;
             fill: currentColor;
         }
+
+        /* Page Loading Overlay */
+        .page-loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-color, #0f1015);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+        }
+
+        .page-loader-overlay.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .loader-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        @keyframes ace-pulse-spin {
+            0% { transform: rotate(0deg) scale(1); border-top-color: #00e5ff; }
+            50% { transform: rotate(180deg) scale(1.08); border-top-color: #764ba2; }
+            100% { transform: rotate(360deg) scale(1); border-top-color: #00e5ff; }
+        }
+
+        .ace-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255, 255, 255, 0.08);
+            border-top-color: #00e5ff;
+            border-radius: 50%;
+            animation: ace-pulse-spin 1s ease-in-out infinite;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+
+        .loader-text {
+            color: var(--text-color, #ffffff);
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            animation: pulse-opacity 1.2s infinite ease-in-out;
+        }
     </style>
 </head>
 
 <body>
+    <!-- Page Loading Overlay -->
+    <div id="page-loader" class="page-loader-overlay">
+        <div class="loader-content">
+            <div class="ace-spinner"></div>
+            <div class="loader-text">Cargando Panel de Control...</div>
+        </div>
+    </div>
+
     <!-- Navbar -->
     <nav class="navbar">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
@@ -1291,7 +1391,6 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat" class="active">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/">Listas</a>
             <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
@@ -1431,15 +1530,7 @@
                         <span class="value" id="config-active-engine" style="color: var(--brand-color);">-</span>
                     </div>
                     <div class="config-item">
-                        <span class="label">Puerto API</span>
-                        <span class="value" id="config-ace-api-port">-</span>
-                    </div>
-                    <div class="config-item">
-                        <span class="label">Puerto HTTP</span>
-                        <span class="value" id="config-ace-http-port">-</span>
-                    </div>
-                    <div class="config-item">
-                        <span class="label">Estado Conexión</span>
+                        <span class="label">Estado y Puertos</span>
                         <div id="config-ace-status"></div>
                     </div>
                 </div>
@@ -1524,12 +1615,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Listas -->
-            <div class="config-section">
-                <h4>Listas Cargadas</h4>
-                <div id="config-plugins-list"></div>
             </div>
         </div>
 
@@ -1765,16 +1850,30 @@
                 });
         }
 
+        function hidePageLoader() {
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.classList.add('fade-out');
+            }
+        }
+
         function getStatus() {
-            fetch('/stat/?action=get_status')
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            fetch('/stat/?action=get_status', { signal: controller.signal })
                 .then(r => r.json())
                 .then(data => {
+                    clearTimeout(timeoutId);
+                    hidePageLoader();
                     if (data.status === 'success') {
                         renderPage(data);
                         document.getElementById('error-state').style.display = 'none';
                     }
                 })
                 .catch(err => {
+                    clearTimeout(timeoutId);
+                    hidePageLoader();
                     console.error('Status error:', err);
                     document.getElementById('error-state').style.display = 'block';
                 });
@@ -2006,6 +2105,14 @@
                 document.querySelectorAll('.app-version').forEach(el => el.textContent = ver);
             }
 
+            // Server IP & Hostname
+            const hostIp = window.location.hostname || '127.0.0.1';
+            const sysHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
+            const ipEl = document.getElementById('server-ip');
+            if (ipEl) {
+                ipEl.textContent = sysHostname ? `${hostIp} (${sysHostname})` : hostIp;
+            }
+
             // CPU & Engine Selection
             const cpuText = data.cpu_detected || data.server_info?.cpu_detected || '-';
             const cpuEl = document.getElementById('config-cpu-detected');
@@ -2056,8 +2163,6 @@
                 const cfg = data.server_config;
                 document.getElementById('config-proxy-host').textContent = cfg.aceproxy.host;
                 document.getElementById('config-proxy-port').textContent = cfg.aceproxy.port;
-                document.getElementById('config-ace-api-port').textContent = cfg.acestream.api_port;
-                document.getElementById('config-ace-http-port').textContent = cfg.acestream.http_port;
 
                 const connInput = document.getElementById('config-max-connections-input');
                 if (connInput && document.activeElement !== connInput) {
@@ -2073,94 +2178,177 @@
             if (data.server_info) {
                 const info = data.server_info;
 
-                // AceStream Engine Status
+                // AceStream Engine Status & Combined Ports
                 const aceStatus = info.acestream_engine;
                 const statusEl = document.getElementById('config-ace-status');
-                if (aceStatus.status === 'connected') {
-                    statusEl.innerHTML = `
-                        <div class="status-indicator success">
-                            <span class="status-dot"></span>
-                            <span>Conectado ${aceStatus.version !== 'unknown' ? '(v' + aceStatus.version + ')' : ''}</span>
-                        </div>
-                    `;
-                } else {
-                    statusEl.innerHTML = `
-                        <div class="status-indicator error">
-                            <span class="status-dot"></span>
-                            <span>Desconectado</span>
-                        </div>
-                    `;
+                const apiPort = data.server_config?.acestream?.api_port || 62062;
+                const httpPort = data.server_config?.acestream?.http_port || 6878;
+
+                if (statusEl) {
+                    if (aceStatus.status === 'connected') {
+                        statusEl.innerHTML = `
+                            <div class="status-indicator success" style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="status-dot"></span>
+                                    <span>Conectado ${aceStatus.version !== 'unknown' ? '(v' + aceStatus.version + ')' : ''}</span>
+                                </div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-top: 2px;">
+                                    <code>API: ${apiPort}</code> &bull; <code>HTTP: ${httpPort}</code>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        statusEl.innerHTML = `
+                            <div class="status-indicator error" style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="status-dot"></span>
+                                    <span>Desconectado</span>
+                                </div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-top: 2px;">
+                                    <code>API: ${apiPort}</code> &bull; <code>HTTP: ${httpPort}</code>
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
 
                 // Plugins
                 const pluginsList = document.getElementById('config-plugins-list');
-                const hiddenPlugins = ['listas', 'player', 'stat', 'statplugin', 'epg'];
-                const visiblePlugins = (info.plugins_loaded || []).filter(p => !hiddenPlugins.includes(p.name.toLowerCase()));
+                if (pluginsList) {
+                    const hiddenPlugins = ['listas', 'player', 'stat', 'statplugin', 'epg', 'fuentes'];
+                    const visiblePlugins = (info.plugins_loaded || []).filter(p => !hiddenPlugins.includes(p.name.toLowerCase()));
 
-                // Custom User Order via Drag and Drop
-                let storedOrder = [];
-                try {
-                    storedOrder = JSON.parse(localStorage.getItem('pluginsOrder') || '[]');
-                } catch (e) { }
+                    // Custom User Order via Drag and Drop
+                    let storedOrder = [];
+                    try {
+                        storedOrder = JSON.parse(localStorage.getItem('pluginsOrder') || '[]');
+                    } catch (e) { }
 
-                visiblePlugins.sort((a, b) => {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    const idxA = storedOrder.indexOf(nameA);
-                    const idxB = storedOrder.indexOf(nameB);
+                    visiblePlugins.sort((a, b) => {
+                        const nameA = a.name.toLowerCase();
+                        const nameB = b.name.toLowerCase();
+                        const idxA = storedOrder.indexOf(nameA);
+                        const idxB = storedOrder.indexOf(nameB);
 
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    if (idxA !== -1) return -1;
-                    if (idxB !== -1) return 1;
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
 
-                    if (nameA === 'aio') return -1;
-                    if (nameB === 'aio') return 1;
-                    return nameA.localeCompare(nameB);
-                });
+                        if (nameA === 'aio') return -1;
+                        if (nameB === 'aio') return 1;
+                        return nameA.localeCompare(nameB);
+                    });
 
-                if (visiblePlugins.length > 0) {
-                    if (!isDraggingCard) {
-                        pluginsList.innerHTML = visiblePlugins.map(p => {
-                            const copyButtonsHtml = p.handlers.map(handler => {
-                                const fullUrl = window.location.origin + '/' + handler;
+                    if (visiblePlugins.length > 0) {
+                        if (!isDraggingCard) {
+                            const predefinedNames = ['newera', 'elcano', 'af1c1onados', 'acepl', 'aio'];
+                            const predefinedGroup = [];
+                            const urlGroup = [];
+                            const localGroup = [];
+
+                            visiblePlugins.forEach(p => {
+                                const nameLower = p.name.toLowerCase();
+                                const url = (p.url || '').trim().toLowerCase();
+                                if (predefinedNames.includes(nameLower)) {
+                                    p._borderClass = 'card-predefined';
+                                    predefinedGroup.push(p);
+                                } else if (nameLower === 'interna' || url.startsWith('/') || url.startsWith('file://')) {
+                                    p._borderClass = 'card-local';
+                                    localGroup.push(p);
+                                } else {
+                                    p._borderClass = 'card-url';
+                                    urlGroup.push(p);
+                                }
+                            });
+
+                            const renderCard = (p) => {
+                                const copyButtonsHtml = p.handlers.map(handler => {
+                                    const fullUrl = window.location.origin + '/' + handler;
+                                    return `
+                                        <button class="handler-copy-btn" onclick="copyTextToClipboard('${fullUrl}', this, '✓ Enlace copiado'); event.preventDefault();" title="Copiar enlace (${fullUrl})">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                        </button>
+                                    `;
+                                }).join('');
+
                                 return `
-                                    <button class="handler-copy-btn" onclick="copyTextToClipboard('${fullUrl}', this, '✓ Enlace copiado'); event.preventDefault();" title="Copiar enlace (${fullUrl})">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                    </button>
-                                `;
-                            }).join('');
-
-                            return `
-                                <div class="plugin-card" data-plugin-name="${p.name}" draggable="true">
-                                    <div class="plugin-header-line">
-                                        <div class="plugin-left">
-                                            <span class="drag-handle" title="Arrastrar para reordenar el panel">
-                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                                            </span>
-                                            ${(p.name.toLowerCase() !== 'stat' && p.name.toLowerCase() !== 'statplugin') ? `
-                                                <label class="switch" title="Activar/Desactivar Plugin">
-                                                    <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePlugin('${p.name}', this.checked)">
-                                                    <span class="slider round"></span>
-                                                </label>
-                                            ` : ''}
-                                            <span class="plugin-name">${p.name}</span>
+                                    <div class="plugin-card ${p._borderClass}" data-plugin-name="${p.name}" draggable="true">
+                                        <div class="plugin-header-line">
+                                            <div class="plugin-left">
+                                                <span class="drag-handle" title="Arrastrar para reordenar el panel">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                                </span>
+                                                ${(p.name.toLowerCase() !== 'stat' && p.name.toLowerCase() !== 'statplugin') ? `
+                                                    <label class="switch" title="Activar/Desactivar Plugin">
+                                                        <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePlugin('${p.name}', this.checked)">
+                                                        <span class="slider round"></span>
+                                                    </label>
+                                                ` : ''}
+                                                <span class="plugin-name">${p.name}</span>
+                                            </div>
+                                            <div class="plugin-card-header-right">
+                                                ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} canales</span>` : ''}
+                                                <button class="handler-refresh-btn" onclick="refreshDashboardList('${p.name}', this); event.preventDefault();" title="Actualizar lista (${p.name})">
+                                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                                                </button>
+                                                ${copyButtonsHtml}
+                                            </div>
                                         </div>
-                                        <div class="plugin-card-header-right">
-                                            ${p.channels > 0 ? `<span class="plugin-channels-badge">${p.channels} canales</span>` : ''}
-                                            <button class="handler-refresh-btn" onclick="refreshDashboardList('${p.name}', this); event.preventDefault();" title="Actualizar lista (${p.name})">
-                                                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                                            </button>
-                                            ${copyButtonsHtml}
+                                        <div id="status-msg-${p.name}" class="plugin-status-msg" style="display:none;"></div>
+                                    </div>
+                                `;
+                            };
+
+                            let contentHtml = '';
+
+                            if (predefinedGroup.length > 0) {
+                                contentHtml += `
+                                    <div class="plugin-category-group">
+                                        <div class="category-header">
+                                            <span class="category-title">Listas Predefinidas</span>
+                                            <span class="category-badge">${predefinedGroup.length}</span>
+                                        </div>
+                                        <div class="category-cards-container">
+                                            ${predefinedGroup.map(renderCard).join('')}
                                         </div>
                                     </div>
-                                    <div id="status-msg-${p.name}" class="plugin-status-msg" style="display:none;"></div>
-                                </div>
-                            `;
-                        }).join('');
-                        initPluginCardsDragAndDrop();
+                                `;
+                            }
+
+                            if (urlGroup.length > 0) {
+                                contentHtml += `
+                                    <div class="plugin-category-group">
+                                        <div class="category-header">
+                                            <span class="category-title">Fuentes Añadidas por URL</span>
+                                            <span class="category-badge">${urlGroup.length}</span>
+                                        </div>
+                                        <div class="category-cards-container">
+                                            ${urlGroup.map(renderCard).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            if (localGroup.length > 0) {
+                                contentHtml += `
+                                    <div class="plugin-category-group">
+                                        <div class="category-header">
+                                            <span class="category-title">Lista Local / Interna</span>
+                                            <span class="category-badge">${localGroup.length}</span>
+                                        </div>
+                                        <div class="category-cards-container">
+                                            ${localGroup.map(renderCard).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            pluginsList.innerHTML = contentHtml;
+                            initPluginCardsDragAndDrop();
+                        }
+                    } else {
+                        pluginsList.innerHTML = '<div class="status-indicator warning"><span class="status-dot"></span><span>No hay listas cargadas</span></div>';
                     }
-                } else {
-                    pluginsList.innerHTML = '<div class="status-indicator warning"><span class="status-dot"></span><span>No hay listas cargadas</span></div>';
                 }
 
                 document.getElementById('config-panel').style.display = 'block';

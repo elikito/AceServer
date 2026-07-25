@@ -907,7 +907,6 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/">Listas</a>
             <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html" class="active">Reproductor</a>
@@ -1085,7 +1084,16 @@
                 });
             }
 
-            document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
+            const hostIp = window.location.hostname || '127.0.0.1';
+            document.getElementById('server-ip').textContent = hostIp;
+            fetch('/stat/?action=get_status')
+                .then(r => r.json())
+                .then(data => {
+                    const sysHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
+                    if (sysHostname) {
+                        document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
+                    }
+                }).catch(() => {});
 
             // Hamburger menu toggle
             const navbarToggle = document.getElementById('navbar-toggle');
@@ -1481,14 +1489,17 @@
                         isLive: true,
                         url: streamUrl
                     }, {
-                        enableStashBuffer: false,
-                        stashInitialSize: 128 * 1024,
-                        liveBufferLatencyChasing: true,
-                        liveBufferLatencyMaxLatency: 4.0,
-                        liveBufferLatencyMinRemain: 0.5,
+                        enableStashBuffer: true,
+                        stashInitialSize: 384 * 1024,
+                        liveBufferLatencyChasing: false,
+                        liveBufferLatencyMaxLatency: 15.0,
+                        liveBufferLatencyMinRemain: 2.0,
                         autoCleanupSourceBuffer: true,
-                        lazyLoadMaxDuration: 2 * 60,
-                        deferLoadAfterError: false
+                        autoCleanupMaxBackwardDuration: 30,
+                        autoCleanupMinBackwardDuration: 15,
+                        lazyLoadMaxDuration: 3 * 60,
+                        deferLoadAfterError: false,
+                        enableWorker: true
                     });
 
                     webMpegtsPlayer.attachMediaElement(videoElement);
@@ -1550,12 +1561,7 @@
                     };
 
                     videoElement.onwaiting = () => {
-                        if (videoElement.buffered && videoElement.buffered.length > 0) {
-                            const end = videoElement.buffered.end(videoElement.buffered.length - 1);
-                            if (end - videoElement.currentTime > 0.5) {
-                                videoElement.currentTime = end - 0.2;
-                            }
-                        }
+                        updatePlayerStatus('Almacenando búfer...', 'loading');
                     };
 
                     videoElement.onerror = () => {

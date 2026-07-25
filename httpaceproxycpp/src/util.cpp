@@ -12,6 +12,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <unistd.h>
 
 namespace httpace {
 namespace {
@@ -153,6 +154,14 @@ std::string query_get(std::string_view query, std::string_view key, std::string_
 
 std::string shell_quote_for_log(std::string_view value) {
     return "'" + replace_all(std::string(value), "'", "'\\''") + "'";
+}
+
+std::string get_hostname() {
+    char host_buf[256] = {0};
+    if (::gethostname(host_buf, sizeof(host_buf) - 1) == 0) {
+        return std::string(host_buf);
+    }
+    return "";
 }
 
 std::string basename_no_ext(std::string_view path) {

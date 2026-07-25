@@ -279,13 +279,41 @@ bool PlaylistPlugin::rewrite_channel(RequestContext& ctx, const std::string& cha
     std::string icon;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        auto decoded_name = url_decode(channel_name);
         auto it = channels_.find(channel_name);
+        if (it == channels_.end()) {
+            it = channels_.find(decoded_name);
+        }
+        if (it == channels_.end()) {
+            auto target_lower = lower(trim(decoded_name));
+            for (auto map_it = channels_.begin(); map_it != channels_.end(); ++map_it) {
+                if (lower(trim(map_it->first)) == target_lower) {
+                    it = map_it;
+                    break;
+                }
+            }
+        }
+        if (it == channels_.end()) {
+            double best_score = 0.0;
+            auto best_it = channels_.end();
+            for (auto map_it = channels_.begin(); map_it != channels_.end(); ++map_it) {
+                double score = rough_similarity(decoded_name, map_it->first);
+                if (score > best_score && score > 0.6) {
+                    best_score = score;
+                    best_it = map_it;
+                }
+            }
+            if (best_it != channels_.end()) {
+                it = best_it;
+            }
+        }
+
         if (it == channels_.end()) {
             send_bytes(ctx.connection, 404, "text/plain", "[" + plugin_name_ + "] unknown channel: " + channel_name);
             return true;
         }
         url = it->second;
-        icon = picons_.contains(channel_name) ? picons_[channel_name] : "";
+        icon = picons_.contains(it->first) ? picons_[it->first] : "";
     }
     auto parsed = parse_url(url);
     std::string new_path;
@@ -362,7 +390,10 @@ public:
         : PlaylistPlugin(std::move(cfg), client, proxy, "acepl", PlaylistGenerator::epg_header("", 0), 30) {}
 protected:
     bool refresh() override {
-        auto response = http_client_.get("https://api.acestream.me/all?api_version=1.0&api_key=test_api_key", {{"User-Agent", kBrowserUserAgent}}, 60);
+        auto default_url = "https://api.acestream.me/all?api_version=1.0&api_key=test_api_key";
+        auto url = normalize_list_url(proxy_.get_plugin_url(name(), default_url));
+        url = replace_all(url, " ", "%20");
+        auto response = http_client_.get(url, {{"User-Agent", kBrowserUserAgent}}, 60);
         auto data = Json::parse(response.body);
         PlaylistGenerator playlist(header_, "#EXTINF:-1 group-title=\"{group}\" tvg-name=\"{name}\",{name}\n#EXTGRP:{group}\n{url}\n");
         std::map<std::string, std::string> channels;

@@ -802,7 +802,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     auto normalized_url = normalize_list_url(decoded_url);
                     normalized_url = replace_all(normalized_url, " ", "%20");
                     try {
-                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 15, true);
+                        auto res = http_client_.get(normalized_url, {{"User-Agent", kBrowserUserAgent}}, 5, true);
                         http_status = res.status;
                         if (res.status >= 200 && res.status < 400) {
                             content = res.body;
@@ -1287,12 +1287,14 @@ Json Proxy::status_json() {
     for (const auto& plugin : plugins_.unique_plugins()) {
         Json::array handlers;
         for (const auto& handler : plugin->handlers()) handlers.push_back(handler);
+        std::string p_url = get_plugin_url(plugin->name(), "");
         loaded.push_back(Json::object{
             {"name", plugin->name()},
             {"channels", static_cast<double>(plugin->channel_count())},
             {"status", "loaded"},
             {"handlers", handlers},
-            {"enabled", is_plugin_enabled(plugin->name())}
+            {"enabled", is_plugin_enabled(plugin->name())},
+            {"url", p_url}
         });
     }
     // Métricas del Thread Pool — lectura lock-free desde los contadores atómicos.
@@ -1321,6 +1323,7 @@ Json Proxy::status_json() {
             {"runtime", "C++20"},
             {"version", kAppVersion},
             {"os_name", "native"},
+            {"hostname", get_hostname()},
             {"cpu_detected", cpu_info_.cpu_detected},
             {"selected_engine", config_.ace_host},
             {"engine_mode", engine_mode_},

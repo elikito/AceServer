@@ -29,6 +29,7 @@ std::string sha1_hex(std::string_view value);
 std::string http_date_now();
 std::int64_t unix_time();
 std::string format_duration(std::chrono::seconds seconds);
+std::string get_hostname();
 std::string read_file_binary(const std::string& path);
 bool path_is_safe_relative(std::string_view path);
 std::string replace_all(std::string value, std::string_view needle, std::string_view replacement);

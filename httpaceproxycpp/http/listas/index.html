@@ -602,12 +602,7 @@
             <div class="header-title">
                 <h4>Gestión de Fuentes de Canales</h4>
                 <p>Edita o añade listas de canales M3U dinámicamente y comprueba su estado en caliente.</p>
-            </div>
-            <div>
-                <a href="/fuentes/" class="btn-save" style="text-decoration: none; padding: 10px 18px; display: inline-flex; align-items: center; gap: 8px;">
-                    📡 Ir a Gestión Avanzada de Fuentes
-                </a>
-            </div>
+            </div>añade
         </div>
 
         <!-- Fuentes Predefinidas -->
@@ -773,7 +768,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
     <!-- Footer Bar -->
     <div class="footer-bar">
         <div class="footer-left">
-            <span class="label">IP DEL SERVIDOR:</span>
+            <span class="label">IP:</span>
             <span id="server-ip" class="val">-</span>
         </div>
         <div class="footer-center">
@@ -794,7 +789,8 @@ acestream://1234567890abcdef1234567890abcdef12345678
         const editablePlugins = [
             { id: 'newera', name: 'NewEra', fallback: 'https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u' },
             { id: 'elcano', name: 'Elcano', fallback: 'https://ipfs.io/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u,https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u' },
-            { id: 'af1c1onados', name: 'Af1c1onados', fallback: 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u' }
+            { id: 'af1c1onados', name: 'Af1c1onados', fallback: 'https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u' },
+            { id: 'acepl', name: 'Acepl', fallback: 'https://api.acestream.me/all?api_version=1.0&api_key=test_api_key' }
         ];
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1272,8 +1268,8 @@ acestream://1234567890abcdef1234567890abcdef12345678
                     if (button) button.disabled = false;
                     if (data.status === 'success') {
                         if (statusSpan) {
-                            statusSpan.textContent = data.groups_count > 0 
-                                ? `✓ Válido: ${data.channels_count} canales, ${data.groups_count} grupos.` 
+                            statusSpan.textContent = data.groups_count > 0
+                                ? `✓ Válido: ${data.channels_count} canales, ${data.groups_count} grupos.`
                                 : `✓ Válido: ${data.channels_count} canales.`;
                             statusSpan.className = 'status-msg valid';
                         }
