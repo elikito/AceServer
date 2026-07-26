@@ -1,9 +1,12 @@
 services:
-  # MOTOR MODERN: Para hardware moderno (N150, Asus) con soporte AVX/SSE4.2
+  # MOTOR MODERN: Para hardware moderno (N150, N100) con soporte AVX / SSE4.2
   aceserve-modern:
     image: jopsis/aceserve:latest
     container_name: aceserve-modern
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       - TZ=Europe/Madrid
     ports:
@@ -19,11 +22,14 @@ services:
     networks:
       - aceproxy-net
 
-  # MOTOR COMPAT LIGHT: Para hardware antiguo (Core 2 Duo sin AVX)
+  # MOTOR COMPAT LIGHT: Para hardware antiguo (Core 2 Duo sin AVX - Imagen Wafy80)
   aceserve-compat-light:
     image: wafy80/acestream:latest
     container_name: aceserve-compat-light
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       - TZ=Europe/Madrid
     volumes:
@@ -32,11 +38,14 @@ services:
     networks:
       - aceproxy-net
 
-  # MOTOR COMPAT STABLE: Para hardware antiguo (Core 2 Duo sin AVX)
+  # MOTOR COMPAT STABLE: Para hardware antiguo (Core 2 Duo sin AVX - Imagen Blaiseio)
   aceserve-compat-stable:
     image: blaiseio/acelink:latest
     container_name: aceserve-compat-stable
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       - TZ=Europe/Madrid
     volumes:
@@ -45,12 +54,16 @@ services:
     networks:
       - aceproxy-net
 
+  # PROXY PRINCIPAL EN C++ (httpaceproxycpp)
   httpaceproxy:
     build:
       context: .
       dockerfile: httpaceproxycpp/Dockerfile
     container_name: httpaceproxy
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     ports:
       - "8888:8888"
     environment:
@@ -61,10 +74,15 @@ services:
       - ACESTREAM_HTTP_PORT=6878
       - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
     volumes:
+      # Mapeo del frontend web e interfaz Bento
       - /opt/HTTPAceProxy/httpaceproxycpp/http:/app/http
+      # Socket de Docker para gestión de motores en vivo
       - /var/run/docker.sock:/var/run/docker.sock
+      # Mapeos de hora local del sistema
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+    depends_on:
+      - aceserve-modern
     networks:
       - aceproxy-net
 

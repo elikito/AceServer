@@ -168,8 +168,14 @@ void Broadcast::stream_loop() {
         else stream_http_url(url);
     } catch (const std::exception& e) {
         log_line("ERROR", "[" + infohash_.substr(0, 8) + "] stream failed: " + std::string(e.what()));
+    } catch (...) {
+        log_line("ERROR", "[" + infohash_.substr(0, 8) + "] stream failed with unknown error");
     }
     running_ = false;
+    if (ace_) {
+        try { ace_->stop_broadcast(); } catch (...) {}
+        try { ace_->shutdown(); } catch (...) {}
+    }
     for (auto& client : clients()) client->queue->close();
 }
 

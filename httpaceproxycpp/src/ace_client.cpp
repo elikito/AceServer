@@ -84,6 +84,8 @@ AceClient::AceClient(Config config, std::string title)
 
 AceClient::~AceClient() {
     running_ = false;
+    stop_broadcast();
+    shutdown();
     close_fd(fd_);
     cv_.notify_all();
     if (reader_.joinable()) reader_.join();
@@ -141,7 +143,7 @@ void AceClient::authenticate() {
 Json AceClient::load_async(const std::map<std::string, std::string>& params) {
     try {
         write_line(command_loadasync(params));
-        auto msg = wait_for("LOADRESP", 1);
+        auto msg = wait_for("LOADRESP", 15);
         if (msg.size() < 3) throw AceError("malformed LOADRESP");
         std::string json_text;
         for (std::size_t i = 2; i < msg.size(); ++i) json_text += msg[i];
@@ -168,7 +170,7 @@ Json AceClient::content_info(const std::map<std::string, std::string>& params) {
 AceStartParams AceClient::start_broadcast(const std::map<std::string, std::string>& params) {
     start_issued_ = true;
     write_line(command_start(params));
-    auto msg = wait_for("START", config_.video_timeout);
+    auto msg = wait_for("START", std::max(20, config_.video_timeout));
     auto kv = parse_key_values(msg, 1);
     if (config_.video_seekback > 0 && kv.contains("stream") && !ends_with(kv["url"], ".m3u8")) {
         auto event = wait_for("EVENT", config_.ace_result_timeout);
@@ -235,8 +237,7 @@ void AceClient::reader_loop() {
                     bool is_error_pattern = (line.find("Cannot load transport file") != std::string::npos ||
                                              line.find("Cannot retrieve torrent") != std::string::npos ||
                                              line.find("ValueError") != std::string::npos ||
-                                             line.find("showdialog") != std::string::npos ||
-                                             (start_issued_.load() && tokens[0] == "STATUS" && tokens.size() > 1 && tokens[1] == "main:idle"));
+                                             line.find("showdialog") != std::string::npos);
 
                     if (is_error_pattern) {
                         log_line("ERROR", "[" + title_ + "] Fatal AceEngine error pattern detected: " + line);
