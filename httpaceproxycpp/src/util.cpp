@@ -419,6 +419,7 @@ std::string normalize_list_url(const std::string& input_url) {
 }
 
 void log_line(const std::string& level, const std::string& message) {
+    tzset();
     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::tm tm{};
 #ifdef _WIN32

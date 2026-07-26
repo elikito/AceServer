@@ -9,6 +9,7 @@ RUN apt-get update && \
       cmake \
       curl \
       libcurl4-openssl-dev \
+      tzdata \
       zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
@@ -32,6 +33,7 @@ RUN apt-get update && \
       ca-certificates \
       curl \
       libcurl4t64 \
+      tzdata \
       zlib1g \
       docker.io && \
     rm -rf /var/lib/apt/lists/*

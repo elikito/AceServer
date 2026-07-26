@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <csignal>
+#include <ctime>
 #include <exception>
 
 #include <fstream>
@@ -37,6 +38,7 @@ void ensure_local_m3u_structure(const std::string& root_dir) {
 } // namespace
 
 int main(int argc, char** argv) {
+    tzset();
     try {
         auto config = httpace::load_config(argc, argv);
         ensure_local_m3u_structure(config.root_dir);
