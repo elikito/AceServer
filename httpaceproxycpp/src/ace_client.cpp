@@ -202,11 +202,20 @@ std::map<std::string, std::string> AceClient::status(int timeout_seconds) {
     try {
         write_line("STATUS");
         auto msg = wait_for("STATUS", timeout_seconds);
-        if (msg.size() < 2) return {{"status", "error"}};
-        return parse_status(msg[1]);
+        if (msg.size() >= 2) {
+            auto st = parse_status(msg[1]);
+            std::lock_guard<std::mutex> slock(status_mutex_);
+            cached_status_ = st;
+            return st;
+        }
     } catch (...) {
-        return {{"status", "error"}};
     }
+    return get_cached_status();
+}
+
+std::map<std::string, std::string> AceClient::get_cached_status() const {
+    std::lock_guard<std::mutex> slock(status_mutex_);
+    return cached_status_;
 }
 
 void AceClient::stop_broadcast() {
@@ -293,6 +302,11 @@ std::vector<std::string> AceClient::wait_for(const std::string& command, int tim
 }
 
 void AceClient::push_message(const std::vector<std::string>& tokens) {
+    if (!tokens.empty() && tokens[0] == "STATUS" && tokens.size() >= 2) {
+        auto st = parse_status(tokens[1]);
+        std::lock_guard<std::mutex> slock(status_mutex_);
+        cached_status_ = st;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     messages_[tokens[0]].push_back(tokens);
     cv_.notify_all();

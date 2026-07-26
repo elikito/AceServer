@@ -35,27 +35,31 @@ $(document).ready(function() {
     });
 
     // AJAX request for get status
+    var isFetchingStatus = false;
     function getStatus() {
+        if (isFetchingStatus) return;
+        isFetchingStatus = true;
         $.ajax({
             url: window.location.protocol + '//' + window.location.host + '/stat/?action=get_status',
             type: 'get',
+            timeout: 5000,
             success: function(resp) {
                 if(resp.status === 'success') {
                     renderPage(resp);
                 } else {
                     console.error('Error! getStatus() Response not returning status success');
                 }
-                setTimeout(getStatus, 2000);
             },
             error: function(resp, textStatus, errorThrown) {
                 console.error("getStatus() Unknown error!." +
                     " ResponseCode: " + resp.status +
                     " | textStatus: " + textStatus +
                     " | errorThrown: " + errorThrown);
-
-                $('tbody').html("");
-                $('#error_resp_mess').css('display', "block");
             },
+            complete: function() {
+                isFetchingStatus = false;
+                setTimeout(getStatus, 2000);
+            }
         });
     }
 

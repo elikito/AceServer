@@ -41,6 +41,7 @@ public:
     AceStartParams start_broadcast(const std::map<std::string, std::string>& params);
     void start_broadcast_async(const std::map<std::string, std::string>& params);
     std::map<std::string, std::string> status(int timeout_seconds = 1);
+    std::map<std::string, std::string> get_cached_status() const;
     void stop_broadcast();
     void shutdown();
     bool alive() const { return running_; }
@@ -64,6 +65,8 @@ private:
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     std::map<std::string, std::deque<std::vector<std::string>>> messages_;
+    mutable std::mutex status_mutex_;
+    std::map<std::string, std::string> cached_status_;
 };
 
 } // namespace httpace

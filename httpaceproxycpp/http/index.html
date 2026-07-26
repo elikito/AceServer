@@ -1193,24 +1193,7 @@
             transform: scale(1.05);
         }
 
-        .btn-action-vlc {
-            background: rgba(255, 152, 0, 0.15);
-            border: 1px solid rgba(255, 152, 0, 0.3);
-            color: #ff9800;
-            padding: 4px 8px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 11px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            transition: all 0.2s;
-        }
 
-        .btn-action-vlc:hover {
-            background: rgba(255, 152, 0, 0.3);
-        }
 
         .status-badge {
             display: inline-block;
@@ -1954,38 +1937,72 @@
             }
         }
 
+        let isFetchingStatus = false;
+        let isFetchingLogs = false;
+        let statusFailCount = 0;
+
         function getStatus() {
+            if (isFetchingStatus) return;
+            isFetchingStatus = true;
+
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
 
             fetch('/stat/?action=get_status', { signal: controller.signal })
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
                 .then(data => {
-                    clearTimeout(timeoutId);
                     hidePageLoader();
-                    if (data.status === 'success') {
+                    if (data && data.status === 'success') {
+                        statusFailCount = 0;
                         renderPage(data);
-                        document.getElementById('error-state').style.display = 'none';
+                        const errEl = document.getElementById('error-state');
+                        if (errEl) errEl.style.display = 'none';
                     }
                 })
                 .catch(err => {
-                    clearTimeout(timeoutId);
                     hidePageLoader();
-                    console.error('Status error:', err);
-                    document.getElementById('error-state').style.display = 'block';
+                    statusFailCount++;
+                    console.warn('Status fetch warning:', err);
+                    if (statusFailCount >= 3) {
+                        const errEl = document.getElementById('error-state');
+                        if (errEl) errEl.style.display = 'block';
+                    }
+                })
+                .finally(() => {
+                    clearTimeout(timeoutId);
+                    isFetchingStatus = false;
                 });
+
             fetchBunkerLogs();
         }
 
         function fetchBunkerLogs() {
-            fetch('/stat/?action=get_bunker_logs')
-                .then(r => r.json())
+            if (isFetchingLogs) return;
+            isFetchingLogs = true;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            fetch('/stat/?action=get_bunker_logs', { signal: controller.signal })
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
                 .then(data => {
-                    if (data.status === 'success' && Array.isArray(data.logs)) {
+                    if (data && data.status === 'success' && Array.isArray(data.logs)) {
                         renderBunkerLogs(data.logs);
                     }
                 })
-                .catch(err => console.error('Bunker logs fetch error:', err));
+                .catch(err => {
+                    console.warn('Bunker logs fetch warning:', err);
+                })
+                .finally(() => {
+                    clearTimeout(timeoutId);
+                    isFetchingLogs = false;
+                });
         }
 
         let lastLogsCount = 0;
@@ -2593,7 +2610,6 @@
                 const statusClass = getStatusClass(statusRaw.toLowerCase());
                 const statusText = statusRaw.toUpperCase();
                 const streamUrl = client.stream_url || '';
-                const vlcUrl = streamUrl ? streamUrl.replace(/^http:\/\//, 'vlc://') : '';
 
                 if (!row) {
                     row = document.createElement('tr');
@@ -2623,7 +2639,6 @@
                         <td class="actions-cell">
                             <div class="actions-cell-block">
                                 <button class="btn-action-copy" onclick="copyStreamUrl('${escapeHtml(streamUrl)}')" title="Copiar URL del stream">📋</button>
-                                ${vlcUrl ? `<a href="${escapeHtml(vlcUrl)}" class="btn-action-vlc" title="Abrir directo en VLC">🟠 VLC</a>` : ''}
                             </div>
                         </td>
                     `;

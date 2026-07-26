@@ -176,6 +176,19 @@ std::vector<std::shared_ptr<StreamClient>> Broadcast::clients() const {
     return out;
 }
 
+std::map<std::string, std::string> Broadcast::get_p2p_status() const {
+    std::map<std::string, std::string> st;
+    if (ace_) {
+        st = ace_->get_cached_status();
+    }
+    if (running_ && client_count() > 0) {
+        if (!st.contains("status") || st["status"].empty() || st["status"] == "error" || st["status"] == "idle") {
+            st["status"] = "DL";
+        }
+    }
+    return st;
+}
+
 void Broadcast::start_once() {
     bool expected = false;
     if (started_.compare_exchange_strong(expected, true)) {

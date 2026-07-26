@@ -205,18 +205,24 @@ void Proxy::add_bunker_log(const std::string& message) {
        << std::setfill('0') << std::setw(2) << tm_buf.tm_min << ":"
        << std::setfill('0') << std::setw(2) << tm_buf.tm_sec << "] " << message;
 
-    std::lock_guard<std::mutex> lock(bunker_mutex_);
-    bunker_logs_.push_back(ss.str());
-    if (bunker_logs_.size() > 200) {
-        bunker_logs_.erase(bunker_logs_.begin());
+    {
+        std::lock_guard<std::mutex> lock(bunker_mutex_);
+        bunker_logs_.push_back(ss.str());
+        if (bunker_logs_.size() > 200) {
+            bunker_logs_.erase(bunker_logs_.begin());
+        }
     }
     log_line("BUNKER", message);
 }
 
 Json Proxy::get_bunker_logs_json() const {
-    std::lock_guard<std::mutex> lock(bunker_mutex_);
+    std::vector<std::string> logs_copy;
+    {
+        std::lock_guard<std::mutex> lock(bunker_mutex_);
+        logs_copy = bunker_logs_;
+    }
     Json::array logs_arr;
-    for (const auto& log : bunker_logs_) {
+    for (const auto& log : logs_copy) {
         logs_arr.push_back(log);
     }
     return Json::object{
@@ -1418,7 +1424,24 @@ void Proxy::send_error(ClientConnection& connection, int status, const std::stri
 
 Json Proxy::status_json() {
     Json::array clients;
-    for (const auto& client : broadcasts_.all_clients()) {
+    auto all_clients_list = broadcasts_.all_clients();
+
+    // Obtener estado P2P en memoria (snapshot lock-free / non-blocking) por cada AceClient
+    std::map<AceClient*, std::map<std::string, std::string>> ace_status_map;
+    for (const auto& client : all_clients_list) {
+        if (!client) continue;
+        auto ace = client->ace.lock();
+        if (ace && !ace_status_map.contains(ace.get())) {
+            auto st = ace->get_cached_status();
+            if (!st.contains("status") || st["status"].empty() || st["status"] == "error" || st["status"] == "idle") {
+                st["status"] = "dl";
+            }
+            ace_status_map[ace.get()] = st;
+        }
+    }
+
+    for (const auto& client : all_clients_list) {
+        if (!client) continue;
         auto ace = client->ace.lock();
         Json stat = Json::object{};
         int dl_speed_kbps = 0;
@@ -1426,28 +1449,28 @@ Json Proxy::status_json() {
         int peers = 0;
         std::string status_str = "DL";
 
-        if (ace) {
+        if (ace && ace_status_map.contains(ace.get())) {
+            const auto& status_data = ace_status_map[ace.get()];
             Json::object stat_obj;
-            auto status_map = ace->status(1);
-            for (const auto& [k, v] : status_map) stat_obj[k] = v;
+            for (const auto& [k, v] : status_data) stat_obj[k] = v;
             stat = stat_obj;
 
-            if (status_map.contains("speed_down")) {
-                try { dl_speed_kbps = std::stoi(status_map["speed_down"]); } catch (...) {}
+            if (status_data.contains("speed_down")) {
+                try { dl_speed_kbps = std::stoi(status_data.at("speed_down")); } catch (...) {}
             }
-            if (status_map.contains("speed_up")) {
-                try { ul_speed_kbps = std::stoi(status_map["speed_up"]); } catch (...) {}
+            if (status_data.contains("speed_up")) {
+                try { ul_speed_kbps = std::stoi(status_data.at("speed_up")); } catch (...) {}
             }
-            if (status_map.contains("peers")) {
-                try { peers = std::stoi(status_map["peers"]); } catch (...) {}
+            if (status_data.contains("peers")) {
+                try { peers = std::stoi(status_data.at("peers")); } catch (...) {}
             }
-            if (status_map.contains("status") && !status_map["status"].empty()) {
-                status_str = upper(status_map["status"]);
+            if (status_data.contains("status") && !status_data.at("status").empty() && status_data.at("status") != "error") {
+                status_str = upper(status_data.at("status"));
             }
         }
 
         std::int64_t now_ts = unix_time();
-        std::int64_t duration_sec = now_ts - client->connection_time;
+        std::int64_t duration_sec = std::max<std::int64_t>(0, now_ts - client->connection_time);
         std::string start_time_formatted = format_local_time(client->connection_time);
         std::string duration_formatted = format_duration(std::chrono::seconds(duration_sec));
 

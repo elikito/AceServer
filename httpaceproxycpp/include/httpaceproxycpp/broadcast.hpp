@@ -85,6 +85,7 @@ public:
     void stop();
     std::shared_ptr<AceClient> ace() const { return ace_; }
     std::string infohash() const { return infohash_; }
+    std::map<std::string, std::string> get_p2p_status() const;
 
 private:
     void stream_loop();
