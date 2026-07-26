@@ -65,6 +65,12 @@ std::string lower(std::string_view value) {
     return out;
 }
 
+std::string upper(std::string_view value) {
+    std::string out(value);
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    return out;
+}
+
 bool starts_with(std::string_view value, std::string_view prefix) {
     return value.size() >= prefix.size() && value.substr(0, prefix.size()) == prefix;
 }
@@ -319,6 +325,19 @@ std::string format_duration(std::chrono::seconds seconds) {
     std::ostringstream out;
     out << std::setfill('0') << std::setw(2) << h << ":" << std::setw(2) << m << ":" << std::setw(2) << s;
     return out.str();
+}
+
+std::string format_local_time(std::int64_t timestamp) {
+    std::time_t t = static_cast<std::time_t>(timestamp);
+    std::tm tm_buf{};
+#if defined(_WIN32)
+    localtime_s(&tm_buf, &t);
+#else
+    localtime_r(&t, &tm_buf);
+#endif
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%02d:%02d:%02d", tm_buf.tm_hour, tm_buf.tm_min, tm_buf.tm_sec);
+    return std::string(buf);
 }
 
 std::string read_file_binary(const std::string& path) {

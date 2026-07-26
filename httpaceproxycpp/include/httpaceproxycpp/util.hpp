@@ -12,6 +12,7 @@ namespace httpace {
 
 std::string trim(std::string_view value);
 std::string lower(std::string_view value);
+std::string upper(std::string_view value);
 bool starts_with(std::string_view value, std::string_view prefix);
 bool ends_with(std::string_view value, std::string_view suffix);
 std::vector<std::string> split(std::string_view value, char delimiter, bool keep_empty = true);
@@ -29,6 +30,7 @@ std::string sha1_hex(std::string_view value);
 std::string http_date_now();
 std::int64_t unix_time();
 std::string format_duration(std::chrono::seconds seconds);
+std::string format_local_time(std::int64_t timestamp);
 std::string get_hostname();
 std::string read_file_binary(const std::string& path);
 bool path_is_safe_relative(std::string_view path);

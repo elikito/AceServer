@@ -8,22 +8,27 @@
 
 namespace httpace {
 
-ChunkQueue::ChunkQueue(std::size_t max_chunks) : max_chunks_(std::max<std::size_t>(2, max_chunks)) {}
+ChunkQueue::ChunkQueue(std::size_t max_chunks, std::size_t max_bytes)
+    : max_chunks_(std::max<std::size_t>(2, max_chunks)),
+      max_bytes_(std::max<std::size_t>(1024 * 1024, max_bytes)) {}
 
 PushResult ChunkQueue::push(std::vector<char> chunk, std::chrono::milliseconds wait) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (closed_) return PushResult::Closed;
-    if (chunks_.size() >= max_chunks_ && wait.count() > 0) {
+    std::size_t new_len = chunk.size();
+    if ((chunks_.size() >= max_chunks_ || total_bytes_ + new_len > max_bytes_) && wait.count() > 0) {
         cv_space_.wait_for(lock, wait, [&] {
-            return closed_ || chunks_.size() < max_chunks_;
+            return closed_ || (chunks_.size() < max_chunks_ && total_bytes_ + new_len <= max_bytes_);
         });
         if (closed_) return PushResult::Closed;
     }
     PushResult result = PushResult::Ok;
-    if (chunks_.size() >= max_chunks_) {
+    while (!chunks_.empty() && (chunks_.size() >= max_chunks_ || total_bytes_ + new_len > max_bytes_)) {
+        total_bytes_ -= chunks_.front().size();
         chunks_.pop_front();
         result = PushResult::DroppedOldest;
     }
+    total_bytes_ += new_len;
     chunks_.push_back(std::move(chunk));
     cv_data_.notify_one();
     return result;
@@ -34,6 +39,7 @@ bool ChunkQueue::pop(std::vector<char>& chunk) {
     cv_data_.wait(lock, [&] { return closed_ || !chunks_.empty(); });
     if (chunks_.empty()) return false;
     chunk = std::move(chunks_.front());
+    total_bytes_ -= chunk.size();
     chunks_.pop_front();
     cv_space_.notify_one();
     return true;
@@ -46,6 +52,7 @@ bool ChunkQueue::pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds
     }
     if (chunks_.empty()) return false;
     chunk = std::move(chunks_.front());
+    total_bytes_ -= chunk.size();
     chunks_.pop_front();
     cv_space_.notify_one();
     return true;
@@ -63,6 +70,11 @@ std::size_t ChunkQueue::size() const {
     return chunks_.size();
 }
 
+std::size_t ChunkQueue::bytes() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return total_bytes_;
+}
+
 Broadcast::Broadcast(std::string infohash, Config config, HttpClient& http_client,
                      std::map<std::string, std::string> start_params)
     : infohash_(std::move(infohash)),
@@ -75,17 +87,58 @@ Broadcast::Broadcast(std::string infohash, Config config, HttpClient& http_clien
 
 Broadcast::~Broadcast() { stop(); }
 
+namespace {
+
+std::string detect_client_type(const std::string& user_agent, const std::string& referer) {
+    std::string ua_lower = lower(user_agent);
+    std::string ref_lower = lower(referer);
+
+    if (ref_lower.find("/player/") != std::string::npos ||
+        ua_lower.find("mozilla") != std::string::npos ||
+        ua_lower.find("chrome") != std::string::npos ||
+        ua_lower.find("safari") != std::string::npos ||
+        ua_lower.find("firefox") != std::string::npos ||
+        ua_lower.find("edge") != std::string::npos ||
+        ua_lower.find("opera") != std::string::npos) {
+        return "Web Player";
+    }
+    if (ua_lower.find("vlc") != std::string::npos) {
+        return "VLC Player";
+    }
+    if (ua_lower.find("tivimate") != std::string::npos) return "TiviMate";
+    if (ua_lower.find("kodi") != std::string::npos) return "Kodi";
+    if (ua_lower.find("iptv") != std::string::npos) return "Cliente IPTV";
+    if (ua_lower.find("ffmpeg") != std::string::npos) return "FFmpeg";
+    if (ua_lower.find("ott-navigator") != std::string::npos || ua_lower.find("ott navigator") != std::string::npos) return "OTT Navigator";
+    if (ua_lower.find("wiseplay") != std::string::npos) return "Wiseplay";
+    if (!user_agent.empty()) return "Cliente IPTV";
+    return "Desconocido";
+}
+
+} // namespace
+
 std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip,
                                                     const std::string& channel_name,
-                                                    const std::string& channel_icon) {
+                                                    const std::string& channel_icon,
+                                                    const std::string& user_agent,
+                                                    const std::string& referer,
+                                                    const std::string& stream_url,
+                                                    const std::string& epg_title,
+                                                    const std::string& epg_icon) {
     auto client = std::make_shared<StreamClient>();
     client->session_id = std::to_string(reinterpret_cast<std::uintptr_t>(client.get()));
     client->client_ip = client_ip;
     client->channel_name = channel_name;
     client->channel_icon = channel_icon.empty() ? "http://static.acestream.net/sites/acestream/img/ACE-logo.png" : channel_icon;
+    client->user_agent = user_agent;
+    client->referer = referer;
+    client->client_type = detect_client_type(user_agent, referer);
+    client->stream_url = stream_url;
+    client->epg_title = epg_title;
+    client->epg_icon = epg_icon.empty() ? client->channel_icon : epg_icon;
     client->connection_time = unix_time();
     client->last_activity = client->connection_time;
-    client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)));
+    client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)), 8 * 1024 * 1024);
     client->ace = ace_;
     {
         std::lock_guard<std::mutex> lock(mutex_);

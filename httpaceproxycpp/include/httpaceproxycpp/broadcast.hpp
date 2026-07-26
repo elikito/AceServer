@@ -26,15 +26,18 @@ enum class PushResult {
 
 class ChunkQueue {
 public:
-    explicit ChunkQueue(std::size_t max_chunks);
+    explicit ChunkQueue(std::size_t max_chunks = 512, std::size_t max_bytes = 8 * 1024 * 1024);
     PushResult push(std::vector<char> chunk, std::chrono::milliseconds wait);
     bool pop(std::vector<char>& chunk);
     bool pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout);
     void close();
     std::size_t size() const;
+    std::size_t bytes() const;
 
 private:
     std::size_t max_chunks_;
+    std::size_t max_bytes_;
+    std::size_t total_bytes_ = 0;
     mutable std::mutex mutex_;
     std::condition_variable cv_data_;
     std::condition_variable cv_space_;
@@ -47,6 +50,12 @@ struct StreamClient {
     std::string client_ip;
     std::string channel_name;
     std::string channel_icon;
+    std::string user_agent;
+    std::string referer;
+    std::string client_type;
+    std::string stream_url;
+    std::string epg_title;
+    std::string epg_icon;
     std::int64_t connection_time = 0;
     std::shared_ptr<ChunkQueue> queue;
     std::weak_ptr<AceClient> ace;
@@ -63,7 +72,12 @@ public:
 
     std::shared_ptr<StreamClient> add_client(const std::string& client_ip,
                                              const std::string& channel_name,
-                                             const std::string& channel_icon);
+                                             const std::string& channel_icon,
+                                             const std::string& user_agent = "",
+                                             const std::string& referer = "",
+                                             const std::string& stream_url = "",
+                                             const std::string& epg_title = "",
+                                             const std::string& epg_icon = "");
     void remove_client(const std::shared_ptr<StreamClient>& client);
     std::size_t client_count() const;
     std::vector<std::shared_ptr<StreamClient>> clients() const;

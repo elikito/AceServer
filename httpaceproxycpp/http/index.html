@@ -1079,25 +1079,37 @@
             gap: 12px;
         }
 
+        .channel-info-block {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
         .channel-icon {
-            width: 44px;
-            height: 44px;
+            width: 24px;
+            height: 24px;
             object-fit: contain;
-            border-radius: 6px;
+            border-radius: 4px;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
-            padding: 4px;
+            padding: 2px;
             flex-shrink: 0;
         }
 
         .channel-name {
-            font-weight: 600;
+            font-weight: 700;
             color: #ffffff;
             font-size: 14px;
         }
 
         body.light-theme .channel-name {
             color: #18181b;
+        }
+
+        .epg-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.2;
         }
 
         .client-ip {
@@ -1107,26 +1119,97 @@
             color: #00BCD4;
         }
 
-        .speed-cell {
-            display: flex;
+        .source-badge {
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-family: monospace;
-            font-size: 13px;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .source-badge.web {
+            background: rgba(76, 175, 80, 0.15);
+            color: #4CAF50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .source-badge.vlc {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .source-badge.iptv {
+            background: rgba(33, 150, 243, 0.15);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .source-badge.default {
+            background: rgba(158, 158, 158, 0.15);
+            color: #a8a8b2;
+            border: 1px solid rgba(158, 158, 158, 0.3);
+        }
+
+        .speed-box-block {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-family: monospace, monospace;
+            font-size: 12px;
             font-weight: 600;
         }
 
-        .speed-down {
-            color: #4cd964;
+        .speed-row.down {
+            color: #4CAF50;
         }
 
-        .speed-up {
+        .speed-row.up {
             color: #2196F3;
         }
 
-        .speed-arrow {
-            width: 12px;
-            height: 12px;
+        .actions-cell-block {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-action-copy {
+            background: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 5px 9px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-action-copy:hover {
+            background: var(--border-color);
+            transform: scale(1.05);
+        }
+
+        .btn-action-vlc {
+            background: rgba(255, 152, 0, 0.15);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            color: #ff9800;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            transition: all 0.2s;
+        }
+
+        .btn-action-vlc:hover {
+            background: rgba(255, 152, 0, 0.3);
         }
 
         .status-badge {
@@ -1651,13 +1734,14 @@
                 <table class="clients-table" id="clients-table" style="display:none;">
                     <thead>
                         <tr>
-                            <th>Canal</th>
+                            <th>Canal / EPG</th>
                             <th>IP Cliente</th>
-                            <th>Ubicación</th>
+                            <th>Cliente / Fuente</th>
                             <th>Inicio</th>
                             <th>Duración</th>
                             <th>Velocidad (Bajada/Subida)</th>
                             <th>Peers / Estado</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="clients-tbody">
@@ -2421,21 +2505,68 @@
             renderClients(data.clients_data);
         }
 
+        function getClientBadgeHtml(clientType) {
+            const typeStr = clientType || 'Desconocido';
+            const typeLower = typeStr.toLowerCase();
+            if (typeLower.includes('web')) {
+                return `<span class="source-badge web">🌐 Web Player</span>`;
+            } else if (typeLower.includes('vlc')) {
+                return `<span class="source-badge vlc">🟠 VLC Player</span>`;
+            } else if (typeLower.includes('tivimate') || typeLower.includes('kodi') || typeLower.includes('iptv') || typeLower.includes('ffmpeg') || typeLower.includes('ott')) {
+                return `<span class="source-badge iptv">📺 ${escapeHtml(typeStr)}</span>`;
+            }
+            return `<span class="source-badge default">💻 ${escapeHtml(typeStr)}</span>`;
+        }
+
+        function copyStreamUrl(url) {
+            if (!url) {
+                showToast('⚠ Enlace no disponible', 'error');
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('✓ Enlace copiado', 'success');
+                }).catch(() => {
+                    fallbackCopyUrl(url);
+                });
+            } else {
+                fallbackCopyUrl(url);
+            }
+        }
+
+        function fallbackCopyUrl(url) {
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast('✓ Enlace copiado', 'success');
+            } catch (e) {
+                showToast('⚠ Error al copiar enlace', 'error');
+            }
+            document.body.removeChild(ta);
+        }
+
         function renderClients(clients) {
             const tbody = document.getElementById('clients-tbody');
             const table = document.getElementById('clients-table');
             const empty = document.getElementById('empty-state');
+            const countEl = document.getElementById('clients-count');
 
             if (!clients || clients.length === 0) {
                 table.style.display = 'none';
                 empty.style.display = 'block';
+                if (countEl) countEl.textContent = '0 clientes';
                 return;
             }
 
             table.style.display = 'table';
             empty.style.display = 'none';
+            if (countEl) countEl.textContent = `${clients.length} client${clients.length === 1 ? '' : 'es'}`;
 
-            // Build rows
             const existingRows = {};
             tbody.querySelectorAll('tr').forEach(row => {
                 existingRows[row.id] = row;
@@ -2444,54 +2575,80 @@
             const currentIds = new Set();
 
             clients.forEach(client => {
-                const rowId = 'client-' + client.sessionID;
+                const rowId = 'client-' + (client.sessionID || client.client_ip || Math.random());
                 currentIds.add(rowId);
 
                 let row = existingRows[rowId];
-                const statusClass = getStatusClass(client.stat?.status);
-                const statusText = client.stat?.status || 'n/a';
-                const peers = client.stat?.peers ?? '-';
-                const speedDown = client.stat?.speed_down ?? '-';
-                const speedUp = client.stat?.speed_up ?? '-';
-
-                const clientLocation = client.clientInfo?.vendor ||
-                    (client.clientInfo?.country_name ?
-                        `${client.clientInfo.country_name}, ${client.clientInfo.city || 'Unknown'}` :
-                        'Local');
+                const channelName = client.channel_name || client.channelName || 'Canal Desconocido';
+                const epgTitle = client.epg_title || 'Sin información EPG';
+                const logoUrl = client.logo || client.epg_icon || client.channelIcon || '/stat/img/shesterenka.png';
+                const clientIp = client.client_ip || client.clientIP || '-';
+                const clientType = client.client_type || 'Desconocido';
+                const startTime = client.start_time_formatted || (typeof client.startTime === 'string' ? client.startTime : (client.startTime ? new Date(client.startTime * 1000).toLocaleTimeString() : '-'));
+                const duration = client.duration || client.durationTime || '-';
+                const dlSpeed = client.dl_speed_kbps ?? client.stat?.speed_down ?? 0;
+                const ulSpeed = client.ul_speed_kbps ?? client.stat?.speed_up ?? 0;
+                const peers = client.peers ?? client.stat?.peers ?? '-';
+                const statusRaw = (client.status || client.stat?.status || 'DL').toString();
+                const statusClass = getStatusClass(statusRaw.toLowerCase());
+                const statusText = statusRaw.toUpperCase();
+                const streamUrl = client.stream_url || '';
+                const vlcUrl = streamUrl ? streamUrl.replace(/^http:\/\//, 'vlc://') : '';
 
                 if (!row) {
                     row = document.createElement('tr');
                     row.id = rowId;
                     row.innerHTML = `
                         <td class="channel-cell">
-                            <img src="${client.channelIcon || '/stat/img/shesterenka.png'}" class="channel-icon" onerror="this.src='/stat/img/shesterenka.png'">
-                            <span class="channel-name">${escapeHtml(client.channelName || 'Unknown')}</span>
+                            <img src="${escapeHtml(logoUrl)}" class="channel-icon" onerror="this.src='/stat/img/shesterenka.png'">
+                            <div class="channel-info-block">
+                                <span class="channel-name">${escapeHtml(channelName)}</span>
+                                <span class="epg-title">${escapeHtml(epgTitle)}</span>
+                            </div>
                         </td>
-                        <td class="client-ip">${client.clientIP}</td>
-                        <td>${escapeHtml(clientLocation)}</td>
-                        <td>${client.startTime}</td>
-                        <td class="duration">${client.durationTime}</td>
+                        <td class="client-ip">${escapeHtml(clientIp)}</td>
+                        <td class="client-type-cell">${getClientBadgeHtml(clientType)}</td>
+                        <td class="start-time">${escapeHtml(startTime)}</td>
+                        <td class="duration">${escapeHtml(duration)}</td>
                         <td class="speed-cell">
-                            <span class="speed-down">${speedDown}</span>
-                            <svg class="speed-arrow" viewBox="0 0 24 24" fill="#4CAF50"><path d="M7 10l5 5 5-5z"/></svg>
-                            <svg class="speed-arrow" viewBox="0 0 24 24" fill="#2196F3"><path d="M7 14l5-5 5 5z"/></svg>
-                            <span class="speed-up">${speedUp}</span>
+                            <div class="speed-box-block">
+                                <span class="speed-row down">⬇️ ${dlSpeed} KB/s</span>
+                                <span class="speed-row up">⬆️ ${ulSpeed} KB/s</span>
+                            </div>
                         </td>
                         <td class="peers-cell">
                             <span class="peers-count">${peers}</span>
                             <span class="status-badge ${statusClass}">${statusText}</span>
                         </td>
+                        <td class="actions-cell">
+                            <div class="actions-cell-block">
+                                <button class="btn-action-copy" onclick="copyStreamUrl('${escapeHtml(streamUrl)}')" title="Copiar URL del stream">📋</button>
+                                ${vlcUrl ? `<a href="${escapeHtml(vlcUrl)}" class="btn-action-vlc" title="Abrir directo en VLC">🟠 VLC</a>` : ''}
+                            </div>
+                        </td>
                     `;
                     tbody.appendChild(row);
                 } else {
                     // Update existing row
-                    row.querySelector('.duration').textContent = client.durationTime;
-                    row.querySelector('.speed-down').textContent = speedDown;
-                    row.querySelector('.speed-up').textContent = speedUp;
-                    row.querySelector('.peers-count').textContent = peers;
+                    const nameEl = row.querySelector('.channel-name');
+                    if (nameEl) nameEl.textContent = channelName;
+                    const epgEl = row.querySelector('.epg-title');
+                    if (epgEl) epgEl.textContent = epgTitle;
+                    const typeCell = row.querySelector('.client-type-cell');
+                    if (typeCell) typeCell.innerHTML = getClientBadgeHtml(clientType);
+                    const durationEl = row.querySelector('.duration');
+                    if (durationEl) durationEl.textContent = duration;
+                    const downEl = row.querySelector('.speed-row.down');
+                    if (downEl) downEl.textContent = `⬇️ ${dlSpeed} KB/s`;
+                    const upEl = row.querySelector('.speed-row.up');
+                    if (upEl) upEl.textContent = `⬆️ ${ulSpeed} KB/s`;
+                    const peersEl = row.querySelector('.peers-count');
+                    if (peersEl) peersEl.textContent = peers;
                     const badge = row.querySelector('.status-badge');
-                    badge.className = 'status-badge ' + statusClass;
-                    badge.textContent = statusText;
+                    if (badge) {
+                        badge.className = 'status-badge ' + statusClass;
+                        badge.textContent = statusText;
+                    }
                 }
             });
 

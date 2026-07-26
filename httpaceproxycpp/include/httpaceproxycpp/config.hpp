@@ -7,7 +7,7 @@
 
 namespace httpace {
 
-inline constexpr const char* kAppVersion = "07.25.05";
+inline constexpr const char* kAppVersion = "07.25.06";
 
 struct Config {
     std::string ace_host = "127.0.0.1";
@@ -22,7 +22,7 @@ struct Config {
     int video_timeout = 30;
     int video_seekback = 0;
     int client_queue_size = 256;
-    int client_write_timeout = 15;
+    int client_write_timeout = 30;
     int curl_stream_buffer = 1048576;
     bool use_chunked = true;
     bool firewall = false;

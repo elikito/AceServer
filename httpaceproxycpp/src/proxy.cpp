@@ -1252,8 +1252,43 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         // TELEMETRÍA: AL INICIAR STREAM
         add_bunker_log("[REPRODUCTOR] Iniciando streaming -> ID: " + req_value + " | Enlace: " + stream_link);
 
+        std::string user_agent = ctx.request.header("user-agent");
+        std::string referer = ctx.request.header("referer");
+        std::string full_stream_url = "http://" + (raw_host.empty() ? "127.0.0.1:8888" : raw_host) + "/content_id/" + req_value + "/stream.ts";
+
+        std::string epg_title = "";
+        std::string epg_icon = ctx.channel_icon;
+
+        for (const auto& plugin : plugins_.unique_plugins()) {
+            for (const auto& item : plugin->playlist_items()) {
+                if (!item.url.empty() && (item.url.find(req_value) != std::string::npos || lower(item.name) == lower(channel_name))) {
+                    if (channel_name == "NoNameChannel" && !item.name.empty()) {
+                        channel_name = item.name;
+                    }
+                    if (epg_icon.empty() && !item.logo.empty()) {
+                        epg_icon = item.logo;
+                    }
+                    if (epg_title.empty()) {
+                        if (!item.tvg.empty()) epg_title = item.tvg;
+                        else if (!item.group.empty()) epg_title = item.group;
+                    }
+                    break;
+                }
+            }
+            if (!epg_title.empty()) break;
+        }
+
         auto broadcast = broadcasts_.get_or_create(infohash, params);
-        auto client = broadcast->add_client(ctx.request.header("x-forwarded-for", ctx.request.client_ip), channel_name, ctx.channel_icon);
+        auto client = broadcast->add_client(
+            ctx.request.header("x-forwarded-for", ctx.request.client_ip),
+            channel_name,
+            epg_icon,
+            user_agent,
+            referer,
+            full_stream_url,
+            epg_title,
+            epg_icon
+        );
         broadcast->start_once();
 
         // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (TIMEOUT 30s)
@@ -1297,21 +1332,55 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         }
         client->last_activity.store(unix_time(), std::memory_order_relaxed);
 
-        // 4. CONTINUAR STREAMING HABITUAL CON LOS SIGUIENTES CHUNKS
+        // 4. CONTINUAR STREAMING HABITUAL CON LOS SIGUIENTES CHUNKS Y MARGEN DE GRACIA DE 45s
         if (ok) {
             std::vector<char> chunk;
-            while (client->queue->pop(chunk)) {
-                if (chunked) {
-                    std::ostringstream prefix;
-                    prefix << std::hex << chunk.size() << "\r\n";
-                    ok = ctx.connection.send_text(prefix.str())
-                      && ctx.connection.send_all(chunk.data(), chunk.size())
-                      && ctx.connection.send_text("\r\n");
+            auto empty_start = std::chrono::steady_clock::now();
+            bool empty_timer_running = false;
+
+            while (true) {
+                if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50))) {
+                    empty_timer_running = false;
+                    if (chunked) {
+                        std::ostringstream prefix;
+                        prefix << std::hex << chunk.size() << "\r\n";
+                        ok = ctx.connection.send_text(prefix.str())
+                          && ctx.connection.send_all(chunk.data(), chunk.size())
+                          && ctx.connection.send_text("\r\n");
+                    } else {
+                        ok = ctx.connection.send_all(chunk.data(), chunk.size());
+                    }
+                    if (!ok) break;
+                    client->last_activity.store(unix_time(), std::memory_order_relaxed);
                 } else {
-                    ok = ctx.connection.send_all(chunk.data(), chunk.size());
+                    // La cola por cliente está vacía temporalmente.
+                    if (!empty_timer_running) {
+                        empty_timer_running = true;
+                        empty_start = std::chrono::steady_clock::now();
+                    }
+
+                    // Verificar si AceClient sigue en estado activo/descargando
+                    auto ace = client->ace.lock();
+                    bool ace_active = false;
+                    if (ace) {
+                        auto st_map = ace->status(1);
+                        std::string st = st_map.contains("status") ? lower(st_map["status"]) : "";
+                        if (st == "dl" || st == "main:dl" || st == "buf" || st == "prebuf" || st == "wait" || st == "check" || ace->alive()) {
+                            ace_active = true;
+                        }
+                    }
+
+                    auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now() - empty_start).count();
+
+                    if (ace_active && elapsed_sec < 45) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                        continue;
+                    } else {
+                        // Se superaron 45 segundos consecutivos con la cola vacía o AceEngine no está activo
+                        break;
+                    }
                 }
-                if (!ok) break;
-                client->last_activity.store(unix_time(), std::memory_order_relaxed);
             }
         }
         if (chunked) ctx.connection.send_text("0\r\n\r\n");
@@ -1352,18 +1421,66 @@ Json Proxy::status_json() {
     for (const auto& client : broadcasts_.all_clients()) {
         auto ace = client->ace.lock();
         Json stat = Json::object{};
+        int dl_speed_kbps = 0;
+        int ul_speed_kbps = 0;
+        int peers = 0;
+        std::string status_str = "DL";
+
         if (ace) {
             Json::object stat_obj;
-            for (const auto& [k, v] : ace->status(1)) stat_obj[k] = v;
+            auto status_map = ace->status(1);
+            for (const auto& [k, v] : status_map) stat_obj[k] = v;
             stat = stat_obj;
+
+            if (status_map.contains("speed_down")) {
+                try { dl_speed_kbps = std::stoi(status_map["speed_down"]); } catch (...) {}
+            }
+            if (status_map.contains("speed_up")) {
+                try { ul_speed_kbps = std::stoi(status_map["speed_up"]); } catch (...) {}
+            }
+            if (status_map.contains("peers")) {
+                try { peers = std::stoi(status_map["peers"]); } catch (...) {}
+            }
+            if (status_map.contains("status") && !status_map["status"].empty()) {
+                status_str = upper(status_map["status"]);
+            }
         }
+
+        std::int64_t now_ts = unix_time();
+        std::int64_t duration_sec = now_ts - client->connection_time;
+        std::string start_time_formatted = format_local_time(client->connection_time);
+        std::string duration_formatted = format_duration(std::chrono::seconds(duration_sec));
+
+        std::string logo_url = client->channel_icon;
+        if (logo_url.empty()) {
+            logo_url = "http://static.acestream.net/sites/acestream/img/ACE-logo.png";
+        }
+        std::string epg_title_val = client->epg_title;
+        if (epg_title_val.empty()) {
+            epg_title_val = client->channel_name;
+        }
+
         clients.push_back(Json::object{
+            {"channel_name", client->channel_name},
+            {"epg_title", epg_title_val},
+            {"logo", logo_url},
+            {"epg_icon", logo_url},
+            {"client_ip", client->client_ip},
+            {"client_type", client->client_type.empty() ? "Web Player" : client->client_type},
+            {"start_time_formatted", start_time_formatted},
+            {"duration", duration_formatted},
+            {"dl_speed_kbps", static_cast<double>(dl_speed_kbps)},
+            {"ul_speed_kbps", static_cast<double>(ul_speed_kbps)},
+            {"peers", static_cast<double>(peers)},
+            {"status", status_str},
+            {"stream_url", client->stream_url},
+            // Legacy / Backwards compatibility
             {"sessionID", client->session_id},
-            {"channelIcon", client->channel_icon},
+            {"channelIcon", logo_url},
             {"channelName", client->channel_name},
             {"clientIP", client->client_ip},
-            {"startTime", static_cast<double>(client->connection_time)},
-            {"durationTime", format_duration(std::chrono::seconds(unix_time() - client->connection_time))},
+            {"startTime", start_time_formatted},
+            {"durationTime", duration_formatted},
             {"stat", stat}
         });
     }
