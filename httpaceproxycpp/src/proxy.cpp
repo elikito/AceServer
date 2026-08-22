@@ -1918,6 +1918,11 @@ void Proxy::load_plugins_state() {
     buffer << file.rdbuf();
     try {
         plugins_state_json_ = Json::parse(buffer.str());
+        if (plugins_state_json_.is_object()) {
+            auto obj = plugins_state_json_.as_object();
+            obj["version"] = kAppVersion;
+            plugins_state_json_ = obj;
+        }
     } catch (...) {
         log_line("ERROR", "Failed to parse plugins_state.json");
     }
@@ -1928,6 +1933,11 @@ void Proxy::save_plugins_state() {
     auto filepath = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
     std::ofstream file(filepath.string());
     if (file.is_open()) {
+        if (plugins_state_json_.is_object()) {
+            auto obj = plugins_state_json_.as_object();
+            obj["version"] = kAppVersion;
+            plugins_state_json_ = obj;
+        }
         file << plugins_state_json_.dump(2);
     } else {
         log_line("ERROR", "Failed to write plugins_state.json");
