@@ -4,20 +4,27 @@
   "aio": true,
   "custom_lists": [
     {
-      "enabled": true,
-      "name": "elcanotopbylucas_m_o_o_m",
-      "title": "Elcano.top by @Lucas_m_o_o_m",
-      "url": "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u"
+      "enabled": false,
+      "name": "Interna",
+      "url": "/listas/locales/Interna.m3u"
+    },
+    {
+      "enabled": false,
+      "name": "20260821_neweraelcano",
+      "title": "20260821_NEW ERA + ELCANO",
+      "url": "/listas/locales/20260821_NEW ERA + ELCANO.m3u"
     },
     {
       "enabled": true,
-      "name": "Interna",
-      "url": "/listas/locales/Interna.m3u"
+      "name": "tokyoghoulles",
+      "title": "TokyoGhoulles",
+      "url": "https://git.gay/TokyoGhoulles/AceStream_IDs/raw/branch/main/hashes.json"
     }
   ],
-  "elcano": false,
+  "elcano": true,
   "newera": true,
   "urls": {
+    "elcano": "https://k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs.ipns.inbrowser.link/hashes.json",
     "epg": "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz",
     "newera": "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"
   }

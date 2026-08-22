@@ -435,8 +435,11 @@
         }
 
         .channels {
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
+            display: block;
+        }
+
+        .plugin.collapsed .channels {
+            display: none;
         }
 
         .channel {
@@ -804,6 +807,16 @@
         let pluginsData = null;
 
         function loadPlugins() {
+            // Cargar versión global del servidor
+            fetch('/config?action=get_config')
+                .then(r => r.json())
+                .then(cfg => {
+                    if (cfg && cfg.version) {
+                        document.querySelectorAll('.app-version').forEach(el => el.textContent = cfg.version);
+                    }
+                })
+                .catch(() => {});
+
             fetch('/statplugin?action=get_plugins')
                 .then(r => r.json())
                 .then(data => {
@@ -950,38 +963,16 @@
                 pluginDiv.appendChild(channelsDiv);
                 container.appendChild(pluginDiv);
 
-                // Set the actual height of channels container for smooth animation
-                // This ensures all channels are visible regardless of how many there are
-                const actualHeight = channelsDiv.scrollHeight;
-
-                // Add collapse/expand functionality
-                const isCollapsed = localStorage.getItem(`plugin-${plugin.name}-collapsed`) === 'true';
-                if (isCollapsed) {
-                    pluginDiv.classList.add('collapsed');
-                    channelsDiv.style.maxHeight = '0';
-                } else {
-                    channelsDiv.style.maxHeight = actualHeight + 'px';
-                }
+                // Las listas siempre arrancan expandidas por defecto
+                pluginDiv.classList.remove('collapsed');
 
                 headerDiv.addEventListener('click', function (e) {
-                    // Don't toggle if clicking on buttons
+                    // No colapsar si se hace clic en botones de acción
                     if (e.target.closest('.bulk-btn')) {
                         return;
                     }
 
-                    const isCurrentlyCollapsed = pluginDiv.classList.contains('collapsed');
-
-                    if (isCurrentlyCollapsed) {
-                        // Expanding
-                        channelsDiv.style.maxHeight = actualHeight + 'px';
-                        pluginDiv.classList.remove('collapsed');
-                    } else {
-                        // Collapsing
-                        channelsDiv.style.maxHeight = '0';
-                        pluginDiv.classList.add('collapsed');
-                    }
-
-                    localStorage.setItem(`plugin-${plugin.name}-collapsed`, !isCurrentlyCollapsed);
+                    pluginDiv.classList.toggle('collapsed');
                 });
             });
         }

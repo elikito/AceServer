@@ -1657,11 +1657,12 @@ Json Proxy::plugins_json() {
             });
         }
     }
-    return Json::object{
-        {"status", "success"},
-        {"plugins", plugin_array},
-        {"total_plugins", static_cast<double>(plugin_array.size())}
-    };
+    Json::object res;
+    res["status"] = "success";
+    res["version"] = kAppVersion;
+    res["plugins"] = plugin_array;
+    res["total_plugins"] = static_cast<double>(plugin_array.size());
+    return res;
 }
 
 Json Proxy::check_channel_light(const std::string& plugin_name, const std::string& channel, const std::string& content_id) {

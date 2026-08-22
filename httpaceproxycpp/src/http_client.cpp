@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 
 #include <mutex>
+#include <regex>
 #include <stdexcept>
 
 namespace httpace {
@@ -72,7 +73,7 @@ HttpClientResponse HttpClient::get_single(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, follow_redirects ? 1L : 0L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout_seconds);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, std::min(timeout_seconds, 15L));
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_cb);
@@ -103,28 +104,51 @@ HttpClientResponse HttpClient::get(const std::string& url,
                                    const std::map<std::string, std::string>& headers,
                                    long timeout_seconds,
                                    bool follow_redirects) const {
-    if (url.find("/ipfs/") != std::string::npos || url.find("/ipns/") != std::string::npos) {
-        bool is_ipns = (url.find("/ipns/") != std::string::npos);
+    if (url.find("/ipfs/") != std::string::npos || url.find("/ipns/") != std::string::npos || url.find(".ipns.") != std::string::npos || url.find(".ipfs.") != std::string::npos) {
+        bool is_ipns = (url.find("/ipns/") != std::string::npos || url.find(".ipns.") != std::string::npos);
         std::string token = is_ipns ? "/ipns/" : "/ipfs/";
+        std::string path_part;
         auto pos = url.find(token);
         if (pos != std::string::npos) {
-            std::string path_part = url.substr(pos + token.length());
-            if (!path_part.empty()) {
-                std::vector<std::string> gateways = {
-                    "https://ipfs.io",
-                    "https://dweb.link",
-                    "https://cloudflare-ipfs.com",
-                    "https://gateway.pinata.cloud"
-                };
-                for (const auto& gw : gateways) {
-                    std::string gw_url = gw + token + path_part;
-                    try {
-                        auto resp = get_single(gw_url, headers, 5, follow_redirects);
-                        if (resp.status == 200 && !resp.body.empty()) {
-                            return resp;
-                        }
-                    } catch (...) {}
-                }
+            path_part = url.substr(pos + token.length());
+        } else {
+            static const std::regex inbrowser_re(R"(https?://([a-zA-Z0-9]+)\.(ipns|ipfs)\.[^/]+(/.*)?)", std::regex::icase);
+            std::smatch m;
+            if (std::regex_match(url, m, inbrowser_re)) {
+                std::string cid = m[1].str();
+                std::string p = m[3].matched ? m[3].str() : "";
+                if (p.empty() || p == "/") p = "/hashes.json";
+                path_part = cid + p;
+            }
+        }
+        if (!path_part.empty()) {
+            std::string cid = path_part;
+            std::string subpath;
+            auto slash_pos = path_part.find('/');
+            if (slash_pos != std::string::npos) {
+                cid = path_part.substr(0, slash_pos);
+                subpath = path_part.substr(slash_pos);
+            }
+            std::vector<std::string> gateways;
+            if (is_ipns) {
+                gateways.push_back("https://" + cid + ".ipns.dweb.link" + subpath);
+                gateways.push_back("https://dweb.link/ipns/" + path_part);
+                gateways.push_back("https://ipfs.io/ipns/" + path_part);
+                gateways.push_back("https://cloudflare-ipfs.com/ipns/" + path_part);
+                gateways.push_back("https://gateway.pinata.cloud/ipns/" + path_part);
+            } else {
+                gateways.push_back("https://" + cid + ".ipfs.dweb.link" + subpath);
+                gateways.push_back("https://dweb.link/ipfs/" + path_part);
+                gateways.push_back("https://ipfs.io/ipfs/" + path_part);
+                gateways.push_back("https://cloudflare-ipfs.com/ipfs/" + path_part);
+            }
+            for (const auto& gw_url : gateways) {
+                try {
+                    auto resp = get_single(gw_url, headers, 15, true);
+                    if (resp.status >= 200 && resp.status < 400 && !resp.body.empty()) {
+                        return resp;
+                    }
+                } catch (...) {}
             }
         }
     }

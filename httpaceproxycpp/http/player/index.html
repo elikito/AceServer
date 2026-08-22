@@ -384,25 +384,83 @@
             letter-spacing: -0.2px;
         }
 
+        /* Channel Metadata Tags & Badges */
+        .channel-meta-tags {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 3px;
+            margin-bottom: 4px;
+        }
+
+        .source-pill {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #a8a8b2;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 4px;
+            padding: 2px 7px;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+        }
+
         /* AceStream ID Badge */
         .channel-ace-id {
             font-size: 11px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             color: #4CAF50;
             background: rgba(76, 175, 80, 0.1);
-            border: 1px solid rgba(76, 175, 80, 0.25);
+            border: 1px solid rgba(76, 175, 80, 0.28);
             border-radius: 4px;
-            padding: 2px 6px;
-            display: inline-block;
-            margin-top: 2px;
-            margin-bottom: 4px;
-            user-select: all;
+            padding: 2px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            user-select: none;
             letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .channel-ace-id:hover {
+            background: rgba(76, 175, 80, 0.22);
+            border-color: #4CAF50;
+            color: #66bb6a;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.25);
+        }
+
+        .channel-ace-id:active {
+            transform: scale(0.97);
+        }
+
+        .channel-ace-id.copied {
+            background: #4CAF50 !important;
+            color: #ffffff !important;
+            border-color: #4CAF50 !important;
+            box-shadow: 0 0 12px rgba(76, 175, 80, 0.5) !important;
         }
 
         .channel-ace-id code {
             font-family: inherit;
             font-weight: 600;
+        }
+
+        .channel-ace-id .id-copied-indicator {
+            display: none;
+            font-weight: 700;
+        }
+
+        .channel-ace-id.copied .id-copied-indicator {
+            display: inline;
+        }
+
+        .channel-ace-id.copied .id-text,
+        .channel-ace-id.copied .id-copy-icon {
+            display: none;
         }
 
         /* EPG Info */
@@ -1113,8 +1171,50 @@
         });
 
         let activeSourcesList = [];
+        let globalChannelAceIdMap = {}; // Map: channelName/normalizedKey -> aceId
+
+        async function preloadChannelAceIds() {
+            try {
+                const res = await fetch('/aio');
+                const text = await res.text();
+                const lines = text.split('\n');
+                let curName = '';
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.startsWith('#EXTINF:')) {
+                        const commaIdx = line.lastIndexOf(',');
+                        curName = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : '';
+                    } else if (!line.startsWith('#') && line.length > 0 && curName) {
+                        const aceId = extractAceId(line);
+                        if (aceId) {
+                            globalChannelAceIdMap[curName] = aceId;
+                            globalChannelAceIdMap[normalizeKey(curName)] = aceId;
+                            globalChannelAceIdMap[curName.toLowerCase().trim()] = aceId;
+                        }
+                        curName = '';
+                    }
+                }
+                // Si allChannels ya se ha cargado en otra pestaña sin IDs, refrescar
+                if (allChannels && allChannels.length > 0) {
+                    let updated = false;
+                    allChannels.forEach(c => {
+                        if (!c.aceId) {
+                            const found = globalChannelAceIdMap[c.name] || globalChannelAceIdMap[normalizeKey(c.name)] || globalChannelAceIdMap[c.name.toLowerCase().trim()];
+                            if (found) {
+                                c.aceId = found;
+                                updated = true;
+                            }
+                        }
+                    });
+                    if (updated) renderChannels();
+                }
+            } catch (e) {
+                console.warn('No se pudo precargar mapa de IDs de AIO:', e);
+            }
+        }
 
         async function initSourcesAndLoad() {
+            preloadChannelAceIds();
             try {
                 const res = await fetch('/config?action=get_config');
                 const config = await res.json();
@@ -1124,11 +1224,11 @@
                 const sources = [];
 
                 const knownPlugins = [
-                    { key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio' },
-                    { key: 'newera', label: 'Newera', url: '/newera' },
-                    { key: 'elcano', label: 'Elcano', url: '/elcano' },
-                    { key: 'af1c1onados', label: 'Af1c1onados', url: '/af1c1onados' },
-                    { key: 'acepl', label: 'Acepl', url: '/acepl' }
+                    { key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio', sourceName: 'AIO' },
+                    { key: 'newera', label: 'Newera', url: '/newera', sourceName: 'Newera' },
+                    { key: 'elcano', label: 'Elcano.top by @Lucas_m_o_o_m ... Vacaciones en el Mar', url: '/elcano', sourceName: 'Elcano' },
+                    { key: 'af1c1onados', label: 'Af1c1onados', url: '/af1c1onados', sourceName: 'Af1c1onados' },
+                    { key: 'acepl', label: 'Acepl', url: '/acepl', sourceName: 'Acepl' }
                 ];
 
                 const processedKeys = new Set(['aio', 'custom_lists', 'urls', 'version']);
@@ -1147,7 +1247,8 @@
                         sources.push({
                             key: k,
                             label: k.charAt(0).toUpperCase() + k.slice(1),
-                            url: '/' + k
+                            url: '/' + k,
+                            sourceName: k.charAt(0).toUpperCase() + k.slice(1)
                         });
                     }
                 });
@@ -1157,15 +1258,16 @@
                         if (item.enabled !== false && item.name) {
                             sources.push({
                                 key: 'custom_' + item.name,
-                                label: item.name + ' (Local)',
-                                url: '/' + item.name
+                                label: item.title || (item.name + ' (Local)'),
+                                url: '/' + item.name,
+                                sourceName: item.name
                             });
                         }
                     });
                 }
 
                 if (sources.length === 0) {
-                    sources.push({ key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio' });
+                    sources.push({ key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio', sourceName: 'AIO' });
                 }
 
                 activeSourcesList = sources;
@@ -1662,10 +1764,11 @@
 
         function loadData(sourceUrl) {
             currentSourceUrl = sourceUrl || '/aio';
+            const currentSourceObj = activeSourcesList.find(s => s.url === currentSourceUrl) || { sourceName: 'AIO', label: 'Todos los Canales (AIO)' };
             fetch(currentSourceUrl)
                 .then(res => res.text())
                 .then(async m3uText => {
-                    allChannels = parseM3U(m3uText);
+                    allChannels = parseM3U(m3uText, currentSourceObj);
                     renderChannels();
                     setStatusText(`${allChannels.length} canales cargados. Sincronizando guía EPG...`);
 
@@ -1753,9 +1856,80 @@
             return originalUrl;
         }
 
-        function parseM3U(text) {
-            const lines = text.split('\n');
+        function parseM3U(text, sourceObj) {
+            const fallbackSourceName = sourceObj ? (sourceObj.sourceName || sourceObj.label.replace(' (Local)', '')) : '';
+            const trimmed = (text || '').trim();
             const channels = [];
+
+            // 1. Soporte JSON nativo (TokyoGhoulles, Af1c1onados, hashes.json, etc.)
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                try {
+                    const data = JSON.parse(trimmed);
+                    const list = Array.isArray(data) ? data : (data.hashes || data.stations || data.channels || []);
+                    list.forEach(item => {
+                        const name = item.title || item.name || item.channel || 'Canal';
+                        const hash = item.hash || item.id || item.acestream_id || extractAceId(item.url);
+                        const group = item.group || item.category || 'Otros';
+                        const logo = item.logo || item.image || '';
+                        const tvgId = item.tvg_id || item['tvg-id'] || name;
+                        const source = item.source || fallbackSourceName || 'TokyoGhoulles';
+                        const streamUrl = hash ? `${window.location.protocol}//${window.location.host}/content_id/${hash}/${encodeURIComponent(name)}.ts` : (item.url || '');
+
+                        channels.push({
+                            name,
+                            logo,
+                            group,
+                            tvgId,
+                            source,
+                            url: streamUrl,
+                            aceId: hash
+                        });
+                        if (hash) {
+                            globalChannelAceIdMap[name] = hash;
+                            globalChannelAceIdMap[normalizeKey(name)] = hash;
+                        }
+                    });
+                    if (channels.length > 0) return channels;
+                } catch (e) {}
+            }
+
+            // 2. Soporte Texto Plano (hashes.txt)
+            if (!trimmed.startsWith('#EXTM3U') && !trimmed.startsWith('#EXTINF')) {
+                const lines = text.split('\n');
+                let curGroup = 'Otros';
+                let pendingName = '';
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i].trim();
+                    if (!line || line.startsWith('Identificadores') || line.startsWith('Generado') || line.startsWith('Total:') || line.startsWith('===')) {
+                        if (line.startsWith('===') && line.endsWith('===') && line.length > 6) {
+                            curGroup = line.replace(/=/g, '').trim();
+                        }
+                        continue;
+                    }
+                    const aceId = extractAceId(line);
+                    if (aceId) {
+                        const name = pendingName || `Canal ${channels.length + 1}`;
+                        const streamUrl = `${window.location.protocol}//${window.location.host}/content_id/${aceId}/${encodeURIComponent(name)}.ts`;
+                        channels.push({
+                            name,
+                            logo: '',
+                            group: curGroup,
+                            tvgId: name,
+                            source: fallbackSourceName || 'hashes_acestream',
+                            url: streamUrl,
+                            aceId: aceId
+                        });
+                        globalChannelAceIdMap[name] = aceId;
+                        globalChannelAceIdMap[normalizeKey(name)] = aceId;
+                        pendingName = '';
+                    } else {
+                        pendingName = line;
+                    }
+                }
+                if (channels.length > 0) return channels;
+            }
+
+            const lines = text.split('\n');
             let currentItem = null;
 
             for (let i = 0; i < lines.length; i++) {
@@ -1772,15 +1946,22 @@
                     const idMatch = line.match(/tvg-id="([^"]*)"/);
                     currentItem.tvgId = idMatch ? idMatch[1] : '';
 
+                    const sourceMatch = line.match(/(?:tvg-source|group-source|source)="([^"]*)"/i);
+                    currentItem.source = sourceMatch ? sourceMatch[1] : '';
+
                     const commaIdx = line.lastIndexOf(',');
                     currentItem.name = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : 'Canal';
                 } else if (!line.startsWith('#') && line.length > 0 && currentItem) {
                     let streamUrl = line;
+                    let extractedId = extractAceId(line) || extractAceId(currentItem.tvgId) || extractAceId(currentItem.name) || globalChannelAceIdMap[currentItem.name] || globalChannelAceIdMap[normalizeKey(currentItem.name)] || globalChannelAceIdMap[currentItem.name.toLowerCase().trim()];
+
                     if (line.startsWith('acestream://')) {
                         const pid = line.replace('acestream://', '').trim();
+                        extractedId = extractedId || pid;
                         streamUrl = window.location.protocol + '//' + window.location.host + '/content_id/' + pid + '/stream.ts';
                     } else if (line.startsWith('infohash://')) {
                         const hash = line.replace('infohash://', '').trim();
+                        extractedId = extractedId || hash;
                         streamUrl = window.location.protocol + '//' + window.location.host + '/infohash/' + hash + '/stream.ts';
                     } else if (line.startsWith('http://') || line.startsWith('https://')) {
                         try {
@@ -1791,7 +1972,30 @@
                             streamUrl = line;
                         }
                     }
+
                     currentItem.url = streamUrl;
+                    currentItem.aceId = extractedId || extractAceId(streamUrl) || globalChannelAceIdMap[currentItem.name] || globalChannelAceIdMap[normalizeKey(currentItem.name)];
+
+                    if (currentItem.aceId) {
+                        globalChannelAceIdMap[currentItem.name] = currentItem.aceId;
+                        globalChannelAceIdMap[normalizeKey(currentItem.name)] = currentItem.aceId;
+                        globalChannelAceIdMap[currentItem.name.toLowerCase().trim()] = currentItem.aceId;
+                    }
+
+                    if (!currentItem.source) {
+                        if (fallbackSourceName && fallbackSourceName !== 'AIO') {
+                            currentItem.source = fallbackSourceName;
+                        } else {
+                            if (currentItem.group === 'Interna' || (streamUrl && streamUrl.includes('Interna'))) {
+                                currentItem.source = 'Interna';
+                            } else if (currentItem.group.toLowerCase().includes('elcano') || (streamUrl && streamUrl.includes('elcano'))) {
+                                currentItem.source = 'Elcano';
+                            } else {
+                                currentItem.source = 'Newera';
+                            }
+                        }
+                    }
+
                     channels.push(currentItem);
                     currentItem = null;
                 }
@@ -1809,18 +2013,37 @@
             void container.offsetWidth; // Trigger reflow for animation restart
             container.classList.add('channels-fade-in');
 
+            const isAio = currentSourceUrl === '/aio';
+            const isSearching = searchVal.length > 0;
+
             const grouped = {};
             allChannels.forEach((chan, idx) => {
-                if (searchVal && !chan.name.toLowerCase().includes(searchVal) && !chan.group.toLowerCase().includes(searchVal)) {
+                const chanAceId = chan.aceId || globalChannelAceIdMap[chan.name] || globalChannelAceIdMap[normalizeKey(chan.name)] || globalChannelAceIdMap[chan.name.toLowerCase().trim()] || extractAceId(chan.url);
+                chan.aceId = chanAceId;
+
+                const nameMatch = chan.name.toLowerCase().includes(searchVal);
+                const groupMatch = chan.group.toLowerCase().includes(searchVal);
+                const sourceMatch = (chan.source || '').toLowerCase().includes(searchVal);
+                const aceIdMatch = (chan.aceId || '').toLowerCase().includes(searchVal);
+
+                if (isSearching && !nameMatch && !groupMatch && !sourceMatch && !aceIdMatch) {
                     return;
                 }
-                if (!grouped[chan.group]) grouped[chan.group] = [];
-                grouped[chan.group].push({ chan, idx });
+
+                let groupKey = chan.group || 'Otros';
+                if ((isAio || isSearching) && chan.source && chan.source !== 'AIO') {
+                    if (!groupKey.toLowerCase().includes(chan.source.toLowerCase())) {
+                        groupKey = `${groupKey} • ${chan.source}`;
+                    }
+                }
+
+                if (!grouped[groupKey]) grouped[groupKey] = [];
+                grouped[groupKey].push({ chan, idx });
             });
 
             const groups = Object.keys(grouped).sort();
             if (groups.length === 0) {
-                container.innerHTML = '<div class="loading-screen">No se encontraron canales.</div>';
+                container.innerHTML = '<div class="loading-screen">No se encontraron canales que coincidan con la búsqueda.</div>';
                 return;
             }
 
@@ -1833,7 +2056,7 @@
                         <span>${groupName}</span>
                         <span class="category-count">${grouped[groupName].length}</span>
                     </div>
-                    <div class="bento-grid" id="grid-${groupName.replace(/\s+/g, '-')}"></div>
+                    <div class="bento-grid" id="grid-${groupName.replace(/[^a-zA-Z0-9_-]/g, '-')}"></div>
                 `;
                 container.appendChild(groupContainer);
 
@@ -1846,19 +2069,30 @@
                     const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="system-ui" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">${item.chan.name.substring(0, 2).toUpperCase()}</text></svg>`;
                     const fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
 
+                    const aceId = item.chan.aceId || extractAceId(item.chan.url) || globalChannelAceIdMap[item.chan.name] || globalChannelAceIdMap[normalizeKey(item.chan.name)] || globalChannelAceIdMap[item.chan.name.toLowerCase().trim()];
+
                     card.innerHTML = `
                         <div class="channel-info">
                             <img class="channel-logo" src="${item.chan.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
                             <div class="channel-details">
                                 <div class="channel-name" title="${item.chan.name}">${item.chan.name}</div>
-                                ${extractAceId(item.chan.url) ? `<div class="channel-ace-id" title="AceStream ID: ${extractAceId(item.chan.url)}">ID: <code>${extractAceId(item.chan.url).substring(0, 8)}...${extractAceId(item.chan.url).substring(32)}</code></div>` : ''}
+                                <div class="channel-meta-tags">
+                                    ${item.chan.source ? `<span class="source-pill" title="Fuente: ${item.chan.source}">${item.chan.source}</span>` : ''}
+                                    ${aceId ? `
+                                        <div class="channel-ace-id" onclick="copyAceId('${aceId}', this, event)" title="Clic para copiar AceStream ID: ${aceId}">
+                                            <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" class="id-copy-icon"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                            <span class="id-text">ID: <code>${aceId.substring(0, 8)}...${aceId.substring(32)}</code></span>
+                                            <span class="id-copied-indicator">✓ Copiado!</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
                                 <div class="epg-container" id="epg-info-${item.idx}">
                                     <div class="epg-now">Sin información de guía</div>
                                 </div>
                             </div>
                         </div>
                         <div class="card-actions">
-                            <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copiar enlace del canal${extractAceId(item.chan.url) ? ' (ID: ' + extractAceId(item.chan.url) + ')' : ''}">
+                            <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copiar enlace directo de streaming">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
                             <button class="btn-play" onclick="playChannelInWebPlayer(getExactStreamUrl('${item.chan.url}'), '${escapeJsString(item.chan.name)}'); event.preventDefault();" title="Reproducir en la web">
@@ -1873,13 +2107,15 @@
 
         function extractAceId(url) {
             if (!url) return '';
-            const aceMatch = url.match(/acestream:\/\/([a-f0-9]{40})/i);
+            const pathContentId = url.match(/\/(?:content_id|infohash|pid)\/([a-f0-9]{40})/i);
+            if (pathContentId) return pathContentId[1];
+            const aceMatch = url.match(/(?:acestream|infohash):\/\/([a-f0-9]{40})/i);
             if (aceMatch) return aceMatch[1];
-            const idMatch = url.match(/[?&](?:id|infohash|hash|content_id)=([a-f0-9]{40})/i);
+            const idMatch = url.match(/[?&](?:id|infohash|hash|content_id|pid)=([a-f0-9]{40})/i);
             if (idMatch) return idMatch[1];
-            const pathMatch = url.match(/\/content_id\/([a-f0-9]{40})/i);
-            if (pathMatch) return pathMatch[1];
-            const hexMatch = url.match(/([a-f0-9]{40})/i);
+            const attrMatch = url.match(/(?:tvg-id|tvg-rec|id)="([a-f0-9]{40})"/i);
+            if (attrMatch) return attrMatch[1];
+            const hexMatch = url.match(/\b([a-f0-9]{40})\b/i);
             if (hexMatch) return hexMatch[1];
             return '';
         }
@@ -1911,7 +2147,40 @@
             showToast(msg, type);
         }
 
+        function copyAceId(aceId, badgeEl, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!aceId) return;
+
+            copyTextToClipboard(aceId, null, `✓ AceStream ID copiado: ${aceId.substring(0, 8)}...${aceId.substring(32)}`);
+
+            if (badgeEl) {
+                badgeEl.classList.add('copied');
+                setTimeout(() => {
+                    badgeEl.classList.remove('copied');
+                }, 2000);
+            }
+        }
+
         function copyTextToClipboard(text, button, customMsg) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(customMsg || '✓ Copiado al portapapeles', 'success');
+                    if (button) {
+                        button.classList.add('copied');
+                        setTimeout(() => button.classList.remove('copied'), 2000);
+                    }
+                }).catch(() => {
+                    execCommandFallback(text, button, customMsg);
+                });
+            } else {
+                execCommandFallback(text, button, customMsg);
+            }
+        }
+
+        function execCommandFallback(text, button, customMsg) {
             var textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.style.position = 'fixed';
@@ -1927,18 +2196,20 @@
             document.body.removeChild(textarea);
 
             if (success) {
-                showToast(customMsg || '✓ Enlace copiado');
+                showToast(customMsg || '✓ Copiado al portapapeles', 'success');
                 if (button) {
                     button.classList.add('copied');
                     setTimeout(() => {
                         button.classList.remove('copied');
                     }, 2000);
                 }
+            } else {
+                showToast('✗ No se pudo copiar automáticamente', 'error');
             }
         }
 
         function copyStreamUrl(url, button) {
-            copyTextToClipboard(url, button, '✓ Enlace copiado');
+            copyTextToClipboard(url, button, '✓ Enlace de stream copiado');
         }
 
         // --- LÓGICA DE EPG & SMART MATCHING ---

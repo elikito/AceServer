@@ -359,7 +359,7 @@ public:
 protected:
     bool refresh() override {
         auto default_urls = env_csv_or("ELCANO_PLAYLIST_URL", {
-            "https://ipfs.io/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u",
+            "https://k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs.ipns.inbrowser.link/hashes.json",
             "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u"
         });
         std::string default_url_str = join(default_urls, ",");
@@ -368,11 +368,71 @@ protected:
         PlaylistGenerator playlist(header_);
         std::map<std::string, std::string> channels;
         std::map<std::string, std::string> picons;
-        for (const auto& playlist_url : urls) {
+        std::set<std::string> seen_hashes;
+
+        for (auto playlist_url : urls) {
+            playlist_url = trim(playlist_url);
+            if (playlist_url.empty()) continue;
+            auto norm_url = normalize_list_url(playlist_url);
+            if (norm_url.find("/ipns/") != std::string::npos && (ends_with(norm_url, "/") || (norm_url.find(".m3u") == std::string::npos && norm_url.find(".json") == std::string::npos && norm_url.find(".txt") == std::string::npos))) {
+                if (ends_with(norm_url, "/")) norm_url += "hashes.json";
+                else norm_url += "/hashes.json";
+            }
             try {
-                auto response = http_client_.get(playlist_url, {{"User-Agent", kBrowserUserAgent}}, 60);
-                for (auto& item : parse_m3u_acestream_items(response.body, channels, picons)) {
-                    playlist.add_item(item);
+                auto response = http_client_.get(norm_url, {{"User-Agent", kBrowserUserAgent}}, 60);
+                std::string trimmed_content = trim(response.body);
+
+                if (starts_with(trimmed_content, "{") || starts_with(trimmed_content, "[")) {
+                    try {
+                        auto j = Json::parse(trimmed_content);
+                        std::function<void(const Json&, const std::string&)> parse_elcano_json = [&](const Json& node, const std::string& cur_grp) {
+                            if (node.is_object()) {
+                                std::string grp = node.contains("group") ? node["group"].as_string() : (node.contains("category") ? node["category"].as_string() : cur_grp);
+                                if (grp.empty()) grp = "Otros";
+
+                                if ((node.contains("hash") || node.contains("url") || node.contains("id")) && (node.contains("title") || node.contains("name"))) {
+                                    auto st_name = node.contains("title") ? node["title"].as_string() : node["name"].as_string();
+                                    auto raw_hash = node.contains("hash") ? node["hash"].as_string() : (node.contains("url") ? node["url"].as_string() : node["id"].as_string());
+                                    auto logo = node.contains("logo") ? node["logo"].as_string() : (node.contains("image") ? node["image"].as_string() : "");
+                                    auto tvg_id = node.contains("tvg_id") ? node["tvg_id"].as_string() : (node.contains("tvg-id") ? node["tvg-id"].as_string() : st_name);
+
+                                    if (!st_name.empty() && !raw_hash.empty()) {
+                                        std::string st_url = (starts_with(raw_hash, "acestream://") || starts_with(raw_hash, "http://") || starts_with(raw_hash, "https://")) ? raw_hash : ("acestream://" + raw_hash);
+                                        std::string hash_only = starts_with(st_url, "acestream://") ? st_url.substr(12) : st_url;
+                                        if (seen_hashes.insert(hash_only).second) {
+                                            PlaylistItem item{st_name, url_encode(st_name, ""), grp, st_name, tvg_id, logo};
+                                            channels[st_name] = st_url;
+                                            if (!logo.empty()) picons[st_name] = logo;
+                                            playlist.add_item(item);
+                                        }
+                                    }
+                                }
+
+                                if (node.contains("hashes") && node["hashes"].is_array()) {
+                                    for (const auto& h : node["hashes"].as_array()) parse_elcano_json(h, grp);
+                                }
+                                if (node.contains("stations") && node["stations"].is_array()) {
+                                    for (const auto& s : node["stations"].as_array()) parse_elcano_json(s, grp);
+                                }
+                                if (node.contains("groups") && node["groups"].is_array()) {
+                                    for (const auto& g : node["groups"].as_array()) parse_elcano_json(g, grp);
+                                }
+                            } else if (node.is_array()) {
+                                for (const auto& el : node.as_array()) parse_elcano_json(el, cur_grp);
+                            }
+                        };
+                        parse_elcano_json(j, "Elcano");
+                    } catch (...) {}
+                }
+
+                if (channels.empty() || starts_with(trimmed_content, "#EXTM3U") || starts_with(trimmed_content, "#EXTINF")) {
+                    for (auto& item : parse_m3u_acestream_items(response.body, channels, picons)) {
+                        std::string st_url = channels.contains(item.name) ? channels[item.name] : "";
+                        std::string hash_only = starts_with(st_url, "acestream://") ? st_url.substr(12) : st_url;
+                        if (hash_only.empty() || seen_hashes.insert(hash_only).second) {
+                            playlist.add_item(item);
+                        }
+                    }
                 }
             } catch (const std::exception& e) {
                 log_line("ERROR", "[elcano] source failed " + playlist_url + ": " + e.what());
@@ -909,19 +969,32 @@ protected:
                     auto j = Json::parse(trimmed_content);
                     std::function<void(const Json&, const std::string&)> process_json = [&](const Json& node, const std::string& current_grp) {
                         if (node.is_object()) {
-                            std::string grp = node.contains("name") ? node["name"].as_string() : current_grp;
+                            std::string grp = node.contains("group") ? node["group"].as_string() : (node.contains("category") ? node["category"].as_string() : (node.contains("name") ? node["name"].as_string() : current_grp));
+                            if (grp.empty()) grp = "Otros";
+
+                            if ((node.contains("hash") || node.contains("url") || node.contains("id")) && (node.contains("title") || node.contains("name"))) {
+                                auto st_name = node.contains("title") ? node["title"].as_string() : node["name"].as_string();
+                                auto raw_hash = node.contains("hash") ? node["hash"].as_string() : (node.contains("url") ? node["url"].as_string() : node["id"].as_string());
+                                auto logo = node.contains("logo") ? node["logo"].as_string() : (node.contains("image") ? node["image"].as_string() : "");
+                                auto tvg_id = node.contains("tvg_id") ? node["tvg_id"].as_string() : (node.contains("tvg-id") ? node["tvg-id"].as_string() : st_name);
+
+                                if (!st_name.empty() && !raw_hash.empty()) {
+                                    std::string st_url = (starts_with(raw_hash, "acestream://") || starts_with(raw_hash, "http://") || starts_with(raw_hash, "https://")) ? raw_hash : ("acestream://" + raw_hash);
+                                    PlaylistItem item{st_name, url_encode(st_name, ""), grp, st_name, tvg_id, logo};
+                                    channels[st_name] = st_url;
+                                    if (!logo.empty()) picons[st_name] = logo;
+                                    playlist.add_item(item);
+                                }
+                            }
+
+                            if (node.contains("hashes") && node["hashes"].is_array()) {
+                                for (const auto& h : node["hashes"].as_array()) {
+                                    process_json(h, grp);
+                                }
+                            }
                             if (node.contains("stations") && node["stations"].is_array()) {
                                 for (const auto& station : node["stations"].as_array()) {
-                                    if (station.is_object() && station.contains("name") && station.contains("url")) {
-                                        auto st_name = station["name"].as_string();
-                                        auto st_url = station["url"].as_string();
-                                        if (st_name.empty() || st_url.empty()) continue;
-                                        auto logo = station.contains("image") ? station["image"].as_string() : "";
-                                        PlaylistItem item{st_name, url_encode(st_name, ""), grp, st_name, "", logo};
-                                        channels[st_name] = st_url;
-                                        if (!logo.empty()) picons[st_name] = logo;
-                                        playlist.add_item(item);
-                                    }
+                                    process_json(station, grp);
                                 }
                             }
                             if (node.contains("groups") && node["groups"].is_array()) {
@@ -929,10 +1002,44 @@ protected:
                                     process_json(g, grp);
                                 }
                             }
+                            if (node.contains("channels") && node["channels"].is_array()) {
+                                for (const auto& ch : node["channels"].as_array()) {
+                                    process_json(ch, grp);
+                                }
+                            }
+                        } else if (node.is_array()) {
+                            for (const auto& el : node.as_array()) {
+                                process_json(el, current_grp);
+                            }
                         }
                     };
                     process_json(j, "");
                 } catch (...) {}
+            }
+
+            if (channels.empty() && !starts_with(trimmed_content, "#EXTM3U") && !starts_with(trimmed_content, "#EXTINF")) {
+                auto lines = split(content, '\n', true);
+                std::string cur_grp = "Otros";
+                std::string pending_name;
+                for (auto& l : lines) {
+                    auto line = trim(l);
+                    if (line.empty() || starts_with(line, "#") || starts_with(line, "//") || starts_with(line, "===") || starts_with(line, "Total:") || starts_with(line, "Generado:") || starts_with(line, "Identificadores")) {
+                        if (starts_with(line, "===") && ends_with(line, "===") && line.length() > 6) {
+                            cur_grp = trim(line.substr(3, line.length() - 6));
+                        }
+                        continue;
+                    }
+                    if (starts_with(line, "acestream://") || starts_with(line, "infohash://") || std::regex_match(line, std::regex(R"([a-fA-F0-9]{40})"))) {
+                        std::string st_name = pending_name.empty() ? ("Canal " + std::to_string(channels.size() + 1)) : pending_name;
+                        std::string st_url = (starts_with(line, "acestream://") || starts_with(line, "infohash://")) ? line : ("acestream://" + line);
+                        PlaylistItem item{st_name, url_encode(st_name, ""), cur_grp, st_name, "", ""};
+                        channels[st_name] = st_url;
+                        playlist.add_item(item);
+                        pending_name.clear();
+                    } else {
+                        pending_name = line;
+                    }
+                }
             }
 
             if (channels.empty()) {
