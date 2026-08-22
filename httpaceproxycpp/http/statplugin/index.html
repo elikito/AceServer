@@ -655,6 +655,7 @@
             font-size: 12px;
             color: var(--text-muted);
             z-index: 100;
+            user-select: none;
         }
 
         .footer-left,
@@ -662,7 +663,19 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            width: 200px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .footer-left:hover,
+        .footer-right:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .footer-left {
+            justify-content: flex-start;
         }
 
         .footer-right {
@@ -676,18 +689,37 @@
             flex: 1;
         }
 
+        .footer-left .label,
+        .footer-right .label {
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
         .footer-left .val {
             font-family: monospace;
             font-weight: 600;
             color: var(--text-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
 
         .footer-right .version-badge {
             background-color: var(--border-color);
-            padding: 1px 6px;
+            padding: 2px 8px;
             border-radius: 4px;
             color: var(--text-color);
             font-weight: 600;
+            font-family: monospace;
+            transition: all 0.2s ease;
+        }
+
+        .footer-right .version-badge.copied,
+        .footer-left .val.copied {
+            background-color: #22c55e !important;
+            color: #ffffff !important;
         }
 
         .theme-toggle-btn {
@@ -698,19 +730,21 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 4px;
-            border-radius: 4px;
-            transition: color 0.2s, background-color 0.2s;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            transition: color 0.2s, background-color 0.2s, transform 0.2s;
         }
 
         .theme-toggle-btn:hover {
             color: var(--text-color);
-            background-color: var(--border-color);
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.08);
         }
 
         .theme-toggle-btn svg {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             fill: currentColor;
         }
 
@@ -1638,6 +1672,7 @@
             <span class="val version-badge app-version">-</span>
         </div>
     </div>
+    <script src="/js/footer.js"></script>
 </body>
 
 </html>

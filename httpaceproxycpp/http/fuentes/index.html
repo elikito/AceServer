@@ -551,21 +551,23 @@
             color: #00e5ff;
         }
 
-        /* Footer */
+        /* Footer Bar */
         .footer-bar {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 48px;
+            height: 40px;
             background-color: var(--header-bg);
             border-top: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 24px;
+            font-size: 12px;
+            color: var(--text-muted);
             z-index: 100;
-            font-size: 13px;
+            user-select: none;
         }
 
         .footer-left,
@@ -573,34 +575,83 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
-        .footer-bar .label {
-            color: var(--text-muted);
-            font-weight: 500;
+        .footer-left:hover,
+        .footer-right:hover {
+            background-color: rgba(255, 255, 255, 0.08);
         }
 
-        .footer-bar .val {
-            font-weight: 600;
-            color: var(--text-color);
+        .footer-left {
+            justify-content: flex-start;
         }
 
-        .theme-toggle-btn {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
+        .footer-right {
+            justify-content: flex-end;
+        }
+
+        .footer-center {
             display: flex;
             align-items: center;
             justify-content: center;
+            flex: 1;
+        }
+
+        .footer-left .label,
+        .footer-right .label {
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-left .val {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--text-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .footer-right .version-badge {
+            background-color: var(--border-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--text-color);
+            font-weight: 600;
+            font-family: monospace;
+            transition: all 0.2s ease;
+        }
+
+        .footer-right .version-badge.copied,
+        .footer-left .val.copied {
+            background-color: #22c55e !important;
+            color: #ffffff !important;
+        }
+
+        .theme-toggle-btn {
+            background: none;
+            border: none;
             cursor: pointer;
-            transition: background-color 0.2s;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            transition: color 0.2s, background-color 0.2s, transform 0.2s;
         }
 
         .theme-toggle-btn:hover {
-            background-color: var(--border-color);
+            color: var(--text-color);
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.08);
         }
 
         .theme-toggle-btn svg {
@@ -1580,6 +1631,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
             themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
         }
     </script>
+    <script src="/js/footer.js"></script>
 </body>
 
 </html>

@@ -6,6 +6,20 @@ El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.co
 
 ---
 
+## [08.22.02] - 2026-08-22
+
+### 🎨 Homogeneización y Barra Inferior (Footer Unificado)
+- **Componente de Footer estandarizado en todas las vistas (`/`, `/player/`, `/fuentes/`, `/epg/`, `/statplugin/`, `/listas/`):**
+  - **Sección Izquierda:** IP del servidor y nombre de host (`IP: <ip> (<hostname>)`). Al hacer clic, copia automáticamente la IP al portapapeles con feedback visual (`✓ Copiado!`).
+  - **Sección Central:** Botón centrado para alternar entre tema Claro y Oscuro con icono dinámico (Sol/Luna) y persistencia en `localStorage`.
+  - **Sección Derecha:** Versión activa del sistema (`VERSIÓN: 08.22.02`). Al hacer clic, copia el identificador de versión al portapapeles con feedback visual (`✓ Copiado!`).
+- **Módulo JS Compartido ([footer.js](file:///opt/HTTPAceProxy/httpaceproxycpp/http/js/footer.js)):**
+  - Gestión centralizada de eventos de copiado seguro al portapapeles con fallback.
+  - Sincronización automática con las APIs `/stat/?action=get_status` y `/config?action=get_config`.
+  - Eliminación de discrepancias visuales de altura, etiquetas y alineación entre paneles.
+
+---
+
 ## [08.22.01] - 2026-08-22
 
 ### 🚀 Nuevas Funcionalidades y Fuentes
