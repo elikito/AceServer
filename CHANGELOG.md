@@ -4,16 +4,80 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.24.02] - 2026-08-24
+
+### ⚡ Refactorización Profunda del Módulo de Verificación de Canales (`/statplugin`)
+
+#### Backend C++ — Nuevo `ChannelVerifier` con Worker Pool Asíncrono
+
+- **`channel_verifier.hpp` / `channel_verifier.cpp`** — Nuevo módulo independiente:
+  - **Worker Pool** con `std::counting_semaphore<2>` (C++20): máximo 2 verificaciones concurrentes accediendo al motor AceStream simultáneamente, garantizando que el motor no se sobrecargue.
+  - **Cola de tareas FIFO** protegida por `std::mutex` + `std::condition_variable` para despacho ordenado de verificaciones pendientes.
+  - **Estado persistente en memoria** por Content ID: `std::unordered_map<cid, VerifyResult>` con `std::shared_mutex` (readers-writer lock) para acceso concurrente eficiente sin bloqueos entre lecturas.
+
+- **Pipeline de Verificación en 4 Fases** (sobre API HTTP `http://<ace_host>:<ace_http_port>/ace/getstream`):
+  - **Fase 1 (Handshake):** `GET /ace/getstream?id={cid}&format=json` con timeout de 3s.
+  - **Fase 2 (Resolución Torrent):** Valida `stat_url` + `command_url`; detecta error `"Cannot retrieve torrent"`.
+  - **Fase 3 (DHT & Swarm):** Espera activa de 2.75s total (polls cada 400ms) consultando `stat_url` para obtener `peers` y `status`.
+  - **Fase 4 (Bitrate Real):** Lee `speed_down` (bytes/s). Si `status == "dl"` y `speed_down > 0`, clasifica como reproducible.
+  - **CIERRE OBLIGATORIO:** `GET {command_url}?method=stop` con timeout de 2s. **Siempre ejecutado**, incluso en caso de error, para liberar sockets inmediatamente y evitar sesiones huérfanas.
+
+- **Clasificación de Estados (`ChannelHealth` enum):**
+  - `ONLINE` 🟢: `status=="dl"` && `peers>=2` && `speed_down > 102400` bytes/s (≈ 100 KB/s / 800 Kbps)
+  - `LOW_PEERS` 🟡: `(dl|prebuf)` && `peers>=1` && `speed_down <= threshold`
+  - `OFFLINE` 🔴: `peers==0` && `speed_down==0` (no elimina el ID, sólo lo marca inactivo)
+  - `BLOCKED` ⛔: Timeout de handshake o error `"Cannot retrieve torrent"`
+  - `ERROR` ❌: Excepción inesperada / respuesta no parseable
+  - `PENDING`: En cola, verificación en curso
+  - `UNKNOWN`: Nunca verificado
+
+- **Configuración flexible:**
+  - Host/puerto del motor: `config_.ace_host` / `config_.ace_http_port` con fallback `127.0.0.1:6878`.
+  - Soporte para variable de entorno `ACE_ENGINE_HTTP_PORT` para sobreescribir el puerto en runtime.
+  - Umbral de bitrate configurable en runtime (`ChannelVerifier::set_speed_threshold()`), constante `kDefaultSpeedThreshold = 102400` bytes/s.
+
+#### Nuevos Endpoints HTTP (`/statplugin`)
+
+| Endpoint | Descripción |
+|---|---|
+| `?action=verify&content_id=<hash>[&timeout_ms=<ms>]` | Verificación síncrona completa de un CID (respuesta con `health`, `peers`, `speed_down`, `phase_reached`) |
+| `?action=verify_batch&ids=<h1>,<h2>,...` | Encola múltiples CIDs para verificación asíncrona; retorna estado actual inmediato |
+| `?action=get_health` | Mapa completo de estados en memoria (preparado para selección de mejor stream por canal EPG) |
+| `?action=get_health_one&content_id=<hash>` | Estado de un CID sin lanzar nueva verificación |
+
+#### Compatibilidad y Otros Cambios
+
+- Los endpoints legacy `check_channel` y `check_peers` (vía `AceClient` TCP) se mantienen **sin modificaciones** para compatibilidad total con el frontend existente.
+- Integración en `Proxy`: `ChannelVerifier` inicializado en el constructor con los parámetros del motor.
+- Añadido `src/channel_verifier.cpp` al target `httpaceproxycpp_core` en `CMakeLists.txt`.
+- Versión bumpeada a `08.24.02` en `config.hpp`.
+
+---
+
 ## [08.24.01] - 2026-08-24
+
 
 ### 📦 Exportación e Importación de Fuentes M3U y JSON (`/fuentes`)
 - **Sistema de Exportación Estandarizado M3U y JSON:**
-  - Botón de exportación en formato M3U estándar (`fuentes_httpaceproxy.m3u`) con directivas `#EXTM3U` y cabeceras `#EXTINF` con metadatos (`tvg-id`, `tvg-name`, `group-title`, etc.), plenamente compatible tanto con HTTPAceProxy como con cualquier reproductor IPTV genérico (VLC, Tivimate, Kodi, IPTV Smarters).
-  - Botón de exportación de copia de seguridad en formato JSON (`fuentes_httpaceproxy.json`) para respaldar la configuración completa de fuentes predefinidas y personalizadas.
+  - Exportación de listas en formato M3U estándar (`fuentes_httpaceproxy.m3u`) con directivas `#EXTM3U` y etiquetas `#EXTINF` con metadatos (`tvg-id`, `tvg-name`, `group-title`, `status`), plenamente compatible tanto con HTTPAceProxy como con cualquier reproductor IPTV genérico (VLC, Tivimate, Kodi, IPTV Smarters).
+  - Exportación de copia de seguridad completa en formato JSON (`fuentes_httpaceproxy.json`) con las fuentes predefinidas y personalizadas.
 - **Sistema de Importación Inteligente de Fuentes:**
   - Panel interactivo en `/fuentes` para cargar archivos `.m3u`, `.m3u8`, `.json` o `.txt`, o pegar código fuente directamente.
-  - Soporte de modos de importación: **Fusionar** (añadir/actualizar fuentes manteniendo las existentes) y **Reemplazar** (sustituir listas personalizadas).
-  - API de backend C++ en `/config?action=export_sources` y `/config?action=import_sources` para procesamiento en caliente y sincronización instantánea con el estado del servidor.
+  - Soporte de modos de importación: **Fusionar (Merge)** (añadir y actualizar fuentes manteniendo las existentes) y **Reemplazar (Replace)** (sustituir listas personalizadas).
+  - Backend C++ en `/config?action=export_sources` y `/config?action=import_sources` para procesamiento asíncrono y refresco en caliente.
+
+### 🎨 Notificaciones In-Page y Modales de Confirmación Unificados
+- **Componente Global de Modal de Confirmación (`showConfirmModal`):**
+  - Incorporado en `footer.js` y disponible en todas las vistas de la app (`/fuentes`, `/listas`, `/statplugin`, `/`, `/player`, `/epg`).
+  - Overlay de diseño moderno con desenfoque (`backdrop-filter`), animaciones suaves, adaptación a tema Claro / Oscuro e iconos contextuales (`🗑️` / `❓`).
+- **Eliminación Total de Popups Nativos (`confirm` y `alert`):**
+  - Reemplazadas todas las llamadas emergentes del navegador (`192.168.1.54 dice`) por notificaciones Toast in-page y modales contextuales.
+
+### 📺 Reproducción Directa por Content ID en Reproductor IPTV (`/player`)
+- **Entrada Manual de Content ID en el Reproductor:**
+  - Añadido un campo de texto interactivo con botón **▶ Reproducir ID** en la cabecera del reproductor IPTV (`/player/index.html`).
+  - Extracción automática de hash de 40 caracteres desde texto o enlaces `acestream://` / `content_id/...`.
+  - Inicio de reproducción instantánea en directo en el reproductor Bento HTML5 (`mpegts.js`) con desplazamiento suave.
 
 ---
 

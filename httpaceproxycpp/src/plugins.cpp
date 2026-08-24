@@ -769,18 +769,70 @@ public:
     std::vector<std::string> handlers() const override { return {"statplugin"}; }
     bool handle(RequestContext& ctx) override {
         auto action = query_get(ctx.query, "action");
+
+        // -----------------------------------------------------------------------
+        // Acciones legacy (compatibilidad total con versiones anteriores)
+        // -----------------------------------------------------------------------
         if (action == "get_plugins") {
-            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", proxy_.plugins_json().dump(2));
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8",
+                       proxy_.plugins_json().dump(2));
+
         } else if (action == "check_channel") {
-            auto data = proxy_.check_channel_light(query_get(ctx.query, "plugin"), query_get(ctx.query, "channel"), query_get(ctx.query, "content_id"));
+            // Legacy: resolución vía AceClient TCP (mantener para compatibilidad)
+            auto data = proxy_.check_channel_light(
+                query_get(ctx.query, "plugin"),
+                query_get(ctx.query, "channel"),
+                query_get(ctx.query, "content_id"));
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
         } else if (action == "check_peers") {
+            // Legacy: verificación de peers vía AceClient TCP
             int max_wait = 15;
             try { max_wait = std::stoi(query_get(ctx.query, "max_wait", "15")); } catch (...) {}
             max_wait = std::min(30, std::max(5, max_wait));
             auto data = proxy_.check_channel_peers(query_get(ctx.query, "content_id"), max_wait);
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
+        // -----------------------------------------------------------------------
+        // v08.24.02 — Nuevas acciones con Worker Pool asíncrono (4 fases)
+        // -----------------------------------------------------------------------
+        } else if (action == "verify") {
+            // Verificación síncrona de un Content ID.
+            // GET /statplugin?action=verify&content_id=<hash>[&timeout_ms=<ms>]
+            auto cid = query_get(ctx.query, "content_id");
+            int timeout_ms = 10000;
+            try { timeout_ms = std::stoi(query_get(ctx.query, "timeout_ms", "10000")); } catch (...) {}
+            timeout_ms = std::min(30000, std::max(3000, timeout_ms));
+            auto data = proxy_.verify_channel(cid, timeout_ms);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
+        } else if (action == "verify_batch") {
+            // Verificación asíncrona de múltiples Content IDs.
+            // GET /statplugin?action=verify_batch&ids=<h1>,<h2>,...
+            auto ids_raw = query_get(ctx.query, "ids");
+            std::vector<std::string> ids;
+            for (auto id : split(ids_raw, ',', false)) {
+                id = trim(id);
+                if (!id.empty()) ids.push_back(id);
+            }
+            auto data = proxy_.verify_channels_batch(ids);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
+        } else if (action == "get_health") {
+            // Retorna el mapa completo de estados en memoria (para EPG / polling UI).
+            // GET /statplugin?action=get_health
+            auto data = proxy_.get_channel_health_map();
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
+        } else if (action == "get_health_one") {
+            // Retorna el estado de un único CID sin lanzar nueva verificación.
+            // GET /statplugin?action=get_health_one&content_id=<hash>
+            auto cid = query_get(ctx.query, "content_id");
+            auto data = proxy_.get_channel_health_one(cid);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
         } else {
+            // Servir el frontend HTML del statplugin.
             try {
                 auto full = std::filesystem::path(config_.root_dir) / "http" / "statplugin" / "index.html";
                 send_bytes(ctx.connection, 200, "text/html; charset=utf-8", read_file_binary(full.string()));

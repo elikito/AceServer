@@ -319,7 +319,9 @@ void Proxy::set_engine(const std::string& name_or_mode) {
 }
 
 Proxy::Proxy(Config config)
-    : config_(std::move(config)), broadcasts_(config_, http_client_) {
+    : config_(std::move(config)),
+      broadcasts_(config_, http_client_),
+      channel_verifier_(http_client_, config_.ace_host, config_.ace_http_port) {
     cpu_info_ = detect_cpu_info();
     add_bunker_log("Búnker HTTPAceProxy iniciado.");
     add_bunker_log("CPU Detectada: " + cpu_info_.cpu_detected);
@@ -2016,6 +2018,51 @@ Json Proxy::check_channel_peers(const std::string& content_id, int max_wait, con
     } catch (const std::exception& e) {
         return Json::object{{"status", "error"}, {"engine", target_engine}, {"error", e.what()}, {"available", false}};
     }
+}
+
+// ---------------------------------------------------------------------------
+// v08.24.02 — Métodos de verificación de salud de canales (Worker Pool)
+// ---------------------------------------------------------------------------
+
+Json Proxy::verify_channel(const std::string& content_id, int timeout_ms) {
+    if (content_id.empty())
+        return Json::object{{"status", "error"}, {"error", "content_id requerido"}};
+    auto result = channel_verifier_.verify_sync(content_id, timeout_ms);
+    auto j = result.to_json().as_object();
+    j["status"] = "success";
+    return Json(j);
+}
+
+Json Proxy::verify_channels_batch(const std::vector<std::string>& ids) {
+    Json::array results;
+    for (const auto& cid : ids) {
+        if (cid.empty()) continue;
+        // Encolar sin callback — la UI puede ir consultando get_health_map.
+        channel_verifier_.enqueue(cid);
+        auto cached = channel_verifier_.get_cached(cid);
+        results.push_back(cached.to_json());
+    }
+    return Json::object{
+        {"status",  "success"},
+        {"queued",  static_cast<double>(ids.size())},
+        {"results", Json(results)}
+    };
+}
+
+Json Proxy::get_channel_health_map() {
+    return Json::object{
+        {"status", "success"},
+        {"health_map", channel_verifier_.get_health_map()}
+    };
+}
+
+Json Proxy::get_channel_health_one(const std::string& content_id) {
+    if (content_id.empty())
+        return Json::object{{"status", "error"}, {"error", "content_id requerido"}};
+    auto cached = channel_verifier_.get_cached(content_id);
+    auto j = cached.to_json().as_object();
+    j["status"] = "success";
+    return Json(j);
 }
 
 bool Proxy::is_plugin_enabled(const std::string& name) const {

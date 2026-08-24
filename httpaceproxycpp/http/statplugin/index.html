@@ -1,57 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plugin Status - HTTPAceProxy</title>
+    <meta name="description" content="Panel de diagnóstico y verificación de canales AceStream — HTTPAceProxy v08.24.02">
+    <title>Diagnóstico de Canales — HTTPAceProxy</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* ------------------------------------------------------------------ */
+        /* RESET & TOKENS                                                       */
+        /* ------------------------------------------------------------------ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg-color: #121214;
-            --card-bg: #1a1a1e;
-            --border-color: #2d2d34;
-            --text-color: #e1e1e6;
-            --text-muted: #a8a8b2;
-            --header-bg: #1a1a1e;
-            --stat-bg: #202024;
-            --brand-color: #4CAF50;
-            --accent-color: #764ba2;
-            --input-bg: #1a1a1e;
+            --bg:          #0f0f11;
+            --surface:     #18181c;
+            --surface2:    #1f1f25;
+            --border:      #2a2a32;
+            --border2:     #38383f;
+            --text:        #e8e8f0;
+            --muted:       #8888a0;
+            --brand:       #22c55e;
+            --brand-dim:   rgba(34,197,94,.12);
+            --brand-glow:  rgba(34,197,94,.25);
+            --amber:       #f59e0b;
+            --amber-dim:   rgba(245,158,11,.12);
+            --red:         #ef4444;
+            --red-dim:     rgba(239,68,68,.12);
+            --blue:        #3b82f6;
+            --blue-dim:    rgba(59,130,246,.12);
+            --violet:      #8b5cf6;
+            --gray-dim:    rgba(136,136,160,.1);
+            --radius:      8px;
+            --radius-sm:   5px;
+            --shadow:      0 4px 20px rgba(0,0,0,.45);
         }
 
         body.light-theme {
-            --bg-color: #f4f4f5;
-            --card-bg: #ffffff;
-            --border-color: #e4e4e7;
-            --text-color: #18181b;
-            --text-muted: #71717a;
-            --header-bg: #ffffff;
-            --stat-bg: #f4f4f5;
-            --brand-color: #4CAF50;
-            --accent-color: #667eea;
-            --table-header: #e4e4e7;
-            --input-bg: #ffffff;
+            --bg:        #f1f1f4;
+            --surface:   #ffffff;
+            --surface2:  #f4f4f7;
+            --border:    #e2e2e8;
+            --border2:   #d0d0d8;
+            --text:      #18181b;
+            --muted:     #71717a;
+            --brand-dim: rgba(34,197,94,.1);
+            --gray-dim:  rgba(100,100,120,.07);
         }
 
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            padding-bottom: 60px;
+            padding-bottom: 56px;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Navbar Plano Superior */
+        /* ------------------------------------------------------------------ */
+        /* NAVBAR                                                               */
+        /* ------------------------------------------------------------------ */
         .navbar {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid var(--border-color);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -59,730 +73,659 @@
             height: 56px;
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 200;
+            backdrop-filter: blur(12px);
         }
-
         .nav-brand {
             font-weight: 700;
-            font-size: 18px;
-            color: #ffffff;
+            font-size: 17px;
+            color: var(--text);
             text-decoration: none;
+            letter-spacing: -.3px;
         }
-
-        body.light-theme .nav-brand {
-            color: #18181b;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 16px;
-        }
-
+        .nav-links { display: flex; gap: 4px; }
         .nav-links a {
-            color: var(--text-muted);
+            color: var(--muted);
             text-decoration: none;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 4px;
-            transition: color 0.2s, background-color 0.2s;
+            padding: 7px 12px;
+            border-radius: var(--radius-sm);
+            transition: color .15s, background .15s;
         }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: var(--text-color);
-            background-color: var(--border-color);
-        }
-
-        /* Hamburger menu button */
+        .nav-links a:hover { color: var(--text); background: var(--border); }
+        .nav-links a.active { color: var(--brand); background: var(--brand-dim); }
         .navbar-toggle {
             display: none;
             flex-direction: column;
-            justify-content: space-between;
-            width: 24px;
-            height: 18px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            z-index: 101;
-        }
-
-        .navbar-toggle .icon-bar {
-            width: 100%;
-            height: 2px;
-            background-color: var(--text-color);
-            border-radius: 1px;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 56px;
-                left: 0;
-                right: 0;
-                background-color: var(--header-bg);
-                border-bottom: 1px solid var(--border-color);
-                padding: 16px 24px;
-                gap: 8px;
-                z-index: 99;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .nav-links a {
-                width: 100%;
-                text-align: center;
-                padding: 12px;
-            }
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding-left: 20px;
-            padding-right: 20px;
-            padding-top: 24px;
-            padding-bottom: 24px;
-            box-sizing: border-box;
-        }
-
-        .header-section {
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-color);
-        }
-
-        .header-title p {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        /* Unified Search Box */
-        .search-container {
-            position: relative;
-            width: 100%;
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
-            fill: var(--text-muted);
-            pointer-events: none;
-        }
-
-        .search-input {
-            width: 100%;
-            background-color: var(--input-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 10px 14px 10px 38px;
-            border-radius: 6px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .search-input:focus {
-            border-color: var(--brand-color);
-            box-shadow: 0 0 0 2px rgba(76, 217, 100, 0.15);
-        }
-
-        /* Toast & Alert Notifications (Bottom Right) */
-        .toast-notification {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background-color: rgba(12, 25, 14, 0.95);
-            border: 1px solid #4cd964;
-            color: #4cd964;
-            padding: 12px 20px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-            z-index: 99999;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            pointer-events: none;
-            max-width: 450px;
-            word-break: break-word;
-        }
-
-        .toast-notification.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast-notification.error {
-            background-color: rgba(30, 12, 12, 0.95);
-            border: 1px solid #ff3b30;
-            color: #ff3b30;
-        }
-
-        /* Controls & Filter */
-        .controls {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-
-        .refresh-btn {
-            background-color: var(--brand-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-
-        .refresh-btn:hover {
-            background-color: #45a049;
-        }
-
-        .filter-box {
-            margin-bottom: 24px;
-        }
-
-        .filter-input {
-            width: 100%;
-            background-color: var(--input-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 12px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            outline: none;
-        }
-
-        .filter-input:focus {
-            border-color: var(--brand-color);
-        }
-
-        /* Connection Stats */
-        .stats {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-        }
-
-        .stat-box {
-            padding: 16px;
-            background-color: var(--stat-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .stat-box .label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-            font-weight: 600;
-        }
-
-        .stat-box .value {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-color);
-        }
-
-        /* Plugin container */
-        .plugin {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 24px;
-            overflow: hidden;
-        }
-
-        .plugin-header {
-            background-color: var(--stat-bg);
-            border-bottom: 1px solid var(--border-color);
-            padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .plugin-header h2 {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-color);
-            text-transform: capitalize;
-        }
-
-        .plugin-header .count {
-            background-color: var(--border-color);
-            color: var(--text-color);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .plugin-header .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .plugin-header .bulk-btn {
-            background-color: var(--border-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .plugin-header .bulk-btn:hover {
-            background-color: var(--card-bg);
-        }
-
-        .plugin-header .bulk-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .collapse-icon {
-            width: 16px;
-            height: 16px;
-            margin-right: 8px;
-            fill: var(--text-color);
-            transition: transform 0.2s;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .plugin.collapsed .collapse-icon {
-            transform: rotate(-90deg);
-        }
-
-        .collapse-icon svg {
-            width: 100%;
-            height: 100%;
-            fill: var(--text-color);
-        }
-
-        .progress-bar {
-            height: 3px;
-            background: var(--border-color);
-            border-radius: 1.5px;
-            overflow: hidden;
-            margin-top: 12px;
-            display: none;
-        }
-
-        .progress-bar.active {
-            display: block;
-        }
-
-        .progress-bar .progress {
-            height: 100%;
-            background-color: var(--brand-color);
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        .channels {
-            display: block;
-        }
-
-        .plugin.collapsed .channels {
-            display: none;
-        }
-
-        .channel {
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--border-color);
-            display: grid;
-            grid-template-columns: 64px minmax(150px, 1fr) 120px 80px 120px;
-            gap: 16px;
-            align-items: center;
-        }
-
-        .channel:last-child {
-            border-bottom: none;
-        }
-
-        .channel-logo-wrapper {
-            width: 84px;
-            height: 84px;
-            background-color: #141418;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-        }
-
-        .channel-logo {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 6px;
-        }
-
-        .channel-logo-placeholder {
-            width: 100%;
-            height: 100%;
-            background-color: var(--border-color);
-            border-radius: 6px;
-        }
-
-        .channel-info {
-            min-width: 0;
-        }
-
-        .channel-name {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-color);
-            margin-bottom: 6px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .channel-id {
-            font-family: monospace;
-            font-size: 11px;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .status {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .status.available {
-            background-color: rgba(76, 217, 100, 0.15);
-            color: #4cd964;
-            border: 1px solid rgba(76, 217, 100, 0.3);
-        }
-
-        .status.unavailable {
-            background-color: rgba(255, 59, 48, 0.15);
-            color: #ff3b30;
-            border: 1px solid rgba(255, 59, 48, 0.3);
-        }
-
-        .status.unknown {
-            background-color: var(--border-color);
-            color: var(--text-muted);
-            border: 1px solid var(--border-color);
-        }
-
-        .status.checking {
-            background-color: rgba(255, 149, 0, 0.15);
-            color: #ff9500;
-            border: 1px solid rgba(255, 149, 0, 0.3);
-            animation: pulse 1.5s infinite;
-        }
-
-        .check-btn,
-        .peers-btn,
-        .copy-btn {
-            padding: 6px 12px;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: opacity 0.2s, background-color 0.2s;
-            white-space: nowrap;
-        }
-
-        .check-btn {
-            background-color: #2196F3;
-        }
-
-        .check-btn:hover {
-            opacity: 0.9;
-        }
-
-        .peers-btn {
-            background-color: #9C27B0;
-        }
-
-        .peers-btn:hover {
-            opacity: 0.9;
-        }
-
-        .copy-btn {
-            background-color: #009688;
-        }
-
-        .copy-btn:hover {
-            opacity: 0.9;
-        }
-
-        .copy-btn.copied {
-            background-color: #4CAF50 !important;
-        }
-
-        .check-btn:disabled,
-        .peers-btn:disabled,
-        .copy-btn:disabled {
-            background-color: var(--border-color) !important;
-            color: var(--text-muted) !important;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .peers-info {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .peers-badge {
-            padding: 4px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 600;
-            background-color: var(--border-color);
-            color: var(--text-color);
-            white-space: nowrap;
-        }
-
-        .peers-badge.has-peers {
-            background-color: rgba(76, 217, 100, 0.15);
-            color: #4cd964;
-        }
-
-        .peers-badge.no-peers {
-            background-color: rgba(255, 59, 48, 0.15);
-            color: #ff3b30;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-muted);
-            font-size: 16px;
-        }
-
-        .error {
-            background-color: rgba(255, 59, 48, 0.15);
-            color: #ff3b30;
-            padding: 16px;
-            border-radius: 6px;
-            margin: 20px 0;
-            border: 1px solid rgba(255, 59, 48, 0.3);
-        }
-
-        /* Footer Bar */
-        .footer-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background-color: var(--header-bg);
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 24px;
-            font-size: 12px;
-            color: var(--text-muted);
-            z-index: 100;
-            user-select: none;
-        }
-
-        .footer-left,
-        .footer-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .footer-left:hover,
-        .footer-right:hover {
-            background-color: rgba(255, 255, 255, 0.08);
-        }
-
-        .footer-left {
-            justify-content: flex-start;
-        }
-
-        .footer-right {
-            justify-content: flex-end;
-        }
-
-        .footer-center {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-        }
-
-        .footer-left .label,
-        .footer-right .label {
-            font-weight: 500;
-            color: var(--text-muted);
-            font-size: 11px;
-            letter-spacing: 0.5px;
-        }
-
-        .footer-left .val {
-            font-family: monospace;
-            font-weight: 600;
-            color: var(--text-color);
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-
-        .footer-right .version-badge {
-            background-color: var(--border-color);
-            padding: 2px 8px;
-            border-radius: 4px;
-            color: var(--text-color);
-            font-weight: 600;
-            font-family: monospace;
-            transition: all 0.2s ease;
-        }
-
-        .footer-right .version-badge.copied,
-        .footer-left .val.copied {
-            background-color: #22c55e !important;
-            color: #ffffff !important;
-        }
-
-        .theme-toggle-btn {
+            gap: 5px;
             background: none;
             border: none;
             cursor: pointer;
-            color: var(--text-muted);
+            padding: 4px;
+        }
+        .navbar-toggle .bar {
+            width: 22px; height: 2px;
+            background: var(--muted);
+            border-radius: 2px;
+            transition: all .2s;
+        }
+        @media (max-width: 768px) {
+            .navbar-toggle { display: flex; }
+            .nav-links {
+                display: none; flex-direction: column;
+                position: absolute; top: 56px; left: 0; right: 0;
+                background: var(--surface);
+                border-bottom: 1px solid var(--border);
+                padding: 12px 20px; gap: 4px; z-index: 199;
+            }
+            .nav-links.show { display: flex; }
+            .nav-links a { width: 100%; text-align: center; padding: 10px; }
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* LAYOUT                                                               */
+        /* ------------------------------------------------------------------ */
+        .container { max-width: 1440px; margin: 0 auto; padding: 24px 20px; }
+
+        /* ------------------------------------------------------------------ */
+        /* PAGE HEADER                                                          */
+        /* ------------------------------------------------------------------ */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .page-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -.4px;
+        }
+        .page-header p {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* SUMMARY CARDS                                                        */
+        /* ------------------------------------------------------------------ */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--accent, var(--border2));
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        .summary-card.online  { --accent: var(--brand); }
+        .summary-card.low     { --accent: var(--amber); }
+        .summary-card.offline { --accent: var(--red); }
+        .summary-card.total   { --accent: var(--blue); }
+        .summary-card .sc-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .summary-card .sc-value {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .summary-card.online  .sc-value { color: var(--brand); }
+        .summary-card.low     .sc-value { color: var(--amber); }
+        .summary-card.offline .sc-value { color: var(--red); }
+        .summary-card.total   .sc-value { color: var(--blue); }
+
+        /* ------------------------------------------------------------------ */
+        /* TOOLBAR                                                              */
+        /* ------------------------------------------------------------------ */
+        .toolbar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .toolbar-left  { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .toolbar-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-left: auto; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s, transform .1s, background .15s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn:active { transform: scale(.97); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+        .btn-primary { background: var(--brand); color: #fff; }
+        .btn-primary:hover:not(:disabled) { opacity: .9; }
+        .btn-danger  { background: var(--red);   color: #fff; }
+        .btn-danger:hover:not(:disabled) { opacity: .9; }
+        .btn-ghost {
+            background: var(--border);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover:not(:disabled) { background: var(--border2); }
+        .btn-icon {
+            background: transparent;
+            color: var(--muted);
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+        }
+        .btn-icon:hover:not(:disabled) { background: var(--border); color: var(--text); }
+
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-xs { padding: 4px 8px;  font-size: 11px; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            display: inline-block;
+            width: 13px; height: 13px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            flex-shrink: 0;
+        }
+        .spinner.dark {
+            border-color: rgba(0,0,0,.15);
+            border-top-color: var(--muted);
+        }
+
+        /* Filter tabs */
+        .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .filter-tab {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border2);
+            background: transparent;
+            color: var(--muted);
+            transition: all .15s;
+            font-family: inherit;
+        }
+        .filter-tab:hover { border-color: var(--text); color: var(--text); }
+        .filter-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .filter-tab.active.amber { background: var(--amber); border-color: var(--amber); }
+        .filter-tab.active.red   { background: var(--red);   border-color: var(--red); }
+
+        /* Search */
+        .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 340px; }
+        .search-icon {
+            position: absolute;
+            left: 10px; top: 50%;
+            transform: translateY(-50%);
+            width: 15px; height: 15px;
+            fill: var(--muted);
+            pointer-events: none;
+        }
+        .search-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 7px 12px 7px 32px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .search-input:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 2px var(--brand-glow);
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* PROGRESS BAR GLOBAL                                                  */
+        /* ------------------------------------------------------------------ */
+        .global-progress {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .global-progress.active { display: block; }
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .progress-meta .prog-label { font-weight: 600; color: var(--text); }
+        .progress-track {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--brand), #16a34a);
+            border-radius: 3px;
+            width: 0%;
+            transition: width .3s ease;
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* PLUGIN ACCORDION                                                     */
+        /* ------------------------------------------------------------------ */
+        .plugin-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .plugin-head {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 13px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .plugin-head-left { display: flex; align-items: center; gap: 10px; }
+        .collapse-chevron {
+            width: 16px; height: 16px;
+            fill: var(--muted);
+            transition: transform .2s;
+            flex-shrink: 0;
+        }
+        .plugin-block.collapsed .collapse-chevron { transform: rotate(-90deg); }
+        .plugin-name {
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .plugin-count {
+            background: var(--border2);
+            color: var(--muted);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .plugin-head-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Channels body */
+        .plugin-channels { display: block; }
+        .plugin-block.collapsed .plugin-channels { display: none; }
+
+        /* Plugin-level progress */
+        .plugin-progress {
+            height: 3px;
+            background: var(--border);
+            display: none;
+        }
+        .plugin-progress.active { display: block; }
+        .plugin-progress-fill {
+            height: 100%;
+            background: var(--brand);
+            width: 0%;
+            transition: width .3s;
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* CHANNEL TABLE HEAD                                                   */
+        /* ------------------------------------------------------------------ */
+        .ch-table-head {
+            display: grid;
+            grid-template-columns: 56px minmax(180px,2fr) 130px 70px 110px 110px 90px;
+            gap: 12px;
+            align-items: center;
+            padding: 8px 20px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* CHANNEL ROW                                                          */
+        /* ------------------------------------------------------------------ */
+        .ch-row {
+            display: grid;
+            grid-template-columns: 56px minmax(180px,2fr) 130px 70px 110px 110px 90px;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+            transition: background .12s, opacity .2s;
+        }
+        .ch-row:last-child { border-bottom: none; }
+        .ch-row:hover { background: var(--gray-dim); }
+        .ch-row.offline-row { opacity: .55; }
+        .ch-row.offline-row:hover { opacity: .8; }
+        .ch-row.hidden-row { display: none !important; }
+
+        /* Logo column */
+        .ch-logo-wrap {
+            width: 44px; height: 44px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .ch-logo { width: 100%; height: 100%; object-fit: contain; border-radius: 5px; }
+        .ch-logo-ph {
+            width: 28px; height: 28px;
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        /* Info column */
+        .ch-info { min-width: 0; }
+        .ch-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .ch-id-wrap {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .ch-id {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+        .copy-id-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            background: var(--border);
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit;
+            flex-shrink: 0;
+        }
+        .copy-id-btn:hover { background: var(--brand-dim); color: var(--brand); }
+        .copy-id-btn.copied { background: var(--brand-dim); color: var(--brand); }
+
+        /* ------------------------------------------------------------------ */
+        /* HEALTH BADGES                                                        */
+        /* ------------------------------------------------------------------ */
+        .health-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+        .health-badge .dot {
+            width: 7px; height: 7px;
             border-radius: 50%;
-            transition: color 0.2s, background-color 0.2s, transform 0.2s;
+            flex-shrink: 0;
+        }
+        .badge-online    { background: var(--brand-dim);  color: var(--brand); border-color: rgba(34,197,94,.25); }
+        .badge-online .dot    { background: var(--brand); box-shadow: 0 0 6px var(--brand); }
+        .badge-low       { background: var(--amber-dim);  color: var(--amber); border-color: rgba(245,158,11,.25); }
+        .badge-low .dot       { background: var(--amber); }
+        .badge-offline   { background: var(--red-dim);    color: var(--red);   border-color: rgba(239,68,68,.25); }
+        .badge-offline .dot   { background: var(--red); }
+        .badge-blocked   { background: var(--gray-dim);   color: var(--muted); border-color: var(--border2); }
+        .badge-blocked .dot   { background: var(--muted); }
+        .badge-error     { background: rgba(239,68,68,.08); color: #f87171; border-color: rgba(239,68,68,.2); }
+        .badge-pending   { background: var(--blue-dim);   color: var(--blue);  border-color: rgba(59,130,246,.25); }
+        .badge-pending .dot   { background: var(--blue); animation: pulse-dot 1.2s infinite; }
+        .badge-unknown   { background: var(--gray-dim);   color: var(--muted); border-color: var(--border2); }
+        .badge-unknown .dot   { background: var(--border2); }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: .5; transform: scale(.75); }
         }
 
-        .theme-toggle-btn:hover {
-            color: var(--text-color);
-            background-color: rgba(255, 255, 255, 0.1);
-            transform: scale(1.08);
+        /* Peers column */
+        .ch-peers {
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+            color: var(--muted);
         }
+        .ch-peers.good { color: var(--brand); }
+        .ch-peers.warn { color: var(--amber); }
+        .ch-peers.bad  { color: var(--red); }
 
-        .theme-toggle-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
+        /* Bitrate column */
+        .ch-bitrate {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
         }
+        .ch-bitrate.active { color: var(--brand); }
 
+        /* Phase column */
+        .ch-phase { display: flex; align-items: center; gap: 5px; }
+        .phase-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border2);
+            transition: background .2s;
+            flex-shrink: 0;
+        }
+        .phase-dot.done { background: var(--brand); }
+        .phase-dot.active { background: var(--amber); animation: pulse-dot 1s infinite; }
+
+        /* Actions column */
+        .ch-actions { display: flex; gap: 5px; align-items: center; justify-content: flex-end; }
+
+        /* ------------------------------------------------------------------ */
+        /* TOAST NOTIFICATIONS                                                  */
+        /* ------------------------------------------------------------------ */
+        .toast-stack {
+            position: fixed;
+            bottom: 64px;
+            right: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+            z-index: 9000;
+            pointer-events: none;
+        }
+        .toast-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity .25s, transform .25s;
+            pointer-events: auto;
+            max-width: 340px;
+        }
+        .toast-item.show { opacity: 1; transform: translateX(0); }
+        .toast-item.success { border-left: 3px solid var(--brand); color: var(--brand); }
+        .toast-item.error   { border-left: 3px solid var(--red);   color: var(--red); }
+        .toast-item.info    { border-left: 3px solid var(--blue);  color: var(--blue); }
+        .toast-item.warn    { border-left: 3px solid var(--amber); color: var(--amber); }
+
+        /* ------------------------------------------------------------------ */
+        /* EMPTY / LOADING STATES                                               */
+        /* ------------------------------------------------------------------ */
+        .state-block {
+            padding: 48px 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+        .state-block .state-icon { font-size: 36px; margin-bottom: 12px; }
+        .state-block .state-title { font-size: 16px; font-weight: 600; color: var(--text); }
+        .state-block .state-sub { font-size: 13px; margin-top: 6px; }
+
+        /* ------------------------------------------------------------------ */
+        /* FOOTER BAR                                                           */
+        /* ------------------------------------------------------------------ */
+        .footer-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 40px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 12px;
+            color: var(--muted);
+            z-index: 200;
+        }
+        .footer-left, .footer-right {
+            display: flex; align-items: center; gap: 6px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 5px;
+            transition: background .15s;
+        }
+        .footer-left:hover, .footer-right:hover { background: var(--border); }
+        .footer-left .val, .footer-right .version-badge {
+            font-weight: 700;
+            font-family: monospace;
+            padding: 1px 6px;
+            border-radius: 4px;
+            transition: background .15s, color .15s;
+        }
+        .footer-right .version-badge { background: var(--border); color: var(--text); }
+        .footer-left .val.copied,
+        .footer-right .version-badge.copied { background: var(--brand); color: #fff; }
+        .footer-center { display: flex; align-items: center; justify-content: center; flex: 1; }
+        .theme-toggle-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--muted);
+            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            transition: color .2s, background .2s;
+        }
+        .theme-toggle-btn:hover { color: var(--text); background: var(--border); }
+        .theme-toggle-btn svg { width: 17px; height: 17px; fill: currentColor; }
+
+        /* ------------------------------------------------------------------ */
+        /* RESPONSIVE                                                           */
+        /* ------------------------------------------------------------------ */
+        @media (max-width: 1024px) {
+            .ch-table-head,
+            .ch-row {
+                grid-template-columns: 44px minmax(150px,2fr) 110px 60px 90px 90px 80px;
+                gap: 8px;
+            }
+        }
         @media (max-width: 768px) {
-            .channel {
-                grid-template-columns: 64px 1fr;
-                gap: 12px;
+            .ch-table-head { display: none; }
+            .ch-row {
+                grid-template-columns: 44px 1fr;
+                grid-template-rows: auto;
+                gap: 8px;
                 padding: 12px 16px;
             }
-
-            .channel .status {
-                grid-column: span 2;
+            .ch-row > *:not(.ch-logo-wrap):not(.ch-info) {
+                grid-column: 1 / -1;
             }
+            .ch-actions { justify-content: flex-start; }
+        }
 
-            .channel .peers-info {
-                grid-column: span 2;
-            }
+        /* ------------------------------------------------------------------ */
+        /* UTILITY                                                              */
+        /* ------------------------------------------------------------------ */
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        .pulsing { animation: pulse 1.5s infinite; }
 
-            .channel .btn-group {
-                grid-column: span 2;
-                flex-direction: row;
-                width: 100%;
-            }
-
-            .channel .btn-group button {
-                flex: 1;
-            }
+        .label-xs {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            font-weight: 700;
+            color: var(--muted);
         }
     </style>
 </head>
-
 <body>
-    <nav class="navbar">
+    <!-- ================================================================== -->
+    <!-- NAVBAR                                                               -->
+    <!-- ================================================================== -->
+    <nav class="navbar" role="navigation" aria-label="Navegación principal">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
         <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
         </button>
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
@@ -790,911 +733,783 @@
             <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
-            <a href="/player/legacy.html">Reproductor Legacy</a>
         </div>
     </nav>
 
+    <!-- ================================================================== -->
+    <!-- MAIN CONTENT                                                         -->
+    <!-- ================================================================== -->
     <div class="container">
-        <div class="header-section">
-            <div class="header-title">
-                <h4>Estado y Disponibilidad de Canales por Lista</h4>
-                <p>Verifica canales de forma unitaria, o en bloque.</p>
-            </div>
-            <div class="controls">
-                <button class="refresh-btn" onclick="loadPlugins()">Actualizar Datos</button>
-            </div>
-        </div>
 
-        <div class="search-container" style="max-width: 100%; margin-bottom: 24px;">
-            <svg class="search-icon" viewBox="0 0 24 24">
-                <path
-                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-            </svg>
-            <input type="text" class="search-input" id="filter-input" placeholder="Buscar canal por nombre..."
-                oninput="filterChannels()">
-        </div>
-
-        <div class="stats">
-            <div class="stats-grid">
-                <div class="stat-box">
-                    <div class="label">TOTAL DE LISTAS</div>
-                    <div class="value" id="total-plugins">-</div>
-                </div>
-                <div class="stat-box">
-                    <div class="label">TOTAL DE CANALES</div>
-                    <div class="value" id="total-channels">-</div>
-                </div>
-                <div class="stat-box">
-                    <div class="label">RESULTADOS EN CACHÉ</div>
-                    <div class="value" id="cache-size">-</div>
-                </div>
+        <!-- Page header -->
+        <div class="page-header">
+            <div>
+                <h1>Panel de Diagnóstico de Canales</h1>
+                <p>Verifica la reproducibilidad real de los Content IDs mediante el Worker Pool de 4 fases — v<span class="app-version">08.24.02</span></p>
             </div>
         </div>
 
+        <!-- Summary cards -->
+        <div class="summary-grid" id="summary-grid">
+            <div class="summary-card total">
+                <div class="sc-label">Total Canales</div>
+                <div class="sc-value" id="sc-total">—</div>
+            </div>
+            <div class="summary-card online">
+                <div class="sc-label">🟢 En Línea</div>
+                <div class="sc-value" id="sc-online">—</div>
+            </div>
+            <div class="summary-card low">
+                <div class="sc-label">🟡 Enjambre Lento</div>
+                <div class="sc-value" id="sc-low">—</div>
+            </div>
+            <div class="summary-card offline">
+                <div class="sc-label">🔴 Sin Fuentes</div>
+                <div class="sc-value" id="sc-offline">—</div>
+            </div>
+            <div class="summary-card" style="--accent:var(--muted);">
+                <div class="sc-label">⛔ Bloqueado / Error</div>
+                <div class="sc-value" id="sc-blocked" style="color:var(--muted)">—</div>
+            </div>
+        </div>
+
+        <!-- Global progress bar (bulk verify) -->
+        <div class="global-progress" id="global-progress">
+            <div class="progress-meta">
+                <span class="prog-label" id="prog-label">Verificando...</span>
+                <span id="prog-pct">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="prog-fill"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;" id="prog-detail"></div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <button class="btn btn-primary" id="btn-verify-all" onclick="startBulkVerify()">
+                    ▶ Verificar Todo
+                </button>
+                <button class="btn btn-danger" id="btn-stop" onclick="stopBulkVerify()" style="display:none">
+                    ■ Detener
+                </button>
+                <button class="btn btn-ghost btn-sm" onclick="loadPlugins()">
+                    ↺ Actualizar Listas
+                </button>
+            </div>
+            <div class="toolbar-right">
+                <!-- Filter tabs -->
+                <div class="filter-tabs" id="filter-tabs">
+                    <button class="filter-tab active" data-filter="all"    onclick="setFilter('all',this)">Todos</button>
+                    <button class="filter-tab"         data-filter="ONLINE"   onclick="setFilter('ONLINE',this)">🟢 En Línea</button>
+                    <button class="filter-tab amber"   data-filter="LOW_PEERS" onclick="setFilter('LOW_PEERS',this)">🟡 Pocas Fuentes</button>
+                    <button class="filter-tab"         data-filter="OFFLINE"  onclick="setFilter('OFFLINE',this)">🔴 Caídos</button>
+                </div>
+                <!-- Search -->
+                <div class="search-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    <input id="search-input" class="search-input" type="text"
+                           placeholder="Buscar canal o Content ID..."
+                           oninput="applyFiltersAndSearch()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Plugins container -->
         <div id="plugins-container">
-            <div class="loading">⏳ Cargando listas...</div>
+            <div class="state-block">
+                <div class="state-icon">⏳</div>
+                <div class="state-title">Cargando listas...</div>
+                <div class="state-sub">Contactando con el backend</div>
+            </div>
         </div>
     </div>
 
-    <script>
-        let checkingChannels = new Set();
-        let pluginsData = null;
-
-        function loadPlugins() {
-            // Cargar versión global del servidor
-            fetch('/config?action=get_config')
-                .then(r => r.json())
-                .then(cfg => {
-                    if (cfg && cfg.version) {
-                        document.querySelectorAll('.app-version').forEach(el => el.textContent = cfg.version);
-                    }
-                })
-                .catch(() => {});
-
-            fetch('/statplugin?action=get_plugins')
-                .then(r => r.json())
-                .then(data => {
-                    if (data && data.version) {
-                        document.querySelectorAll('.app-version').forEach(el => el.textContent = data.version);
-                    }
-                    if (data.status === 'success') {
-                        pluginsData = data;
-                        renderPlugins(data);
-                    } else {
-                        showError('Failed to load lists');
-                    }
-                })
-                .catch(err => {
-                    showError('Error: ' + err.message);
-                });
-        }
-
-        function renderPlugins(data, filterText = '') {
-            // Update stats
-            document.getElementById('total-plugins').textContent = data.total_plugins || 0;
-            document.getElementById('cache-size').textContent = data.cache_size || 0;
-
-            let totalChannels = 0;
-            data.plugins.forEach(p => totalChannels += p.total_channels);
-            document.getElementById('total-channels').textContent = totalChannels;
-
-            // Render plugins
-            const container = document.getElementById('plugins-container');
-            container.innerHTML = '';
-
-            if (!data.plugins || data.plugins.length === 0) {
-                container.innerHTML = '<div class="loading">No plugins with channels found</div>';
-                return;
-            }
-
-            const filter = filterText.toLowerCase();
-
-            data.plugins.forEach(plugin => {
-                // Filter channels
-                let filteredChannels = plugin.channels;
-                if (filter) {
-                    filteredChannels = plugin.channels.filter(ch =>
-                        ch.name.toLowerCase().includes(filter)
-                    );
-                }
-
-                if (filteredChannels.length === 0) return;
-
-                const pluginDiv = document.createElement('div');
-                pluginDiv.className = 'plugin';
-
-                const headerDiv = document.createElement('div');
-                headerDiv.className = 'plugin-header';
-                headerDiv.title = 'Click to collapse/expand';
-                headerDiv.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-                        <div style="display:flex;align-items:center;">
-                            <span class="collapse-icon">
-                                <svg viewBox="0 0 24 24">
-                                    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                                </svg>
-                            </span>
-                            <h2 style="margin:0;">${plugin.name}</h2>
-                        </div>
-                        <div class="header-actions">
-                            <button class="bulk-btn" onclick="checkAllChannels('${plugin.name}', this)" data-plugin="${plugin.name}">
-                                ✓ Comprobar Todo
-                            </button>
-                            <button class="bulk-btn" onclick="checkAllPeers('${plugin.name}', this)" data-plugin="${plugin.name}">
-                                👥 Peers Todo
-                            </button>
-                            <button class="bulk-btn" onclick="checkAndPeersAll('${plugin.name}', this)" data-plugin="${plugin.name}" style="background:rgba(255,255,255,0.3)">
-                                ✓👥 Comprobación Completa
-                            </button>
-                            <span class="count">${filteredChannels.length} canales</span>
-                        </div>
-                    </div>
-                    <div class="progress-bar" id="progress-${plugin.name}">
-                        <div class="progress"></div>
-                    </div>
-                `;
-
-                const channelsDiv = document.createElement('div');
-                channelsDiv.className = 'channels';
-
-                filteredChannels.forEach(channel => {
-                    const channelDiv = document.createElement('div');
-                    channelDiv.className = 'channel';
-                    channelDiv.dataset.contentId = channel.content_id;
-
-                    const logoHtml = channel.logo
-                        ? `<div class="channel-logo-wrapper"><img src="${channel.logo}" class="channel-logo" onerror="this.outerHTML='<div class=channel-logo-placeholder></div>'"></div>`
-                        : '<div class="channel-logo-wrapper"><div class="channel-logo-placeholder"></div></div>';
-
-                    const statusClass = channel.status || 'unknown';
-                    const statusText = {
-                        'available': '✓ Disponible',
-                        'unavailable': '✗ No Disponible',
-                        'unknown': '? Desconocido',
-                        'checking': '⟳ Comprobando...'
-                    }[statusClass] || '? Desconocido';
-
-                    // Peers info from cache (if available)
-                    let peersHtml = '<div class="peers-info"><span class="peers-badge">- peers</span></div>';
-                    if (channel.peers !== undefined) {
-                        const totalPeers = (channel.peers || 0) + (channel.http_peers || 0);
-                        const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
-                        peersHtml = `<div class="peers-info"><span class="peers-badge ${peersClass}">${totalPeers} peers</span></div>`;
-                    }
-
-                    const btnId = `check-${plugin.name}-${channel.content_id}`;
-                    const peersBtnId = `peers-${plugin.name}-${channel.content_id}`;
-                    const copyBtnId = `copy-${plugin.name}-${channel.content_id}`;
-
-                    channelDiv.innerHTML = `
-                        ${logoHtml}
-                        <div class="channel-info">
-                            <div class="channel-name" title="${channel.name}">${channel.name}</div>
-                            <div class="channel-id" title="${channel.content_id}">${channel.content_id}</div>
-                        </div>
-                        <div class="status ${statusClass}">${statusText}</div>
-                        ${peersHtml}
-                        <div class="btn-group">
-                            <button class="check-btn" id="${btnId}"
-                                    onclick="checkChannel('${plugin.name}', '${escapeHtml(channel.name)}', '${channel.content_id}', this)">
-                                Comprobar
-                            </button>
-                            <button class="peers-btn" id="${peersBtnId}"
-                                    onclick="checkPeers('${channel.content_id}', this)">
-                                Peers
-                            </button>
-                            <button class="copy-btn" id="${copyBtnId}"
-                                    onclick="copyChannelLink('${channel.content_id}', this)">
-                                Copiar Enlace
-                            </button>
-                        </div>
-                    `;
-
-                    channelsDiv.appendChild(channelDiv);
-                });
-
-                pluginDiv.appendChild(headerDiv);
-                pluginDiv.appendChild(channelsDiv);
-                container.appendChild(pluginDiv);
-
-                // Las listas siempre arrancan expandidas por defecto
-                pluginDiv.classList.remove('collapsed');
-
-                headerDiv.addEventListener('click', function (e) {
-                    // No colapsar si se hace clic en botones de acción
-                    if (e.target.closest('.bulk-btn')) {
-                        return;
-                    }
-
-                    pluginDiv.classList.toggle('collapsed');
-                });
-            });
-        }
-
-        function filterChannels() {
-            const filterText = document.getElementById('filter-input').value;
-            if (pluginsData) {
-                renderPlugins(pluginsData, filterText);
-            }
-        }
-
-        async function checkChannel(pluginName, channelName, contentId, button, retries = 2) {
-            const key = `${pluginName}-${contentId}`;
-
-            if (checkingChannels.has(key)) {
-                return;
-            }
-
-            checkingChannels.add(key);
-            button.disabled = true;
-            button.textContent = 'Checking...';
-
-            const channelDiv = button.closest('.channel');
-            const statusDiv = channelDiv.querySelector('.status');
-            statusDiv.className = 'status checking';
-            statusDiv.textContent = '⟳ Checking...';
-
-            let lastError = null;
-
-            for (let attempt = 0; attempt <= retries; attempt++) {
-                try {
-                    if (attempt > 0) {
-                        button.textContent = `Retry ${attempt}...`;
-                        await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
-                    }
-
-                    const response = await fetch(`/statplugin?action=check_channel&plugin=${pluginName}&channel=${encodeURIComponent(channelName)}&content_id=${contentId}`);
-                    const data = await response.json();
-
-                    if (data.status === 'success') {
-                        const available = data.available;
-                        statusDiv.className = 'status ' + (available ? 'available' : 'unavailable');
-                        statusDiv.textContent = available ? '✓ Available' : '✗ Unavailable';
-                        button.textContent = data.cached ? 'Cached' : 'Checked ✓';
-                        checkingChannels.delete(key);
-                        button.disabled = false;
-                        return; // Success, exit
-                    } else {
-                        lastError = data.error || 'Unknown error';
-                    }
-                } catch (err) {
-                    lastError = err.message;
-                }
-            }
-
-            // All retries failed
-            statusDiv.className = 'status unavailable';
-            statusDiv.textContent = '✗ Error';
-            console.error(`Check failed for ${contentId}: ${lastError}`);
-
-            checkingChannels.delete(key);
-            button.disabled = false;
-            button.textContent = 'Retry';
-        }
-
-        async function checkPeers(contentId, button, retries = 2) {
-            if (checkingChannels.has(`peers-${contentId}`)) {
-                return;
-            }
-
-            checkingChannels.add(`peers-${contentId}`);
-            button.disabled = true;
-            button.textContent = '...';
-
-            const channelDiv = button.closest('.channel');
-            const peersInfo = channelDiv.querySelector('.peers-info');
-            peersInfo.innerHTML = '<span class="peers-badge checking">Checking...</span>';
-
-            let lastError = null;
-
-            for (let attempt = 0; attempt <= retries; attempt++) {
-                try {
-                    if (attempt > 0) {
-                        peersInfo.innerHTML = `<span class="peers-badge checking">Retry ${attempt}...</span>`;
-                        await new Promise(r => setTimeout(r, 1000));
-                    }
-
-                    const response = await fetch(`/statplugin?action=check_peers&content_id=${contentId}`);
-                    const data = await response.json();
-
-                    if (data.status === 'success') {
-                        const totalPeers = data.total_peers || 0;
-                        const peers = data.peers || 0;
-                        const httpPeers = data.http_peers || 0;
-                        const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
-
-                        let badgeText = `${totalPeers} peers`;
-                        if (totalPeers > 0 && (peers > 0 || httpPeers > 0)) {
-                            badgeText = `${peers}P + ${httpPeers}H`;
-                        }
-                        peersInfo.innerHTML = `<span class="peers-badge ${peersClass}" title="P2P: ${peers}, HTTP: ${httpPeers}">${badgeText}</span>`;
-
-                        const statusDiv = channelDiv.querySelector('.status');
-                        if (data.available) {
-                            statusDiv.className = 'status available';
-                            statusDiv.textContent = '✓ Available';
-                        } else {
-                            statusDiv.className = 'status unavailable';
-                            statusDiv.textContent = '✗ Unavailable';
-                        }
-
-                        button.textContent = data.cached ? 'Cached' : 'Done';
-                        checkingChannels.delete(`peers-${contentId}`);
-                        button.disabled = false;
-                        setTimeout(() => {
-                            if (button.textContent === 'Done' || button.textContent === 'Cached') {
-                                button.textContent = 'Peers';
-                            }
-                        }, 2000);
-                        return; // Success
-                    } else {
-                        lastError = data.error || 'Unknown error';
-                    }
-                } catch (err) {
-                    lastError = err.message;
-                }
-            }
-
-            // All retries failed
-            peersInfo.innerHTML = '<span class="peers-badge no-peers">Error</span>';
-            console.error(`Peer check failed for ${contentId}: ${lastError}`);
-
-            checkingChannels.delete(`peers-${contentId}`);
-            button.disabled = false;
-            button.textContent = 'Retry';
-        }
-
-        function escapeHtml(text) {
-            return text.replace(/'/g, "\\'");
-        }
-
-        function copyChannelLink(contentId, button) {
-            const url = window.location.origin + '/content_id/' + contentId + '/stream.ts';
-            const originalText = button.textContent;
-
-            const showSuccess = () => {
-                button.textContent = '¡Copiado!';
-                button.classList.add('copied');
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 1500);
-            };
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(url).then(showSuccess).catch(() => {
-                    fallbackCopyTextToClipboard(url, showSuccess);
-                });
-            } else {
-                fallbackCopyTextToClipboard(url, showSuccess);
-            }
-        }
-
-        function fallbackCopyTextToClipboard(text, callback) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                if (callback) callback();
-            } catch (err) {
-                console.error('Fallback copy failed', err);
-            }
-            document.body.removeChild(textArea);
-        }
-
-        // Bulk check state
-        let bulkCheckRunning = {};
-
-        async function checkAllChannels(pluginName, button) {
-            if (bulkCheckRunning[pluginName]) {
-                return;
-            }
-
-            const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
-            if (!plugin || !plugin.channels) {
-                showToast('Plugin not found', 'error');
-                return;
-            }
-
-            bulkCheckRunning[pluginName] = true;
-            button.classList.add('running');
-            button.disabled = true;
-            const originalText = button.textContent;
-
-            const progressBar = document.getElementById(`progress-${pluginName}`);
-            const progressFill = progressBar?.querySelector('.progress');
-            if (progressBar) {
-                progressBar.classList.add('active');
-                progressFill.style.width = '0%';
-            }
-
-            const channels = plugin.channels;
-            const total = channels.length;
-            let completed = 0;
-            let failed = 0;
-
-            for (const channel of channels) {
-                if (!bulkCheckRunning[pluginName]) break;
-
-                button.textContent = `Checking ${completed + 1}/${total}...`;
-
-                let success = false;
-                // Retry up to 2 times
-                for (let attempt = 0; attempt < 3 && !success; attempt++) {
-                    try {
-                        if (attempt > 0) {
-                            await new Promise(r => setTimeout(r, 500));
-                        }
-
-                        const response = await fetch(`/statplugin?action=check_channel&plugin=${pluginName}&content_id=${channel.content_id}`);
-                        const data = await response.json();
-
-                        const channelDiv = document.querySelector(`.channel[data-content-id="${channel.content_id}"]`);
-                        if (channelDiv && data.status === 'success') {
-                            const statusDiv = channelDiv.querySelector('.status');
-                            if (data.available) {
-                                statusDiv.className = 'status available';
-                                statusDiv.textContent = '✓ Available';
-                            } else {
-                                statusDiv.className = 'status unavailable';
-                                statusDiv.textContent = '✗ Unavailable';
-                            }
-                            success = true;
-                        }
-                    } catch (err) {
-                        console.error(`Attempt ${attempt + 1} failed for ${channel.name}:`, err);
-                    }
-                }
-
-                if (!success) failed++;
-                completed++;
-                if (progressFill) {
-                    progressFill.style.width = `${(completed / total) * 100}%`;
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-
-            bulkCheckRunning[pluginName] = false;
-            button.classList.remove('running');
-            button.disabled = false;
-            button.textContent = originalText;
-
-            if (progressBar) {
-                setTimeout(() => {
-                    progressBar.classList.remove('active');
-                    progressFill.style.width = '0%';
-                }, 1000);
-            }
-
-            if (failed > 0) {
-                console.log(`Check completed with ${failed} failures out of ${total}`);
-            }
-        }
-
-        async function checkAllPeers(pluginName, button) {
-            if (bulkCheckRunning[`peers-${pluginName}`]) {
-                return;
-            }
-
-            const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
-            if (!plugin || !plugin.channels) {
-                showToast('Plugin not found', 'error');
-                return;
-            }
-
-            const channelCount = plugin.channels.length;
-            const estimatedTime = Math.ceil(channelCount * 10 / 60);
-
-            showConfirmModal({
-                title: 'Comprobar Peers de Canales',
-                message: `Se comprobarán los peers de ${channelCount} canales.\nTiempo estimado: ${estimatedTime}+ minutos.\n\n¿Deseas continuar?`,
-                confirmText: 'Comprobar',
-                cancelText: 'Cancelar',
-                isDanger: false,
-                onConfirm: () => {
-                    runCheckAllPeers(pluginName, button, plugin);
-                }
-            });
-        }
-
-        async function runCheckAllPeers(pluginName, button, plugin) {
-
-            bulkCheckRunning[`peers-${pluginName}`] = true;
-            button.classList.add('running');
-            button.disabled = true;
-            const originalText = button.textContent;
-
-            const progressBar = document.getElementById(`progress-${pluginName}`);
-            const progressFill = progressBar?.querySelector('.progress');
-            if (progressBar) {
-                progressBar.classList.add('active');
-                progressFill.style.width = '0%';
-            }
-
-            const channels = plugin.channels;
-            const total = channels.length;
-            let completed = 0;
-            let withPeers = 0;
-            let failed = 0;
-
-            for (const channel of channels) {
-                if (!bulkCheckRunning[`peers-${pluginName}`]) break;
-
-                button.textContent = `Peers ${completed + 1}/${total} (${withPeers} online)`;
-
-                let success = false;
-                // Retry up to 2 times
-                for (let attempt = 0; attempt < 3 && !success; attempt++) {
-                    try {
-                        if (attempt > 0) {
-                            await new Promise(r => setTimeout(r, 1000));
-                        }
-
-                        const response = await fetch(`/statplugin?action=check_peers&content_id=${channel.content_id}&max_wait=10`);
-                        const data = await response.json();
-
-                        const channelDiv = document.querySelector(`.channel[data-content-id="${channel.content_id}"]`);
-                        if (channelDiv && data.status === 'success') {
-                            const totalPeers = data.total_peers || 0;
-                            const peers = data.peers || 0;
-                            const httpPeers = data.http_peers || 0;
-
-                            if (totalPeers > 0) withPeers++;
-
-                            const statusDiv = channelDiv.querySelector('.status');
-                            if (data.available) {
-                                statusDiv.className = 'status available';
-                                statusDiv.textContent = '✓ Available';
-                            } else {
-                                statusDiv.className = 'status unavailable';
-                                statusDiv.textContent = '✗ Unavailable';
-                            }
-
-                            const peersInfo = channelDiv.querySelector('.peers-info');
-                            const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
-                            let badgeText = `${totalPeers} peers`;
-                            if (totalPeers > 0 && (peers > 0 || httpPeers > 0)) {
-                                badgeText = `${peers}P + ${httpPeers}H`;
-                            }
-                            peersInfo.innerHTML = `<span class="peers-badge ${peersClass}" title="P2P: ${peers}, HTTP: ${httpPeers}">${badgeText}</span>`;
-                            success = true;
-                        }
-                    } catch (err) {
-                        console.error(`Attempt ${attempt + 1} failed for peers ${channel.name}:`, err);
-                    }
-                }
-
-                if (!success) failed++;
-                completed++;
-                if (progressFill) {
-                    progressFill.style.width = `${(completed / total) * 100}%`;
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-
-            bulkCheckRunning[`peers-${pluginName}`] = false;
-            button.classList.remove('running');
-            button.disabled = false;
-            button.textContent = originalText;
-
-            if (progressBar) {
-                setTimeout(() => {
-                    progressBar.classList.remove('active');
-                    progressFill.style.width = '0%';
-                }, 1000);
-            }
-
-            showToast(`✓ Comprobación de peers completada: ${withPeers} de ${total} canales activos`);
-        }
-
-        async function checkAndPeersAll(pluginName, button) {
-            if (bulkCheckRunning[`full-${pluginName}`]) {
-                return;
-            }
-
-            const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
-            if (!plugin || !plugin.channels) {
-                showToast('Plugin not found', 'error');
-                return;
-            }
-
-            const channelCount = plugin.channels.length;
-            const estimatedTime = Math.ceil(channelCount * 12 / 60);
-
-            showConfirmModal({
-                title: 'Comprobación Completa de Canales',
-                message: `Comprobación completa (disponibilidad y peers) para ${channelCount} canales.\nTiempo estimado: ${estimatedTime}+ minutos.\n\n¿Deseas continuar?`,
-                confirmText: 'Comprobar',
-                cancelText: 'Cancelar',
-                isDanger: false,
-                onConfirm: () => {
-                    runCheckAndPeersAll(pluginName, button, plugin);
-                }
-            });
-        }
-
-        async function runCheckAndPeersAll(pluginName, button, plugin) {
-
-            bulkCheckRunning[`full-${pluginName}`] = true;
-            button.classList.add('running');
-            button.disabled = true;
-            const originalText = button.textContent;
-
-            const progressBar = document.getElementById(`progress-${pluginName}`);
-            const progressFill = progressBar?.querySelector('.progress');
-            if (progressBar) {
-                progressBar.classList.add('active');
-                progressFill.style.width = '0%';
-            }
-
-            const channels = plugin.channels;
-            const total = channels.length;
-            let completed = 0;
-            let available = 0;
-            let withPeers = 0;
-            let failed = 0;
-
-            for (const channel of channels) {
-                if (!bulkCheckRunning[`full-${pluginName}`]) break;
-
-                const channelDiv = document.querySelector(`.channel[data-content-id="${channel.content_id}"]`);
-                const statusDiv = channelDiv?.querySelector('.status');
-                const peersInfo = channelDiv?.querySelector('.peers-info');
-
-                // Phase 1: Check availability
-                button.textContent = `Check ${completed + 1}/${total}...`;
-
-                if (statusDiv) {
-                    statusDiv.className = 'status checking';
-                    statusDiv.textContent = '⟳ Checking...';
-                }
-
-                let isAvailable = false;
-                let checkSuccess = false;
-
-                for (let attempt = 0; attempt < 3 && !checkSuccess; attempt++) {
-                    try {
-                        if (attempt > 0) await new Promise(r => setTimeout(r, 500));
-
-                        const response = await fetch(`/statplugin?action=check_channel&plugin=${pluginName}&content_id=${channel.content_id}`);
-                        const data = await response.json();
-
-                        if (data.status === 'success') {
-                            isAvailable = data.available;
-                            if (statusDiv) {
-                                statusDiv.className = 'status ' + (isAvailable ? 'available' : 'unavailable');
-                                statusDiv.textContent = isAvailable ? '✓ Available' : '✗ Unavailable';
-                            }
-                            if (isAvailable) available++;
-                            checkSuccess = true;
-                        }
-                    } catch (err) {
-                        console.error(`Check attempt ${attempt + 1} failed for ${channel.name}:`, err);
-                    }
-                }
-
-                // Phase 2: Check peers (only if available or check succeeded)
-                if (checkSuccess) {
-                    button.textContent = `Peers ${completed + 1}/${total}...`;
-
-                    if (peersInfo) {
-                        peersInfo.innerHTML = '<span class="peers-badge checking">...</span>';
-                    }
-
-                    let peersSuccess = false;
-                    for (let attempt = 0; attempt < 3 && !peersSuccess; attempt++) {
-                        try {
-                            if (attempt > 0) await new Promise(r => setTimeout(r, 1000));
-
-                            const response = await fetch(`/statplugin?action=check_peers&content_id=${channel.content_id}&max_wait=10`);
-                            const data = await response.json();
-
-                            if (data.status === 'success' && peersInfo) {
-                                const totalPeers = data.total_peers || 0;
-                                const peers = data.peers || 0;
-                                const httpPeers = data.http_peers || 0;
-
-                                if (totalPeers > 0) withPeers++;
-
-                                const peersClass = totalPeers > 0 ? 'has-peers' : 'no-peers';
-                                let badgeText = `${totalPeers} peers`;
-                                if (totalPeers > 0 && (peers > 0 || httpPeers > 0)) {
-                                    badgeText = `${peers}P + ${httpPeers}H`;
-                                }
-                                peersInfo.innerHTML = `<span class="peers-badge ${peersClass}" title="P2P: ${peers}, HTTP: ${httpPeers}">${badgeText}</span>`;
-
-                                // Update status from peer check (more accurate)
-                                if (statusDiv) {
-                                    if (data.available) {
-                                        statusDiv.className = 'status available';
-                                        statusDiv.textContent = '✓ Available';
-                                    } else {
-                                        statusDiv.className = 'status unavailable';
-                                        statusDiv.textContent = '✗ Unavailable';
-                                    }
-                                }
-                                peersSuccess = true;
-                            }
-                        } catch (err) {
-                            console.error(`Peers attempt ${attempt + 1} failed for ${channel.name}:`, err);
-                        }
-                    }
-
-                    if (!peersSuccess && peersInfo) {
-                        peersInfo.innerHTML = '<span class="peers-badge no-peers">Error</span>';
-                    }
-                } else {
-                    failed++;
-                    if (statusDiv) {
-                        statusDiv.className = 'status unavailable';
-                        statusDiv.textContent = '✗ Error';
-                    }
-                    if (peersInfo) {
-                        peersInfo.innerHTML = '<span class="peers-badge no-peers">-</span>';
-                    }
-                }
-
-                completed++;
-                if (progressFill) {
-                    progressFill.style.width = `${(completed / total) * 100}%`;
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-
-            bulkCheckRunning[`full-${pluginName}`] = false;
-            button.classList.remove('running');
-            button.disabled = false;
-            button.textContent = originalText;
-
-            if (progressBar) {
-                setTimeout(() => {
-                    progressBar.classList.remove('active');
-                    progressFill.style.width = '0%';
-                }, 1000);
-            }
-
-            showToast(`✓ Comprobación completa: ${available}/${total} disponibles, ${withPeers}/${total} con peers`);
-        }
-
-        function showError(message) {
-            const container = document.getElementById('plugins-container');
-            container.innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        // Load on page load
-        loadPlugins();
-
-        // Auto-refresh every 5 minutes
-        setInterval(loadPlugins, 5 * 60 * 1000);
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const themeToggle = document.getElementById('theme-toggle');
-            const themeIcon = document.getElementById('theme-icon');
-
-            if (localStorage.getItem('theme') === 'light') {
-                document.body.classList.add('light-theme');
-                setLightIcon(themeIcon);
-            }
-
-            if (themeToggle) {
-                themeToggle.addEventListener('click', () => {
-                    document.body.classList.toggle('light-theme');
-                    if (document.body.classList.contains('light-theme')) {
-                        localStorage.setItem('theme', 'light');
-                        setLightIcon(themeIcon);
-                    } else {
-                        localStorage.setItem('theme', 'dark');
-                        setDarkIcon(themeIcon);
-                    }
-                });
-            }
-
-            const hostIp = window.location.hostname || '127.0.0.1';
-            document.getElementById('server-ip').textContent = hostIp;
-            fetch('/stat/?action=get_status')
-                .then(r => r.json())
-                .then(data => {
-                    const sysHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
-                    if (sysHostname) {
-                        document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
-                    }
-                }).catch(() => { });
-
-            // Hamburger menu toggle
-            const navbarToggle = document.getElementById('navbar-toggle');
-            const navLinks = document.getElementById('nav-links');
-            if (navbarToggle && navLinks) {
-                navbarToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('show');
-                });
-            }
-        });
-
-        function setLightIcon(themeIcon) {
-            if (!themeIcon) return;
-            themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
-        }
-
-        function setDarkIcon(themeIcon) {
-            if (!themeIcon) return;
-            themeIcon.innerHTML = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
-        }
-
-        function showToast(message, type = 'success') {
-            let toast = document.getElementById('toast-notification');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.id = 'toast-notification';
-                document.body.appendChild(toast);
-            }
-            toast.className = 'toast-notification ' + (type === 'error' ? 'error' : 'success');
-            toast.textContent = message || '✓ Enlace copiado';
-            toast.classList.add('show');
-            clearTimeout(window.toastTimeout);
-            window.toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3500);
-        }
-
-        function showAlert(msg, type = 'success') {
-            showToast(msg, type);
-        }
-
-        function copyTextToClipboard(text, button, customMsg) {
-            var textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            var success = false;
-            try {
-                success = document.execCommand('copy');
-            } catch (err) {
-                console.error('Error al copiar:', err);
-            }
-            document.body.removeChild(textarea);
-
-            if (success) {
-                showToast(customMsg || '✓ Enlace copiado al portapapeles');
-                if (button) {
-                    button.classList.add('copied');
-                    setTimeout(() => {
-                        button.classList.remove('copied');
-                    }, 2000);
-                }
-            }
-        }
-    </script>
-
-    <!-- Footer Bar -->
+    <!-- Toast stack -->
+    <div class="toast-stack" id="toast-stack"></div>
+
+    <!-- ================================================================== -->
+    <!-- FOOTER                                                               -->
+    <!-- ================================================================== -->
     <div class="footer-bar">
-        <div class="footer-left">
-            <span class="label">IP:</span>
-            <span id="server-ip" class="val">-</span>
+        <div class="footer-left" id="footer-ip-block" title="Copiar IP">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">IP:</span>
+            <span id="server-ip" class="val">—</span>
         </div>
         <div class="footer-center">
-            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Alternar tema claro/oscuro">
                 <svg id="theme-icon" viewBox="0 0 24 24">
-                    <path
-                        d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z" />
+                    <path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>
                 </svg>
             </button>
         </div>
-        <div class="footer-right">
-            <span class="label">VERSIÓN:</span>
-            <span class="val version-badge app-version">-</span>
+        <div class="footer-right" id="footer-ver-block" title="Copiar versión">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
+            <span class="val version-badge app-version">08.24.02</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
-</body>
 
+    <!-- ================================================================== -->
+    <!-- SCRIPT                                                               -->
+    <!-- ================================================================== -->
+    <script>
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    let pluginsData    = null;    // raw data from get_plugins
+    let healthCache    = {};      // { contentId: VerifyResult }
+    let activeFilter   = 'all';
+    let bulkRunning    = false;
+    let bulkStopped    = false;
+    let toastTimers    = {};
+
+    // =========================================================================
+    // INIT
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        applyTheme();
+        bindThemeToggle();
+        bindNavToggle();
+        bindFooter();
+        loadPlugins();
+    });
+
+    // =========================================================================
+    // THEME
+    // =========================================================================
+    function applyTheme() {
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+            setThemeIcon(true);
+        }
+    }
+    function bindThemeToggle() {
+        const btn = document.getElementById('theme-toggle');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const light = document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', light ? 'light' : 'dark');
+            setThemeIcon(light);
+        });
+    }
+    function setThemeIcon(isLight) {
+        const icon = document.getElementById('theme-icon');
+        if (!icon) return;
+        icon.innerHTML = isLight
+            ? '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>'
+            : '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
+    }
+
+    // =========================================================================
+    // NAV TOGGLE
+    // =========================================================================
+    function bindNavToggle() {
+        const btn   = document.getElementById('navbar-toggle');
+        const links = document.getElementById('nav-links');
+        if (btn && links) btn.addEventListener('click', () => links.classList.toggle('show'));
+    }
+
+    // =========================================================================
+    // FOOTER
+    // =========================================================================
+    function bindFooter() {
+        const ipEl  = document.getElementById('server-ip');
+        const verEl = document.querySelector('.version-badge');
+        const host  = window.location.hostname || '127.0.0.1';
+        if (ipEl) ipEl.textContent = host;
+        fetch('/stat/?action=get_status').then(r => r.json()).then(d => {
+            const hn = d.server_info?.hostname || d.sys_info?.hostname || '';
+            if (hn && ipEl) ipEl.textContent = `${host} (${hn})`;
+        }).catch(() => {});
+        document.getElementById('footer-ip-block')?.addEventListener('click', () => {
+            copyText(host, null, '✓ IP copiada');
+            animateCopied(ipEl);
+        });
+        document.getElementById('footer-ver-block')?.addEventListener('click', () => {
+            const v = verEl?.textContent || '08.24.02';
+            copyText(v, null, '✓ Versión copiada');
+            if (verEl) animateCopied(verEl);
+        });
+    }
+    function animateCopied(el) {
+        if (!el) return;
+        el.classList.add('copied');
+        setTimeout(() => el.classList.remove('copied'), 1600);
+    }
+
+    // =========================================================================
+    // LOAD PLUGINS (get_plugins + load health cache)
+    // =========================================================================
+    async function loadPlugins() {
+        document.getElementById('plugins-container').innerHTML = `
+            <div class="state-block">
+                <div class="state-icon">⏳</div>
+                <div class="state-title">Cargando listas...</div>
+            </div>`;
+        try {
+            const [plugRes, healthRes] = await Promise.allSettled([
+                fetch('/statplugin?action=get_plugins').then(r => r.json()),
+                fetch('/statplugin?action=get_health').then(r => r.json())
+            ]);
+
+            if (plugRes.status === 'fulfilled' && plugRes.value?.status === 'success') {
+                pluginsData = plugRes.value;
+                // Sync app version from backend
+                if (pluginsData.version) {
+                    document.querySelectorAll('.app-version').forEach(el => el.textContent = pluginsData.version);
+                }
+            }
+            if (healthRes.status === 'fulfilled' && healthRes.value?.health_map) {
+                healthCache = healthRes.value.health_map;
+            }
+            if (!pluginsData) throw new Error('No se pudo cargar la lista de plugins');
+            renderAll();
+        } catch (err) {
+            document.getElementById('plugins-container').innerHTML = `
+                <div class="state-block">
+                    <div class="state-icon">❌</div>
+                    <div class="state-title">Error al cargar</div>
+                    <div class="state-sub">${esc(err.message)}</div>
+                </div>`;
+        }
+    }
+
+    // =========================================================================
+    // RENDER ALL
+    // =========================================================================
+    function renderAll() {
+        if (!pluginsData) return;
+        const container = document.getElementById('plugins-container');
+        container.innerHTML = '';
+
+        let totalChans = 0;
+        pluginsData.plugins.forEach(p => { totalChans += p.total_channels; });
+
+        if (!pluginsData.plugins || pluginsData.plugins.length === 0) {
+            container.innerHTML = `
+                <div class="state-block">
+                    <div class="state-icon">📭</div>
+                    <div class="state-title">Sin listas activas</div>
+                    <div class="state-sub">Activa al menos una fuente en /fuentes</div>
+                </div>`;
+            return;
+        }
+
+        pluginsData.plugins.forEach(plugin => {
+            if (!plugin.channels || plugin.channels.length === 0) return;
+            container.appendChild(buildPluginBlock(plugin));
+        });
+
+        applyFiltersAndSearch();
+        updateSummaryCards();
+    }
+
+    // =========================================================================
+    // BUILD PLUGIN BLOCK
+    // =========================================================================
+    function buildPluginBlock(plugin) {
+        const block = document.createElement('div');
+        block.className = 'plugin-block';
+        block.id = `plugin-${plugin.name}`;
+
+        block.innerHTML = `
+            <div class="plugin-head" id="head-${plugin.name}">
+                <div class="plugin-head-left">
+                    <svg class="collapse-chevron" viewBox="0 0 24 24">
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                    </svg>
+                    <span class="plugin-name">${esc(plugin.name)}</span>
+                    <span class="plugin-count" id="count-${plugin.name}">${plugin.channels.length} canales</span>
+                </div>
+                <div class="plugin-head-actions">
+                    <button class="btn btn-ghost btn-xs" id="bulk-btn-${plugin.name}"
+                            onclick="startPluginVerify('${plugin.name}',this)" title="Verificar todos los canales de esta lista">
+                        ▶ Verificar lista
+                    </button>
+                </div>
+            </div>
+            <div class="plugin-progress" id="pp-${plugin.name}">
+                <div class="plugin-progress-fill" id="ppf-${plugin.name}"></div>
+            </div>
+            <div class="plugin-channels" id="channels-${plugin.name}">
+                <div class="ch-table-head">
+                    <div></div>
+                    <div>Canal / Content ID</div>
+                    <div>Estado</div>
+                    <div style="text-align:center">Peers</div>
+                    <div>Bitrate</div>
+                    <div>Fase Diag.</div>
+                    <div style="text-align:right">Acciones</div>
+                </div>
+                ${plugin.channels.map(ch => buildChannelRow(plugin.name, ch)).join('')}
+            </div>`;
+
+        // Collapse toggle
+        block.querySelector('.plugin-head').addEventListener('click', e => {
+            if (e.target.closest('button')) return;
+            block.classList.toggle('collapsed');
+        });
+
+        return block;
+    }
+
+    // =========================================================================
+    // BUILD CHANNEL ROW
+    // =========================================================================
+    function buildChannelRow(pluginName, ch) {
+        const cid     = ch.content_id || '';
+        const cached  = healthCache[cid];
+        const health  = cached?.health || 'UNKNOWN';
+        const peers   = cached?.peers   ?? null;
+        const speed   = cached?.speed_down ?? null;
+        const phase   = cached?.phase_reached ?? 0;
+
+        const logoHtml = ch.logo
+            ? `<img src="${esc(ch.logo)}" class="ch-logo" alt="" onerror="this.outerHTML='<div class=ch-logo-ph></div>'">`
+            : `<div class="ch-logo-ph"></div>`;
+
+        const shortCid = cid.length > 20 ? cid.substring(0, 12) + '…' + cid.slice(-8) : cid;
+
+        return `<div class="ch-row${health==='OFFLINE'?' offline-row':''}"
+                     id="row-${cid}"
+                     data-cid="${cid}"
+                     data-name="${esc(ch.name)}"
+                     data-plugin="${pluginName}"
+                     data-health="${health}">
+            <div class="ch-logo-wrap">${logoHtml}</div>
+            <div class="ch-info">
+                <div class="ch-name" title="${esc(ch.name)}">${esc(ch.name)}</div>
+                <div class="ch-id-wrap">
+                    <span class="ch-id" title="${cid}">${shortCid}</span>
+                    <button class="copy-id-btn" id="cpid-${cid}"
+                            onclick="copyCid('${cid}',this)" title="Copiar Content ID">
+                        📋
+                    </button>
+                </div>
+            </div>
+            <div id="health-${cid}">${renderHealthBadge(health)}</div>
+            <div class="ch-peers${peersClass(peers)}" id="peers-${cid}">${formatPeers(peers)}</div>
+            <div class="ch-bitrate${speed&&speed>0?' active':''}" id="bitrate-${cid}">${formatBitrate(speed)}</div>
+            <div class="ch-phase" id="phase-${cid}">${renderPhase(phase)}</div>
+            <div class="ch-actions">
+                <button class="btn btn-icon btn-sm" id="test-${cid}"
+                        onclick="verifySingle('${cid}',this)"
+                        title="Verificar este canal (pipeline 4 fases)">
+                    🔄
+                </button>
+                <button class="btn btn-icon btn-sm"
+                        onclick="openPlayer('${cid}')"
+                        title="Reproducir en Bento Player">
+                    ▶
+                </button>
+            </div>
+        </div>`;
+    }
+
+    // =========================================================================
+    // RENDER HELPERS
+    // =========================================================================
+    function renderHealthBadge(health) {
+        const map = {
+            'ONLINE':    ['badge-online',   '<span class="dot"></span> En Línea'],
+            'LOW_PEERS': ['badge-low',      '<span class="dot"></span> Enjambre Lento'],
+            'OFFLINE':   ['badge-offline',  '<span class="dot"></span> Sin Fuentes'],
+            'BLOCKED':   ['badge-blocked',  '⛔ Bloqueado'],
+            'ERROR':     ['badge-error',    '❌ Error'],
+            'PENDING':   ['badge-pending',  '<span class="dot"></span> Verificando...'],
+            'UNKNOWN':   ['badge-unknown',  '• Sin datos'],
+        };
+        const [cls, label] = map[health] || map['UNKNOWN'];
+        return `<span class="health-badge ${cls}">${label}</span>`;
+    }
+
+    function renderPhase(phase) {
+        const p = parseInt(phase) || 0;
+        return [1,2,3,4].map(n => {
+            const cls = n < p ? 'done' : n === p && p > 0 ? 'done' : '';
+            return `<span class="phase-dot ${cls}" title="Fase ${n}"></span>`;
+        }).join('') + `<span style="font-size:10px;color:var(--muted);margin-left:3px">${p > 0 ? p+'/4' : '—'}</span>`;
+    }
+
+    function peersClass(peers) {
+        if (peers === null || peers === undefined) return '';
+        if (peers >= 2) return ' good';
+        if (peers === 1) return ' warn';
+        return ' bad';
+    }
+
+    function formatPeers(peers) {
+        if (peers === null || peers === undefined) return '—';
+        return peers.toString();
+    }
+
+    function formatBitrate(speed) {
+        if (!speed || speed === 0) return '—';
+        if (speed >= 1048576) return (speed / 1048576).toFixed(2) + ' MB/s';
+        if (speed >= 1024)    return (speed / 1024).toFixed(0) + ' KB/s';
+        return speed + ' B/s';
+    }
+
+    // =========================================================================
+    // UPDATE ROW (in-place DOM update after verify)
+    // =========================================================================
+    function updateRow(cid, result) {
+        const health = result.health || 'UNKNOWN';
+
+        // Cache
+        healthCache[cid] = result;
+
+        // Update data-health for filtering
+        const row = document.getElementById(`row-${cid}`);
+        if (row) {
+            row.dataset.health = health;
+            row.classList.toggle('offline-row', health === 'OFFLINE');
+        }
+
+        const hEl = document.getElementById(`health-${cid}`);
+        if (hEl) hEl.innerHTML = renderHealthBadge(health);
+
+        const pEl = document.getElementById(`peers-${cid}`);
+        if (pEl) {
+            pEl.className = `ch-peers${peersClass(result.peers)}`;
+            pEl.textContent = formatPeers(result.peers);
+        }
+
+        const bEl = document.getElementById(`bitrate-${cid}`);
+        if (bEl) {
+            bEl.className = `ch-bitrate${result.speed_down > 0 ? ' active' : ''}`;
+            bEl.textContent = formatBitrate(result.speed_down);
+        }
+
+        const phEl = document.getElementById(`phase-${cid}`);
+        if (phEl) phEl.innerHTML = renderPhase(result.phase_reached);
+
+        updateSummaryCards();
+        applyFiltersAndSearch();
+    }
+
+    // =========================================================================
+    // SUMMARY CARDS
+    // =========================================================================
+    function updateSummaryCards() {
+        const counts = { ONLINE: 0, LOW_PEERS: 0, OFFLINE: 0, BLOCKED: 0, ERROR: 0, total: 0 };
+        document.querySelectorAll('.ch-row').forEach(row => {
+            counts.total++;
+            const h = row.dataset.health || 'UNKNOWN';
+            if (counts[h] !== undefined) counts[h]++;
+        });
+        setText('sc-total',   counts.total);
+        setText('sc-online',  counts.ONLINE);
+        setText('sc-low',     counts.LOW_PEERS);
+        setText('sc-offline', counts.OFFLINE);
+        setText('sc-blocked', counts.BLOCKED + counts.ERROR);
+    }
+
+    function setText(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+
+    // =========================================================================
+    // FILTERS & SEARCH
+    // =========================================================================
+    function setFilter(filter, btn) {
+        activeFilter = filter;
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        applyFiltersAndSearch();
+    }
+
+    function applyFiltersAndSearch() {
+        const query = (document.getElementById('search-input')?.value || '').toLowerCase();
+        document.querySelectorAll('.ch-row').forEach(row => {
+            const health = row.dataset.health || 'UNKNOWN';
+            const name   = (row.dataset.name || '').toLowerCase();
+            const cid    = (row.dataset.cid  || '').toLowerCase();
+
+            const matchFilter = activeFilter === 'all' || health === activeFilter;
+            const matchSearch = !query || name.includes(query) || cid.includes(query);
+
+            row.classList.toggle('hidden-row', !(matchFilter && matchSearch));
+        });
+
+        // Update visible count per plugin
+        document.querySelectorAll('.plugin-block').forEach(block => {
+            const id   = block.id.replace('plugin-', '');
+            const rows = block.querySelectorAll('.ch-row:not(.hidden-row)');
+            const cnt  = document.getElementById(`count-${id}`);
+            if (cnt) cnt.textContent = `${rows.length} canales`;
+        });
+    }
+
+    // =========================================================================
+    // SINGLE VERIFY
+    // =========================================================================
+    async function verifySingle(cid, btn) {
+        if (!cid) return;
+        const wasLabel = btn.textContent;
+        btn.disabled   = true;
+        btn.innerHTML  = '<span class="spinner dark"></span>';
+
+        const hEl = document.getElementById(`health-${cid}`);
+        if (hEl) hEl.innerHTML = renderHealthBadge('PENDING');
+
+        try {
+            const resp = await fetch(`/statplugin?action=verify&content_id=${cid}&timeout_ms=12000`);
+            const data = await resp.json();
+            if (data.status === 'success') {
+                updateRow(cid, data);
+                const label = data.health === 'ONLINE' ? '✓ En Línea' : data.health === 'OFFLINE' ? '✗ Sin Fuentes' : '✓ Hecho';
+                showToast(`${label}: ${cid.substring(0,8)}…`, data.health === 'ONLINE' ? 'success' : 'info');
+            } else {
+                if (hEl) hEl.innerHTML = renderHealthBadge('ERROR');
+                showToast('Error al verificar: ' + (data.error || '—'), 'error');
+            }
+        } catch (err) {
+            if (hEl) hEl.innerHTML = renderHealthBadge('ERROR');
+            showToast('Error de red: ' + err.message, 'error');
+        } finally {
+            btn.disabled  = false;
+            btn.textContent = wasLabel;
+        }
+    }
+
+    // =========================================================================
+    // BULK VERIFY (GLOBAL — all plugins)
+    // =========================================================================
+    async function startBulkVerify() {
+        if (bulkRunning) return;
+        if (!pluginsData) { showToast('Carga las listas primero', 'warn'); return; }
+
+        // Collect all CIDs
+        const allCids = [];
+        pluginsData.plugins.forEach(p => {
+            (p.channels || []).forEach(ch => {
+                if (ch.content_id) allCids.push(ch.content_id);
+            });
+        });
+        if (allCids.length === 0) { showToast('Sin canales para verificar', 'warn'); return; }
+
+        const estimatedMin = Math.ceil(allCids.length / 2 * 7 / 60);
+        showConfirmModal({
+            title:       'Verificación Completa',
+            message:     `Se verificarán ${allCids.length} canales a través del Worker Pool (máx. 2 simultáneos).\nTiempo estimado: ~${estimatedMin} minutos.\n\n¿Continuar?`,
+            confirmText: 'Verificar',
+            cancelText:  'Cancelar',
+            isDanger:    false,
+            onConfirm:   () => runBulkVerify(allCids)
+        });
+    }
+
+    async function runBulkVerify(cids) {
+        bulkRunning = true;
+        bulkStopped = false;
+        const total = cids.length;
+        let done = 0, online = 0, errors = 0;
+        const startTime = Date.now();
+
+        document.getElementById('btn-verify-all').style.display = 'none';
+        document.getElementById('btn-stop').style.display       = '';
+        const gpEl   = document.getElementById('global-progress');
+        const fillEl = document.getElementById('prog-fill');
+        const pctEl  = document.getElementById('prog-pct');
+        const lblEl  = document.getElementById('prog-label');
+        const detEl  = document.getElementById('prog-detail');
+        gpEl.classList.add('active');
+
+        // Mark all as PENDING visually
+        cids.forEach(cid => {
+            const hEl = document.getElementById(`health-${cid}`);
+            if (hEl) hEl.innerHTML = renderHealthBadge('PENDING');
+            const row = document.getElementById(`row-${cid}`);
+            if (row) row.dataset.health = 'PENDING';
+        });
+
+        // Process in batches of 2 (mirror Worker Pool concurrency)
+        const BATCH = 2;
+        for (let i = 0; i < cids.length; i += BATCH) {
+            if (bulkStopped) break;
+            const batch = cids.slice(i, i + BATCH);
+
+            await Promise.all(batch.map(async cid => {
+                try {
+                    const resp = await fetch(`/statplugin?action=verify&content_id=${cid}&timeout_ms=12000`);
+                    const data = await resp.json();
+                    if (data.status === 'success') {
+                        updateRow(cid, data);
+                        if (data.health === 'ONLINE') online++;
+                    } else {
+                        updateRow(cid, { health: 'ERROR', peers: 0, speed_down: 0, phase_reached: 0, error: data.error });
+                        errors++;
+                    }
+                } catch {
+                    updateRow(cid, { health: 'ERROR', peers: 0, speed_down: 0, phase_reached: 0 });
+                    errors++;
+                }
+                done++;
+            }));
+
+            const pct = Math.round(done / total * 100);
+            fillEl.style.width  = pct + '%';
+            pctEl.textContent   = pct + '%';
+            const elapsed = Math.round((Date.now() - startTime) / 1000);
+            const remaining = done > 0 ? Math.round((total - done) * (elapsed / done)) : '?';
+            lblEl.textContent   = `Verificando… ${done}/${total}`;
+            detEl.textContent   = `🟢 ${online} en línea · ❌ ${errors} errores · ⏱ ${elapsed}s transcurridos · ~${remaining}s restantes`;
+        }
+
+        // Cleanup
+        bulkRunning = false;
+        fillEl.style.width = '100%';
+        setTimeout(() => {
+            gpEl.classList.remove('active');
+            fillEl.style.width = '0%';
+        }, 2000);
+
+        document.getElementById('btn-verify-all').style.display = '';
+        document.getElementById('btn-stop').style.display       = 'none';
+
+        if (!bulkStopped) {
+            showToast(`✅ Completado: ${online}/${total} en línea, ${errors} errores`, 'success');
+        }
+    }
+
+    function stopBulkVerify() {
+        bulkStopped = true;
+        bulkRunning = false;
+        document.getElementById('btn-verify-all').style.display = '';
+        document.getElementById('btn-stop').style.display       = 'none';
+        showToast('Verificación detenida por el usuario', 'warn');
+    }
+
+    // =========================================================================
+    // PLUGIN-LEVEL VERIFY
+    // =========================================================================
+    async function startPluginVerify(pluginName, btn) {
+        const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
+        if (!plugin || !plugin.channels) return;
+
+        const cids = plugin.channels.map(ch => ch.content_id).filter(Boolean);
+        if (cids.length === 0) return;
+
+        btn.disabled   = true;
+        btn.innerHTML  = '<span class="spinner dark"></span> Verificando...';
+
+        const ppEl  = document.getElementById(`pp-${pluginName}`);
+        const ppfEl = document.getElementById(`ppf-${pluginName}`);
+        if (ppEl) ppEl.classList.add('active');
+
+        let done = 0; const total = cids.length;
+        const BATCH = 2;
+
+        for (let i = 0; i < cids.length; i += BATCH) {
+            const batch = cids.slice(i, i + BATCH);
+            await Promise.all(batch.map(async cid => {
+                try {
+                    const resp = await fetch(`/statplugin?action=verify&content_id=${cid}&timeout_ms=12000`);
+                    const data = await resp.json();
+                    if (data.status === 'success') updateRow(cid, data);
+                    else updateRow(cid, { health: 'ERROR', peers: 0, speed_down: 0, phase_reached: 0 });
+                } catch {
+                    updateRow(cid, { health: 'ERROR', peers: 0, speed_down: 0, phase_reached: 0 });
+                }
+                done++;
+                if (ppfEl) ppfEl.style.width = Math.round(done / total * 100) + '%';
+            }));
+        }
+
+        btn.disabled   = false;
+        btn.textContent = '▶ Verificar lista';
+        if (ppEl) { setTimeout(() => { ppEl.classList.remove('active'); if (ppfEl) ppfEl.style.width = '0%'; }, 1500); }
+        showToast(`✅ Lista "${pluginName}" verificada`, 'success');
+    }
+
+    // =========================================================================
+    // OPEN PLAYER
+    // =========================================================================
+    function openPlayer(cid) {
+        if (!cid) return;
+        window.open(`/player/index.html?cid=${encodeURIComponent(cid)}`, '_blank');
+    }
+
+    // =========================================================================
+    // COPY HELPERS
+    // =========================================================================
+    function copyCid(cid, btn) {
+        copyText(cid, btn, '✓ Content ID copiado');
+    }
+
+    function copyText(text, btn, msg) {
+        const doIt = () => {
+            showToast(msg || '✓ Copiado', 'success');
+            if (btn) {
+                btn.classList.add('copied');
+                btn.textContent = '✓';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.textContent = '📋';
+                }, 1500);
+            }
+        };
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(text).then(doIt).catch(() => fallbackCopy(text, doIt));
+        } else {
+            fallbackCopy(text, doIt);
+        }
+    }
+
+    function fallbackCopy(text, cb) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); if (cb) cb(); } catch {}
+        document.body.removeChild(ta);
+    }
+
+    // =========================================================================
+    // TOAST NOTIFICATIONS
+    // =========================================================================
+    function showToast(message, type = 'success') {
+        const stack = document.getElementById('toast-stack');
+        if (!stack) return;
+        const item = document.createElement('div');
+        item.className = `toast-item ${type}`;
+        item.textContent = message;
+        stack.appendChild(item);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => item.classList.add('show'));
+        });
+        const tid = setTimeout(() => {
+            item.classList.remove('show');
+            setTimeout(() => item.remove(), 300);
+        }, 4000);
+    }
+
+    // =========================================================================
+    // UTILITY
+    // =========================================================================
+    function esc(str) {
+        if (!str) return '';
+        return str.toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // =========================================================================
+    // AUTO REFRESH every 5 min
+    // =========================================================================
+    setInterval(() => {
+        if (!bulkRunning) loadPlugins();
+    }, 5 * 60 * 1000);
+    </script>
+</body>
 </html>

@@ -14,6 +14,7 @@ find_package(ZLIB REQUIRED)
 add_library(httpaceproxycpp_core
   src/ace_client.cpp
   src/broadcast.cpp
+  src/channel_verifier.cpp
   src/config.cpp
   src/http_client.cpp
   src/http_server.cpp
