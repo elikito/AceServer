@@ -4,6 +4,27 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.24.06] - 2026-08-24
+
+### 🛠️ Estandarización de Navegación, Control WARP Web y Corrección de Verificador
+
+#### UI & Navegación Global
+- **Barra de Navegación Unificada**:
+  - Estandarizado el marcado HTML y estilos CSS de `.navbar` en todas las páginas web (`/`, `/statplugin/`, `/fuentes/`, `/epg/`, `/player/`, `/listas/`) manteniendo estilo uniforme con marcado de enlace activo en cápsula oscura y tipografía coherente.
+  - Excluida explícitamente la vista `/player/legacy.html` para preservar su diseño minimalista original de WebKit ES5 / iPad.
+- **Corrección de Enlaces en Reproductor Legacy (`/player/legacy.html`)**:
+  - Restaurada la generación limpia de URLs TS (`/content_id/<hash>/<name>.ts`) en `parseM3ULegacy()`, garantizando compatibilidad nativa con VLC Media Player y clientes IPTV externos.
+
+#### Backend C++ & Funcionalidades de Red
+- **Control Web Interactivo de Cloudflare WARP**:
+  - Creados los endpoints `/statplugin?action=warp_connect`, `warp_disconnect`, `warp_toggle` para ejecutar de forma segura comandos `warp-cli` y retornar el estado actualizado en tiempo real.
+  - Añadido el botón de acción interactivo `[⚡ Conectar WARP]` / `[🔌 Desconectar WARP]` en la tarjeta de Protección de Red de `/statplugin`.
+- **Eliminación de Falsos Negativos en `ChannelVerifier`**:
+  - Ampliado el timeout de handshake (Fase 1) de 3s a **6s** y la ventana de observación DHT de 2.75s a **4.5s** (`channel_verifier.cpp`).
+  - Refactorizada la clasificación en `classify()` para reconocer estados activos de prebuffering (`dl`, `prebuf`, `buf`), previniendo falsas marcas de "Error / Bloqueado" o "Caídos" en enlaces reproducibles.
+
+---
+
 ## [08.24.05] - 2026-08-24
 
 ### 🎯 Unificación Total de Fuentes y Extracción Robusta de Content IDs

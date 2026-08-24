@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// channel_verifier.cpp  —  v08.24.05
+// channel_verifier.cpp  —  v08.24.06
 //
 // Implementación del Worker Pool asíncrono y del pipeline de verificación
 // de Content IDs de AceStream en 4 fases.
@@ -31,10 +31,10 @@ namespace httpace {
 // Timeouts del pipeline (en segundos para get_single)
 // ---------------------------------------------------------------------------
 namespace {
-    constexpr long kHandshakeTimeoutSec = 3;       // Fase 1: getstream handshake
-    constexpr long kStatPollTimeoutSec  = 2;       // Fase 3: cada poll stat_url
+    constexpr long kHandshakeTimeoutSec = 6;       // Fase 1: getstream handshake (ampliado para túnel/WARP)
+    constexpr long kStatPollTimeoutSec  = 3;       // Fase 3: cada poll stat_url
     constexpr long kStopTimeoutSec      = 2;       // Cierre: command_url?method=stop
-    constexpr int  kObserveTotalMs      = 2750;    // Fase 3: ventana de observación (ms)
+    constexpr int  kObserveTotalMs      = 4500;    // Fase 3: ventana de observación (ms)
     constexpr int  kObservePollMs       = 400;     // Fase 3: intervalo entre polls (ms)
 }
 
@@ -605,33 +605,21 @@ ChannelHealth ChannelVerifier::classify(int peers,
                                          const std::string& status_text,
                                          long long threshold) noexcept {
     // ONLINE: descarga activa, suficientes peers, bitrate mínimo superado.
-    if (status_text == "dl" && peers >= 2 && speed_down > threshold) {
+    if ((status_text == "dl" || status_text == "prebuf" || status_text == "buf") && (peers >= 2 || speed_down > threshold)) {
         return ChannelHealth::ONLINE;
     }
 
-    // LOW_PEERS: algún peer disponible, descarga o prebuffering, pero velocidad baja.
-    if ((status_text == "dl" || status_text == "prebuf" || status_text == "buf")
-        && peers >= 1
-        && speed_down <= threshold) {
+    // LOW_PEERS: algún peer disponible o estado de buffer/descarga activo en motor.
+    if ((status_text == "dl" || status_text == "prebuf" || status_text == "buf") || peers >= 1 || speed_down > 0) {
         return ChannelHealth::LOW_PEERS;
     }
 
-    // LOW_PEERS adicional: velocidad presente pero pocos peers.
-    if ((status_text == "dl" || status_text == "prebuf") && speed_down > 0 && peers < 2) {
-        return ChannelHealth::LOW_PEERS;
-    }
-
-    // OFFLINE: sin peers, sin velocidad (no eliminar el CID).
-    if (peers == 0 && speed_down == 0) {
+    // OFFLINE: sin respuesta de estado, sin peers y sin velocidad (no eliminar el CID).
+    if (peers == 0 && speed_down == 0 && status_text.empty()) {
         return ChannelHealth::OFFLINE;
     }
 
-    // Fallback conservador: si tenemos status sin peers claros.
-    if (status_text == "prebuf" && peers == 0) {
-        return ChannelHealth::OFFLINE;
-    }
-
-    // En cualquier otro caso (estado ambiguo con algo de actividad).
+    // Fallback conservador: si el motor no reportó datos.
     return ChannelHealth::LOW_PEERS;
 }
 

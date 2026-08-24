@@ -565,23 +565,21 @@
                     }
                 } else if (line.indexOf('#') !== 0 && line.length > 0 && currentItem) {
                     var streamUrl = line;
+                    var baseHost = window.location.protocol + '//' + window.location.host;
+                    var encName = encodeURIComponent(currentItem.name || 'stream');
+
                     if (line.indexOf('acestream://') === 0) {
-                        var pid = line.substring(12).trim();
-                        streamUrl = 'http://' + window.location.host + '/content_id/' + pid + '/stream.ts';
+                        var pid = line.substring(12).split('/')[0].trim();
+                        streamUrl = baseHost + '/content_id/' + pid + '/' + encName + '.ts';
                     } else if (line.indexOf('infohash://') === 0) {
-                        var hash = line.substring(11).trim();
-                        streamUrl = 'http://' + window.location.host + '/infohash/' + hash + '/stream.ts';
+                        var hash = line.substring(11).split('/')[0].trim();
+                        streamUrl = baseHost + '/infohash/' + hash + '/' + encName + '.ts';
+                    } else if (line.indexOf('/') === 0) {
+                        streamUrl = baseHost + line;
                     } else if (line.indexOf('http://') === 0 || line.indexOf('https://') === 0) {
-                        try {
-                            var slashIdx = line.indexOf('//');
-                            if (slashIdx !== -1) {
-                                var rest = line.substring(slashIdx + 2);
-                                var nextSlash = rest.indexOf('/');
-                                if (nextSlash !== -1) {
-                                    streamUrl = 'http://' + window.location.host + rest.substring(nextSlash);
-                                }
-                            }
-                        } catch (e) { }
+                        streamUrl = line;
+                    } else if (line.length >= 40 && /^[a-fA-F0-9]{40}$/.test(line)) {
+                        streamUrl = baseHost + '/content_id/' + line + '/' + encName + '.ts';
                     }
                     currentItem.url = streamUrl;
                     channels.push(currentItem);

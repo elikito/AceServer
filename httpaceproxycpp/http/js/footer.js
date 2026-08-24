@@ -11,7 +11,7 @@
     const MOON_SVG = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
 
     let currentIp = window.location.hostname || '127.0.0.1';
-    let currentVersion = '08.24.05';
+    let currentVersion = '08.24.06';
 
     function copyToClipboard(text) {
         if (navigator.clipboard && window.isSecureContext) {
