@@ -1197,7 +1197,7 @@
 
             const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
             if (!plugin || !plugin.channels) {
-                alert('Plugin not found');
+                showToast('Plugin not found', 'error');
                 return;
             }
 
@@ -1284,15 +1284,26 @@
 
             const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
             if (!plugin || !plugin.channels) {
-                alert('Plugin not found');
+                showToast('Plugin not found', 'error');
                 return;
             }
 
             const channelCount = plugin.channels.length;
             const estimatedTime = Math.ceil(channelCount * 10 / 60);
-            if (!confirm(`This will check peers for ${channelCount} channels.\nEstimated time: ${estimatedTime}+ minutes.\n\nContinue?`)) {
-                return;
-            }
+
+            showConfirmModal({
+                title: 'Comprobar Peers de Canales',
+                message: `Se comprobarán los peers de ${channelCount} canales.\nTiempo estimado: ${estimatedTime}+ minutos.\n\n¿Deseas continuar?`,
+                confirmText: 'Comprobar',
+                cancelText: 'Cancelar',
+                isDanger: false,
+                onConfirm: () => {
+                    runCheckAllPeers(pluginName, button, plugin);
+                }
+            });
+        }
+
+        async function runCheckAllPeers(pluginName, button, plugin) {
 
             bulkCheckRunning[`peers-${pluginName}`] = true;
             button.classList.add('running');
@@ -1380,7 +1391,7 @@
                 }, 1000);
             }
 
-            alert(`Peer check complete!\n${withPeers} of ${total} channels have active peers.${failed > 0 ? `\n${failed} checks failed.` : ''}`);
+            showToast(`✓ Comprobación de peers completada: ${withPeers} de ${total} canales activos`);
         }
 
         async function checkAndPeersAll(pluginName, button) {
@@ -1390,15 +1401,26 @@
 
             const plugin = pluginsData?.plugins?.find(p => p.name === pluginName);
             if (!plugin || !plugin.channels) {
-                alert('Plugin not found');
+                showToast('Plugin not found', 'error');
                 return;
             }
 
             const channelCount = plugin.channels.length;
             const estimatedTime = Math.ceil(channelCount * 12 / 60);
-            if (!confirm(`Full check (availability + peers) for ${channelCount} channels.\nEstimated time: ${estimatedTime}+ minutes.\n\nContinue?`)) {
-                return;
-            }
+
+            showConfirmModal({
+                title: 'Comprobación Completa de Canales',
+                message: `Comprobación completa (disponibilidad y peers) para ${channelCount} canales.\nTiempo estimado: ${estimatedTime}+ minutos.\n\n¿Deseas continuar?`,
+                confirmText: 'Comprobar',
+                cancelText: 'Cancelar',
+                isDanger: false,
+                onConfirm: () => {
+                    runCheckAndPeersAll(pluginName, button, plugin);
+                }
+            });
+        }
+
+        async function runCheckAndPeersAll(pluginName, button, plugin) {
 
             bulkCheckRunning[`full-${pluginName}`] = true;
             button.classList.add('running');
@@ -1539,7 +1561,7 @@
                 }, 1000);
             }
 
-            alert(`Full check complete!\n\n✓ Available: ${available} of ${total}\n👥 With peers: ${withPeers} of ${total}${failed > 0 ? `\n⚠ Failed: ${failed}` : ''}`);
+            showToast(`✓ Comprobación completa: ${available}/${total} disponibles, ${withPeers}/${total} con peers`);
         }
 
         function showError(message) {

@@ -1116,17 +1116,25 @@ acestream://1234567890abcdef1234567890abcdef12345678
         }
 
         function deleteEpgSource(name) {
-            if (!confirm(`¿Eliminar la fuente EPG "${name}"?`)) return;
-            fetch(`/config?action=delete_epg_source&name=${encodeURIComponent(name)}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showToast('✓ Fuente EPG eliminada');
-                        loadConfigs();
-                    } else {
-                        showAlert('Error al eliminar fuente EPG', 'error');
-                    }
-                });
+            showConfirmModal({
+                title: 'Eliminar Fuente EPG',
+                message: `¿Deseas eliminar permanentemente la fuente EPG "${name}"?`,
+                confirmText: 'Eliminar',
+                cancelText: 'Cancelar',
+                isDanger: true,
+                onConfirm: () => {
+                    fetch(`/config?action=delete_epg_source&name=${encodeURIComponent(name)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showToast('✓ Fuente EPG eliminada');
+                                loadConfigs();
+                            } else {
+                                showAlert('Error al eliminar fuente EPG', 'error');
+                            }
+                        });
+                }
+            });
         }
 
         function resetEpgDefault() {
@@ -1515,28 +1523,33 @@ acestream://1234567890abcdef1234567890abcdef12345678
         }
 
         function deleteCustomList(listName, button) {
-            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente la lista "${listName}"?`)) {
-                return;
-            }
+            showConfirmModal({
+                title: 'Eliminar Lista Personalizada',
+                message: `¿Estás seguro de que deseas eliminar permanentemente la lista "${listName}"?`,
+                confirmText: 'Eliminar',
+                cancelText: 'Cancelar',
+                isDanger: true,
+                onConfirm: () => {
+                    if (button) button.disabled = true;
 
-            button.disabled = true;
-
-            fetch(`/config?action=delete_custom_list&name=${listName}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showAlert(`Lista personalizada "${listName}" eliminada correctamente en caliente.`, 'success');
-                        loadConfigs();
-                    } else {
-                        button.disabled = false;
-                        showAlert('Error en el servidor al eliminar la lista.', 'error');
-                    }
-                })
-                .catch(err => {
-                    button.disabled = false;
-                    console.error(err);
-                    showAlert('Error de red al eliminar la lista.', 'error');
-                });
+                    fetch(`/config?action=delete_custom_list&name=${listName}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showAlert(`Lista personalizada "${listName}" eliminada correctamente en caliente.`, 'success');
+                                loadConfigs();
+                            } else {
+                                showAlert('Error al eliminar la lista en el servidor.', 'error');
+                                if (button) button.disabled = false;
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            showAlert('Error de red al eliminar la lista.', 'error');
+                            if (button) button.disabled = false;
+                        });
+                }
+            });
         }
 
         function copyTextToClipboard(text, button, customMsg) {

@@ -1,32 +1,16 @@
 {
-  "acepl": false,
-  "af1c1onados": false,
+  "acepl": true,
+  "af1c1onados": true,
   "aio": true,
-  "custom_lists": [
-    {
-      "enabled": false,
-      "name": "Interna",
-      "url": "/listas/locales/Interna.m3u"
-    },
-    {
-      "enabled": false,
-      "name": "20260821_neweraelcano",
-      "title": "20260821_NEW ERA + ELCANO",
-      "url": "/listas/locales/20260821_NEW ERA + ELCANO.m3u"
-    },
-    {
-      "enabled": true,
-      "name": "tokyoghoulles",
-      "title": "TokyoGhoulles",
-      "url": "https://git.gay/TokyoGhoulles/AceStream_IDs/raw/branch/main/hashes.json"
-    }
-  ],
+  "custom_lists": [],
   "elcano": true,
   "newera": true,
   "urls": {
-    "elcano": "https://k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs.ipns.inbrowser.link/hashes.json",
+    "acepl": "https://api.acestream.me/all?api_version=1.0&api_key=test_api_key",
+    "af1c1onados": "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM iDs.w3u",
+    "elcano": "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json",
     "epg": "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz",
     "newera": "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"
   },
-  "version": "08.22.02"
+  "version": "08.24.01"
 }

@@ -732,11 +732,28 @@
                 <p>Edita URLs, activa o apaga listas en caliente, analiza el contador de canales y grupos detectados.
                 </p>
             </div>
-            <div>
-                <button class="btn-action btn-refresh" style="padding: 10px 18px;" onclick="refreshAllSources()">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button class="btn-action btn-copy" style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;" onclick="exportSources('m3u')" title="Exportar fuentes en formato M3U estándar (IPTV / HTTPAceProxy)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <span>Exportar M3U</span>
+                </button>
+                <button class="btn-action btn-copy" style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; background: #667eea; font-weight: 500;" onclick="exportSources('json')" title="Exportar copia de seguridad en formato JSON">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <span>Exportar JSON</span>
+                </button>
+                <button class="btn-action btn-save" style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;" onclick="toggleImportCard()" title="Importar paquete de fuentes (M3U, M3U8, JSON, TXT)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+                    </svg>
+                    <span>Importar Fuentes</span>
+                </button>
+                <button class="btn-action btn-refresh" style="padding: 9px 16px;" onclick="refreshAllSources()" title="Actualizar todas las fuentes">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" id="refresh-all-icon">
-                        <path
-                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                     </svg>
                 </button>
             </div>
@@ -894,6 +911,59 @@
                     <button class="btn-action btn-save" style="padding: 10px 20px; width: 100%;"
                         onclick="uploadM3uFile()">
                         Subir Fichero
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Importar / Exportar Paquetes de Fuentes -->
+        <div class="section-header">
+            <div class="section-title">
+                📦 Importar / Exportar Paquetes de Fuentes (M3U / JSON)
+            </div>
+        </div>
+        <div class="config-card" id="import-export-card">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                Exporta tus fuentes de canales para utilizarlas en un reproductor IPTV genérico (VLC, Tivimate, Kodi, IPTV Smarters) o para importarlas directamente en HTTPAceProxy. También puedes importar paquetes de fuentes en formato .m3u, .m3u8, .json o .txt.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div style="background: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬇️ Exportar Fuentes Configuradas</div>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Genera la salida estandarizada en el formato de tu elección.</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn-action btn-copy" style="padding: 8px 14px; font-size: 13px; font-weight: 500;" onclick="exportSources('m3u')">
+                            📄 Descargar M3U
+                        </button>
+                        <button class="btn-action btn-copy" style="padding: 8px 14px; font-size: 13px; background: #667eea; font-weight: 500;" onclick="exportSources('json')">
+                            ⚙️ Backup JSON
+                        </button>
+                    </div>
+                </div>
+
+                <div style="background: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬆️ Importar desde Archivo (.M3U / .JSON / .TXT)</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <input type="file" id="import-file-input" class="url-input" accept=".m3u,.m3u8,.json,.txt" style="padding: 4px; font-size: 12px;">
+                        <select id="import-mode-select" class="url-input" style="width: 110px; font-size: 12px; padding: 4px;" title="Modo de importación">
+                            <option value="merge" selected>Fusionar</option>
+                            <option value="replace">Reemplazar</option>
+                        </select>
+                    </div>
+                    <button class="btn-action btn-save" style="padding: 8px 16px; width: 100%; font-size: 13px; font-weight: 500;" onclick="importSourcesFile()">
+                        Subir e Importar Fuentes
+                    </button>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 14px;">
+                <label for="import-text-area" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Pegar contenido de paquete de fuentes (M3U / JSON):</label>
+                <textarea id="import-text-area" class="url-input" rows="4" style="width: 100%; font-family: monospace; font-size: 12px; padding: 8px; resize: vertical;" placeholder="#EXTM3U
+#EXTINF:-1 tvg-id=&quot;mi_fuente&quot; tvg-name=&quot;Deportes M3U&quot;, Deportes M3U
+http://servidor.com/lista.m3u"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                    <button class="btn-action btn-save" style="padding: 8px 20px; font-size: 13px; font-weight: 500;" onclick="importSourcesText()">
+                        Procesar e Importar Texto
                     </button>
                 </div>
             </div>
@@ -1480,23 +1550,30 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
         }
 
         function deleteCustomSource(name) {
-            if (!confirm(`¿Deseas eliminar permanentemente la fuente personalizada "${name}"?`)) return;
-
-            fetch(`/config?action=delete_custom_list&name=${encodeURIComponent(name)}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showToast(`✓ Fuente "${name}" eliminada correctamente`);
-                        delete listStatsCache[name];
-                        loadSources();
-                    } else {
-                        showToast('Error al eliminar la fuente', 'error');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    showToast('Error de red al eliminar la fuente', 'error');
-                });
+            showConfirmModal({
+                title: 'Eliminar Fuente Personalizada',
+                message: `¿Deseas eliminar permanentemente la fuente personalizada "${name}"?`,
+                confirmText: 'Eliminar',
+                cancelText: 'Cancelar',
+                isDanger: true,
+                onConfirm: () => {
+                    fetch(`/config?action=delete_custom_list&name=${encodeURIComponent(name)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showToast(`✓ Fuente "${name}" eliminada correctamente`);
+                                delete listStatsCache[name];
+                                loadSources();
+                            } else {
+                                showToast('Error al eliminar la fuente', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            showToast('Error de red al eliminar la fuente', 'error');
+                        });
+                }
+            });
         }
 
         function loadInternalList() {
@@ -1618,6 +1695,80 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                 .catch(err => {
                     console.error(err);
                     showToast('Error de red al generar la lista Interna.', 'error');
+                });
+        }
+
+        function exportSources(format = 'm3u') {
+            showToast(`Generando archivo de exportación de fuentes (${format.toUpperCase()})...`);
+            window.location.href = `/config?action=export_sources&format=${format}`;
+        }
+
+        function toggleImportCard() {
+            const card = document.getElementById('import-export-card');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth' });
+                card.style.transition = 'box-shadow 0.3s ease';
+                card.style.boxShadow = '0 0 0 2px var(--brand-color)';
+                setTimeout(() => { card.style.boxShadow = ''; }, 1500);
+            }
+        }
+
+        function importSourcesFile() {
+            const fileInput = document.getElementById('import-file-input');
+            const modeSelect = document.getElementById('import-mode-select');
+            const file = fileInput ? fileInput.files[0] : null;
+            const mode = modeSelect ? modeSelect.value : 'merge';
+
+            if (!file) {
+                showToast('Por favor, selecciona un archivo (.m3u, .m3u8, .json o .txt) para importar.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+                sendImportPayload(content, mode);
+            };
+            reader.readAsText(file);
+        }
+
+        function importSourcesText() {
+            const textarea = document.getElementById('import-text-area');
+            const modeSelect = document.getElementById('import-mode-select');
+            const content = textarea ? textarea.value.trim() : '';
+            const mode = modeSelect ? modeSelect.value : 'merge';
+
+            if (!content) {
+                showToast('Por favor, pega el texto de la lista M3U o JSON para importar.', 'error');
+                return;
+            }
+
+            sendImportPayload(content, mode);
+        }
+
+        function sendImportPayload(content, mode = 'merge') {
+            showToast('Procesando e importando fuentes...');
+            fetch(`/config?action=import_sources&mode=${mode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                body: content
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(`✓ ${data.message || 'Fuentes importadas'} (${data.imported_count || 0} procesadas)`);
+                        const textarea = document.getElementById('import-text-area');
+                        const fileInput = document.getElementById('import-file-input');
+                        if (textarea) textarea.value = '';
+                        if (fileInput) fileInput.value = '';
+                        loadSources();
+                    } else {
+                        showToast(`Error al importar: ${data.error || 'Formato no reconocido'}`, 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error al importar fuentes:', err);
+                    showToast('Error de red al importar fuentes', 'error');
                 });
         }
 

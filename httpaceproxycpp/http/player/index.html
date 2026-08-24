@@ -979,10 +979,81 @@
             color: #4cd964;
         }
 
-        @media (max-width: 600px) {
+        .direct-play-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex: 1;
+            max-width: 520px;
+            width: 100%;
+        }
+
+        .direct-play-input-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .direct-play-icon {
+            position: absolute;
+            left: 12px;
+            width: 18px;
+            height: 18px;
+            fill: var(--brand-color, #4CAF50);
+            pointer-events: none;
+        }
+
+        .direct-play-input {
+            width: 100%;
+            padding: 9px 12px 9px 38px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .direct-play-input:focus {
+            border-color: var(--brand-color, #4CAF50);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+        }
+
+        .btn-direct-play {
+            background: var(--brand-color, #4CAF50);
+            color: #ffffff;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-direct-play:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-direct-play:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 768px) {
             .header-section {
                 flex-direction: column;
-                align-items: flex-start;
+                align-items: stretch;
+                gap: 16px;
+            }
+
+            .direct-play-container {
+                max-width: 100%;
             }
 
             .search-input {
@@ -1013,10 +1084,24 @@
 
     <!-- Container -->
     <div class="container">
-        <div class="header-section">
+        <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
             <div class="header-title">
                 <h4>Reproductor IPTV</h4>
                 <p>Canales organizados por grupos con guía de programación (EPG).</p>
+            </div>
+            <!-- Entrada Directa de Content ID a Mano -->
+            <div class="direct-play-container">
+                <div class="direct-play-input-wrapper">
+                    <svg class="direct-play-icon" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <input type="text" id="direct-content-id" class="direct-play-input"
+                        placeholder="Reproducir ID AceStream a mano (hash 40 chars / link)..."
+                        onkeydown="if(event.key==='Enter') playDirectContentId()">
+                </div>
+                <button type="button" class="btn-direct-play" onclick="playDirectContentId()">
+                    ▶ Reproducir ID
+                </button>
             </div>
         </div>
 
@@ -1605,6 +1690,35 @@
             if (badge) {
                 badge.textContent = statusText;
                 badge.className = 'player-status-badge ' + badgeClass;
+            }
+        }
+
+        function playDirectContentId() {
+            const input = document.getElementById('direct-content-id');
+            if (!input) return;
+            const raw = input.value.trim();
+            if (!raw) {
+                if (typeof showToast === 'function') {
+                    showToast('Por favor, ingresa un Content ID de AceStream.', 'error');
+                }
+                return;
+            }
+            const match = raw.match(/([a-fA-F0-9]{40})/);
+            const cid = match ? match[1].toLowerCase() : raw;
+            if (cid.length < 10) {
+                if (typeof showToast === 'function') {
+                    showToast('Por favor, ingresa un Content ID válido (hash de 40 caracteres).', 'error');
+                }
+                return;
+            }
+
+            const streamUrl = `/content_id/${cid}/stream.ts`;
+            const shortName = `AceStream Directo: ${cid.substring(0, 8)}...${cid.substring(32)}`;
+            playChannelInWebPlayer(streamUrl, shortName);
+
+            const wrapper = document.getElementById('player-wrapper');
+            if (wrapper) {
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
 

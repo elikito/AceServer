@@ -2084,7 +2084,7 @@
             const output = document.getElementById('engine-peers-output');
 
             if (!cid || cid.length < 10) {
-                alert('Por favor, ingresa un Content ID válido de AceStream (hash de 40 caracteres).');
+                showToast('Por favor, ingresa un Content ID válido de AceStream (hash de 40 caracteres).', 'error');
                 return;
             }
 
@@ -2104,7 +2104,7 @@
             const rawInput = document.getElementById('test-acestream-id').value;
             const cid = getCleanContentId(rawInput);
             if (!cid || cid.length < 10) {
-                alert('Por favor, ingresa un Content ID válido de AceStream.');
+                showToast('Por favor, ingresa un Content ID válido de AceStream.', 'error');
                 return;
             }
 
@@ -2114,7 +2114,7 @@
             if (document.getElementById('chk-engine-compat-stable')?.checked) enginesToTest.push({ id: 'aceserve-compat-stable', label: 'Compat Estable (blaiseio)' });
 
             if (enginesToTest.length === 0) {
-                alert('Selecciona al menos un motor de las casillas de verificación para probar.');
+                showToast('Selecciona al menos un motor de las casillas de verificación para probar.', 'error');
                 return;
             }
 
@@ -2212,14 +2212,14 @@
             inputUrl.select();
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(inputUrl.value).then(() => {
-                    alert('¡Enlace .TS copiado al portapapeles!');
+                    showToast('✓ Enlace .TS copiado al portapapeles');
                 }).catch(() => {
                     document.execCommand('copy');
-                    alert('¡Enlace .TS copiado!');
+                    showToast('✓ Enlace .TS copiado');
                 });
             } else {
                 document.execCommand('copy');
-                alert('¡Enlace .TS copiado!');
+                showToast('✓ Enlace .TS copiado');
             }
         }
 
@@ -2792,12 +2792,12 @@
                     if (data.status === 'success') {
                         getStatus();
                     } else {
-                        alert('Failed to update plugin configuration');
+                        showToast('Failed to update plugin configuration', 'error');
                     }
                 })
                 .catch(err => {
                     console.error('Error toggling plugin:', err);
-                    alert('Error updating plugin configuration');
+                    showToast('Error updating plugin configuration', 'error');
                 });
         }
 
@@ -2825,7 +2825,7 @@
             if (!input) return;
             const newUrl = input.value.trim();
             if (!newUrl) {
-                alert('Introduce una URL de EPG válida');
+                showToast('Introduce una URL de EPG válida', 'error');
                 return;
             }
             fetch(`/config?action=set_url&plugin=epg&url=${encodeURIComponent(newUrl)}`)
@@ -2835,12 +2835,12 @@
                         showToast('✓ URL de EPG guardada correctamente');
                         epgUrlLoaded = false;
                     } else {
-                        alert('Error al guardar la URL de EPG');
+                        showToast('Error al guardar la URL de EPG', 'error');
                     }
                 })
                 .catch(err => {
                     console.error('Error guardando EPG:', err);
-                    alert('Error al guardar la URL de EPG');
+                    showToast('Error al guardar la URL de EPG', 'error');
                 });
         }
 

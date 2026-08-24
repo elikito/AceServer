@@ -786,6 +786,280 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             }
             return;
         }
+        else if (action == "export_sources") {
+            auto fmt = query_get(ctx.query, "format");
+            if (fmt.empty()) fmt = "m3u";
+
+            Json::object config_obj;
+            {
+                std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                if (plugins_state_json_.is_object()) {
+                    config_obj = plugins_state_json_.as_object();
+                }
+            }
+
+            Json::object urls_obj;
+            if (config_obj.contains("urls") && config_obj["urls"].is_object()) {
+                urls_obj = config_obj["urls"].as_object();
+            }
+
+            Json::array custom_arr;
+            if (config_obj.contains("custom_lists") && config_obj["custom_lists"].is_array()) {
+                custom_arr = config_obj["custom_lists"].as_array();
+            }
+
+            if (fmt == "json") {
+                Json export_json = Json::object{
+                    {"version", kAppVersion},
+                    {"urls", urls_obj},
+                    {"custom_lists", custom_arr}
+                };
+                auto body_str = export_json.dump(2);
+                headers["Content-Type"] = "application/json; charset=utf-8";
+                headers["Content-Disposition"] = "attachment; filename=\"fuentes_httpaceproxy.json\"";
+                headers["Content-Length"] = std::to_string(body_str.size());
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text(body_str);
+                connection.close();
+                return;
+            } else {
+                std::ostringstream out;
+                out << "#EXTM3U name=\"Fuentes HTTPAceProxy\" url-tvg=\"https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz\"\n";
+
+                struct Predef { std::string id; std::string name; std::string fallback; };
+                std::vector<Predef> predefined = {
+                    {"newera", "NewEra", "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"},
+                    {"elcano", "Elcano.top by @Lucas_m_o_o_m ... Vacaciones en el Mar", "https://k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs.ipns.inbrowser.link/hashes.json"},
+                    {"af1c1onados", "Af1c1onados", "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u"},
+                    {"acepl", "Acepl", "https://api.acestream.me/all?api_version=1.0&api_key=test_api_key"}
+                };
+
+                for (const auto& p : predefined) {
+                    std::string u = p.fallback;
+                    if (urls_obj.contains(p.id) && urls_obj.at(p.id).is_string() && !urls_obj.at(p.id).as_string().empty()) {
+                        u = urls_obj.at(p.id).as_string();
+                    }
+                    bool enabled = true;
+                    if (config_obj.contains(p.id) && config_obj.at(p.id).is_bool()) {
+                        enabled = config_obj.at(p.id).as_bool();
+                    }
+                    out << "#EXTINF:-1 tvg-id=\"" << p.id << "\" tvg-name=\"" << p.name << "\" group-title=\"Fuentes Predefinidas\" status=\"" << (enabled ? "enabled" : "disabled") << "\", " << p.name << "\n";
+                    out << u << "\n";
+                }
+
+                for (const auto& item : custom_arr) {
+                    if (!item.is_object()) continue;
+                    auto c_obj = item.as_object();
+                    std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : "";
+                    std::string c_title = c_obj.contains("title") ? c_obj.at("title").as_string() : c_name;
+                    std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : "";
+                    bool enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool() : true;
+
+                    if (c_name.empty() || c_url.empty()) continue;
+
+                    out << "#EXTINF:-1 tvg-id=\"" << c_name << "\" tvg-name=\"" << c_title << "\" group-title=\"Fuentes Personalizadas\" status=\"" << (enabled ? "enabled" : "disabled") << "\", " << c_title << "\n";
+                    out << c_url << "\n";
+                }
+
+                auto body_str = out.str();
+                headers["Content-Type"] = "audio/mpegurl; charset=utf-8";
+                headers["Content-Disposition"] = "attachment; filename=\"fuentes_httpaceproxy.m3u\"";
+                headers["Content-Length"] = std::to_string(body_str.size());
+                connection.send_response_headers(200, status_reason(200), headers);
+                connection.send_text(body_str);
+                connection.close();
+                return;
+            }
+        }
+        else if (action == "import_sources") {
+            std::string content = request.body;
+            if (content.empty()) {
+                content = url_decode(query_get(ctx.query, "content"));
+            }
+            std::string mode = query_get(ctx.query, "mode");
+            if (mode.empty()) mode = "merge";
+
+            if (content.empty()) {
+                send_error(connection, 400, "Empty payload for import");
+                return;
+            }
+
+            int imported_count = 0;
+            std::set<std::string> known_predefined = {"newera", "elcano", "af1c1onados", "acepl"};
+
+            std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+            Json::object obj;
+            if (plugins_state_json_.is_object()) {
+                obj = plugins_state_json_.as_object();
+            }
+
+            Json::object urls_obj;
+            if (obj.contains("urls") && obj["urls"].is_object()) {
+                urls_obj = obj["urls"].as_object();
+            }
+
+            Json::array custom_arr;
+            if (mode == "merge" && obj.contains("custom_lists") && obj["custom_lists"].is_array()) {
+                custom_arr = obj["custom_lists"].as_array();
+            }
+
+            std::string trimmed_content = trim(content);
+            if (starts_with(trimmed_content, "{")) {
+                try {
+                    auto j = Json::parse(trimmed_content);
+                    if (j.is_object()) {
+                        if (j.contains("urls") && j["urls"].is_object()) {
+                            auto imp_urls = j["urls"].as_object();
+                            for (const auto& [k, v] : imp_urls) {
+                                if (v.is_string()) {
+                                    urls_obj[k] = v.as_string();
+                                    imported_count++;
+                                    set_plugin_url(k, v.as_string());
+                                }
+                            }
+                        }
+                        if (j.contains("custom_lists") && j["custom_lists"].is_array()) {
+                            auto imp_custom = j["custom_lists"].as_array();
+                            for (const auto& item : imp_custom) {
+                                if (!item.is_object()) continue;
+                                auto c_obj = item.as_object();
+                                std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : "";
+                                std::string c_title = c_obj.contains("title") ? c_obj.at("title").as_string() : c_name;
+                                std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : "";
+                                bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool() : true;
+
+                                if (c_name.empty() || c_url.empty()) continue;
+
+                                bool found = false;
+                                for (auto& existing : custom_arr) {
+                                    if (existing.is_object() && existing.as_object().contains("name") && existing.as_object().at("name").as_string() == c_name) {
+                                        Json::object ex_obj = existing.as_object();
+                                        ex_obj["title"] = c_title;
+                                        ex_obj["url"] = c_url;
+                                        ex_obj["enabled"] = c_enabled;
+                                        existing = ex_obj;
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found) {
+                                    custom_arr.push_back(Json::object{
+                                        {"name", c_name},
+                                        {"title", c_title},
+                                        {"url", c_url},
+                                        {"enabled", c_enabled}
+                                    });
+                                }
+                                imported_count++;
+                                add_custom_list_plugin(c_name, c_url);
+                            }
+                        }
+                    }
+                } catch (...) {
+                    send_error(connection, 400, "Error de parseo JSON al importar fuentes");
+                    return;
+                }
+            } else {
+                std::istringstream stream(trimmed_content);
+                std::string line;
+                std::string pending_id;
+                std::string pending_title;
+                bool pending_enabled = true;
+
+                while (std::getline(stream, line)) {
+                    line = trim(line);
+                    if (line.empty() || line == "#EXTM3U") continue;
+                    if (starts_with(line, "#EXTVLCOPT:") || starts_with(line, "#EXTHTTP:") || starts_with(line, "#EXT-X-")) continue;
+
+                    if (starts_with(line, "#EXTINF:")) {
+                        auto attrs = parse_extinf_attrs(line);
+                        if (attrs.contains("tvg-id") && !attrs["tvg-id"].empty()) {
+                            pending_id = attrs["tvg-id"];
+                        }
+                        if (attrs.contains("tvg-name") && !attrs["tvg-name"].empty()) {
+                            pending_title = attrs["tvg-name"];
+                        }
+                        if (attrs.contains("status")) {
+                            pending_enabled = (attrs["status"] != "disabled");
+                        }
+                        auto parsed_name = parse_extinf_name(line);
+                        if (pending_title.empty() && !parsed_name.empty() && parsed_name != "Unknown Channel") {
+                            pending_title = parsed_name;
+                        }
+                        continue;
+                    }
+
+                    if (!starts_with(line, "#")) {
+                        std::string url = line;
+                        if (pending_title.empty()) {
+                            pending_title = "Fuente " + std::to_string(imported_count + 1);
+                        }
+                        if (pending_id.empty()) {
+                            pending_id = pending_title;
+                            std::string clean_id;
+                            for (char ch : pending_id) {
+                                char l = std::tolower(static_cast<unsigned char>(ch));
+                                if ((l >= 'a' && l <= 'z') || (l >= '0' && l <= '9') || l == '_') clean_id += l;
+                                else if (l == ' ' || l == '-') clean_id += '_';
+                            }
+                            if (clean_id.empty()) clean_id = "fuente_" + std::to_string(imported_count + 1);
+                            pending_id = clean_id;
+                        }
+
+                        if (known_predefined.count(pending_id) > 0) {
+                            urls_obj[pending_id] = url;
+                            set_plugin_url(pending_id, url);
+                            imported_count++;
+                        } else {
+                            bool found = false;
+                            for (auto& existing : custom_arr) {
+                                if (existing.is_object() && existing.as_object().contains("name") && existing.as_object().at("name").as_string() == pending_id) {
+                                    Json::object ex_obj = existing.as_object();
+                                    ex_obj["title"] = pending_title;
+                                    ex_obj["url"] = url;
+                                    ex_obj["enabled"] = pending_enabled;
+                                    existing = ex_obj;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                custom_arr.push_back(Json::object{
+                                    {"name", pending_id},
+                                    {"title", pending_title},
+                                    {"url", url},
+                                    {"enabled", pending_enabled}
+                                });
+                            }
+                            imported_count++;
+                            add_custom_list_plugin(pending_id, url);
+                        }
+
+                        pending_id.clear();
+                        pending_title.clear();
+                        pending_enabled = true;
+                    }
+                }
+            }
+
+            obj["urls"] = urls_obj;
+            obj["custom_lists"] = custom_arr;
+            plugins_state_json_ = obj;
+            save_plugins_state();
+
+            Json res = Json::object{
+                {"status", "success"},
+                {"message", "Fuentes importadas con éxito"},
+                {"imported_count", imported_count}
+            };
+            auto body_str = res.dump(2);
+            headers["Content-Type"] = "application/json; charset=utf-8";
+            headers["Content-Length"] = std::to_string(body_str.size());
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(body_str);
+            connection.close();
+            return;
+        }
         else if (action == "check_list") {
             auto target_url = query_get(ctx.query, "url");
             auto plugin_name = query_get(ctx.query, "plugin");
@@ -1865,7 +2139,9 @@ void Proxy::set_plugin_url(const std::string& name, const std::string& url) {
     for (auto& plugin : plugins_.unique_plugins()) {
         if (plugin->name() == name && plugin->is_enabled()) {
             if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
-                playlist->force_refresh();
+                std::thread([playlist]() {
+                    try { playlist->force_refresh(); } catch (...) {}
+                }).detach();
             }
             break;
         }
@@ -1884,7 +2160,9 @@ void Proxy::add_custom_list_plugin(const std::string& name, const std::string& u
     if (existing) {
         if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(existing)) {
             set_plugin_url(name, url);
-            playlist->force_refresh();
+            std::thread([playlist]() {
+                try { playlist->force_refresh(); } catch (...) {}
+            }).detach();
         }
         return;
     }
@@ -1894,7 +2172,9 @@ void Proxy::add_custom_list_plugin(const std::string& name, const std::string& u
     plugins_.add(plugin);
     
     if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
-        playlist->force_refresh();
+        std::thread([playlist]() {
+            try { playlist->force_refresh(); } catch (...) {}
+        }).detach();
     }
 }
 

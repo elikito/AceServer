@@ -4,6 +4,17 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.24.01] - 2026-08-24
+
+### 📦 Exportación e Importación de Fuentes M3U y JSON (`/fuentes`)
+- **Sistema de Exportación Estandarizado M3U y JSON:**
+  - Botón de exportación en formato M3U estándar (`fuentes_httpaceproxy.m3u`) con directivas `#EXTM3U` y cabeceras `#EXTINF` con metadatos (`tvg-id`, `tvg-name`, `group-title`, etc.), plenamente compatible tanto con HTTPAceProxy como con cualquier reproductor IPTV genérico (VLC, Tivimate, Kodi, IPTV Smarters).
+  - Botón de exportación de copia de seguridad en formato JSON (`fuentes_httpaceproxy.json`) para respaldar la configuración completa de fuentes predefinidas y personalizadas.
+- **Sistema de Importación Inteligente de Fuentes:**
+  - Panel interactivo en `/fuentes` para cargar archivos `.m3u`, `.m3u8`, `.json` o `.txt`, o pegar código fuente directamente.
+  - Soporte de modos de importación: **Fusionar** (añadir/actualizar fuentes manteniendo las existentes) y **Reemplazar** (sustituir listas personalizadas).
+  - API de backend C++ en `/config?action=export_sources` y `/config?action=import_sources` para procesamiento en caliente y sincronización instantánea con el estado del servidor.
+
 ---
 
 ## [08.22.02] - 2026-08-22
