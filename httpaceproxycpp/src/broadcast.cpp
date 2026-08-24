@@ -202,6 +202,15 @@ void Broadcast::stop() {
     bool expected = false;
     if (!stopped_.compare_exchange_strong(expected, true)) return;
     running_ = false;
+    {
+        std::lock_guard<std::mutex> lock(ts_residual_mutex_);
+        if (!ts_residual_.empty()) {
+            for (auto& client : clients()) {
+                client->queue->push(ts_residual_, std::chrono::milliseconds(50));
+            }
+            ts_residual_.clear();
+        }
+    }
     for (auto& client : clients()) client->queue->close();
     if (ace_) {
         try { ace_->stop_broadcast(); } catch (...) {}
@@ -282,12 +291,28 @@ void Broadcast::stream_hls_url(const std::string& url) {
 }
 
 void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
-    std::vector<char> chunk(data, data + size);
+    if (!data || size == 0) return;
+
+    std::vector<char> chunk_to_push;
+    {
+        std::lock_guard<std::mutex> lock(ts_residual_mutex_);
+        ts_residual_.insert(ts_residual_.end(), data, data + size);
+        std::size_t total = ts_residual_.size();
+        std::size_t aligned_size = (total / 188) * 188;
+
+        if (aligned_size > 0) {
+            chunk_to_push.assign(ts_residual_.begin(), ts_residual_.begin() + aligned_size);
+            ts_residual_.erase(ts_residual_.begin(), ts_residual_.begin() + aligned_size);
+        } else {
+            return;
+        }
+    }
+
     auto write_timeout = std::max(1, config_.client_write_timeout);
     auto wait = std::chrono::milliseconds(write_timeout * 1000 / 4);
     auto now = unix_time();
     for (auto& client : clients()) {
-        auto result = client->queue->push(chunk, wait);
+        auto result = client->queue->push(chunk_to_push, wait);
         if (result == PushResult::Closed) continue;
         if (result == PushResult::DroppedOldest) {
             client->dropped_chunks.fetch_add(1, std::memory_order_relaxed);

@@ -106,6 +106,8 @@ private:
     std::atomic<bool> stopped_{false};
     std::thread stream_thread_;
     std::thread keepalive_thread_;
+    std::mutex ts_residual_mutex_;
+    std::vector<char> ts_residual_;
 };
 
 class BroadcastManager {

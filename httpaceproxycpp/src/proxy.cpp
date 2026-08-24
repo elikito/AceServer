@@ -1912,6 +1912,7 @@ Json Proxy::plugins_json() {
     Json::array plugin_array;
     for (const auto& plugin : plugins_.unique_plugins()) {
         if (plugin->name() == "stat" || plugin->name() == "statplugin" || plugin->name() == "aio") continue;
+        if (!is_plugin_enabled(plugin->name())) continue;
         Json::array channels;
         auto picons = plugin->picons();
         for (const auto& [name, url] : plugin->channels()) {
@@ -2071,11 +2072,28 @@ Json Proxy::get_network_diagnostics() {
     std::string warp_status = "disconnected"; // "active", "proxy", "disconnected"
     std::string warp_raw = "off";
     std::string loc = "ES";
-    std::string isp = "Local ISP";
+    std::string isp = "ISP Local";
     bool tailscale_connected = false;
     bool safe_route = false;
 
-    // 1. Consultar Cloudflare trace
+    // 1. Detección de puerto SOCKS5/HTTP local de WARP (40001)
+    bool warp_local_detected = false;
+    try {
+        auto resp = http_client_.get_single("http://127.0.0.1:40001/", {}, 1, false);
+        if (resp.status > 0) warp_local_detected = true;
+    } catch (...) {
+        try {
+            auto resp2 = http_client_.get_single("http://host.docker.internal:40001/", {}, 1, false);
+            if (resp2.status > 0) warp_local_detected = true;
+        } catch (...) {}
+    }
+
+    if (warp_local_detected) {
+        warp_status = "active";
+        warp_raw = "local_proxy_40001";
+    }
+
+    // 2. Consultar Cloudflare trace
     try {
         auto resp = http_client_.get_single("https://1.1.1.1/cdn-cgi/trace", {}, 3, false);
         if (resp.status == 200 && !resp.body.empty()) {
@@ -2091,7 +2109,7 @@ Json Proxy::get_network_diagnostics() {
                         warp_raw = val;
                         if (val == "on" || val == "plus") warp_status = "active";
                         else if (val == "proxy") warp_status = "proxy";
-                        else warp_status = "disconnected";
+                        else if (!warp_local_detected) warp_status = "disconnected";
                     }
                     else if (key == "loc") loc = val;
                 }
@@ -2113,7 +2131,7 @@ Json Proxy::get_network_diagnostics() {
                             warp_raw = val;
                             if (val == "on" || val == "plus") warp_status = "active";
                             else if (val == "proxy") warp_status = "proxy";
-                            else warp_status = "disconnected";
+                            else if (!warp_local_detected) warp_status = "disconnected";
                         }
                         else if (key == "loc") loc = val;
                     }
@@ -2122,7 +2140,7 @@ Json Proxy::get_network_diagnostics() {
         } catch (...) {}
     }
 
-    // 2. Detección de Tailscale (revisar si existe interfaz de red)
+    // 3. Detección de Tailscale (revisar si existe interfaz de red)
     try {
         if (std::filesystem::exists("/sys/class/net/tailscale0") ||
             std::filesystem::exists("/sys/class/net/tun0")) {
@@ -2132,7 +2150,7 @@ Json Proxy::get_network_diagnostics() {
         }
     } catch (...) {}
 
-    // 3. Determinar Proveedor (ISP) y Ruta Segura
+    // 4. Determinar Proveedor (ISP) y Ruta Segura
     if (warp_status == "active" || warp_status == "proxy") {
         isp = "Cloudflare WARP Network";
         safe_route = true;
@@ -2140,7 +2158,7 @@ Json Proxy::get_network_diagnostics() {
         isp = "Tailscale Encrypted Mesh";
         safe_route = true;
     } else {
-        isp = "ISP Direct Traffic (Sin Túnel)";
+        isp = "Ruta Directa (Sin Protección - ISP Local)";
         safe_route = false;
     }
 

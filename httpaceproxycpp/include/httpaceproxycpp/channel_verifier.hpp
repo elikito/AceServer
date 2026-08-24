@@ -1,7 +1,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// channel_verifier.hpp  —  v08.24.03
+// channel_verifier.hpp  —  v08.24.04
 //
 // Worker Pool asíncrono con concurrencia máxima configurable (default 2) para
 // verificar la reproducibilidad real de Content IDs de AceStream via la API

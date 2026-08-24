@@ -1301,6 +1301,7 @@
             <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
+            <a href="/player/legacy.html">Reproductor Legacy</a>
         </div>
     </nav>
 
@@ -1314,7 +1315,7 @@
             <div>
                 <h1>Panel de Diagnóstico de Canales</h1>
                 <p>Verifica la reproducibilidad real de los Content IDs mediante el Worker Pool de 4 fases — v<span
-                        class="app-version">08.24.03</span></p>
+                        class="app-version">08.24.04</span></p>
             </div>
         </div>
 
@@ -1328,7 +1329,7 @@
                     </svg>
                     <span>Estado de Protección de Red / Evasión de Bloqueos</span>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm" onclick="loadNetworkDiagnostics()"
+                <button type="button" class="btn btn-ghost btn-sm" onclick="loadNetworkDiagnostics(true)"
                     title="Recomprobar diagnóstico de red">
                     🔄 Diagnosticar Red
                 </button>
@@ -1468,7 +1469,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">08.24.03</span>
+            <span class="val version-badge app-version">08.24.04</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -1536,7 +1537,7 @@
         // =========================================================================
         // NETWORK PROTECTION DIAGNOSTICS
         // =========================================================================
-        async function loadNetworkDiagnostics() {
+        async function loadNetworkDiagnostics(isManualClick) {
             const routeBadge = document.getElementById('net-route-badge');
             const routeText = document.getElementById('net-route-text');
             const warpBadge = document.getElementById('net-warp-badge');
@@ -1545,6 +1546,8 @@
             const tsText = document.getElementById('net-tailscale-text');
             const ipVal = document.getElementById('net-ip-val');
             const ispVal = document.getElementById('net-isp-val');
+
+            if (routeText) routeText.textContent = 'Diagnosticando...';
 
             try {
                 const res = await fetch('/statplugin?action=network_diag');
@@ -1576,7 +1579,7 @@
                         routeText.textContent = '🟢 Ruta Segura (Túnel Activo)';
                     } else {
                         routeBadge.className = 'net-badge direct';
-                        routeText.textContent = '🟡 Ruta Directa (ISP Local)';
+                        routeText.textContent = '🟡 Ruta Directa (Sin Protección)';
                     }
                 }
 
@@ -1606,11 +1609,18 @@
                 }
 
                 if (ipVal) ipVal.textContent = data.ip || '127.0.0.1';
-                if (ispVal) ispVal.textContent = data.isp || 'Local Network';
+                if (ispVal) ispVal.textContent = data.isp || 'ISP Directo (Sin Túnel)';
+
+                if (isManualClick && typeof showToast === 'function') {
+                    showToast('✓ Diagnóstico de red actualizado correctamente', 'success');
+                }
 
             } catch (err) {
                 console.warn('Error cargando diagnóstico de red:', err);
-                if (routeText) routeText.textContent = 'Desconocido';
+                if (routeText) routeText.textContent = 'Error de conexión';
+                if (typeof showToast === 'function') {
+                    showToast('⚠ Error al ejecutar diagnóstico de red: ' + (err.message || 'Sin respuesta'), 'error');
+                }
             }
         }
 
@@ -1631,7 +1641,7 @@
                 animateCopied(ipEl);
             });
             document.getElementById('footer-ver-block')?.addEventListener('click', () => {
-                const v = verEl?.textContent || '08.24.03';
+                const v = verEl?.textContent || '08.24.04';
                 copyText(v, null, '✓ Versión copiada');
                 if (verEl) animateCopied(verEl);
             });
