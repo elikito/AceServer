@@ -815,6 +815,61 @@
             border: 1px solid rgba(255, 59, 48, 0.4);
         }
 
+        /* Player Header Content ID Badge */
+        .player-cid-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            color: #4CAF50;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            margin-left: 8px;
+        }
+
+        .player-cid-badge:hover {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        /* Active Playing Bento Card Highlight */
+        .bento-card.is-playing {
+            border: 2px solid #4CAF50 !important;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.12) 0%, var(--card-bg) 100%) !important;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.35) !important;
+            position: relative;
+        }
+
+        .playing-now-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #4CAF50;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 6px rgba(76, 175, 80, 0.4);
+            animation: pulse-live 2s infinite;
+        }
+
+        @keyframes pulse-live {
+            0% { opacity: 0.9; box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { opacity: 1; box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+            100% { opacity: 0.9; box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
         .player-close-btn {
             background: transparent;
             border: none;
@@ -1115,6 +1170,10 @@
                     <span class="player-live-dot"></span>
                     <span id="player-title" class="player-title-text">Canal en Directo</span>
                     <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
+                    <div id="player-content-id-box" class="player-cid-badge" style="display: none;" onclick="copyPlayerContentId()" title="Clic para copiar Content ID en reproducción">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <span id="player-cid-text">ID: ...</span>
+                    </div>
                 </div>
                 <div class="player-info-right">
                     <select id="player-audio-select" class="player-engine-select"
@@ -1648,6 +1707,59 @@
             }
         }
 
+        function copyPlayerContentId() {
+            const cidBox = document.getElementById('player-content-id-box');
+            const fullCid = cidBox ? cidBox.getAttribute('data-full-cid') : '';
+            if (!fullCid) return;
+            if (typeof copyToClipboard === 'function') {
+                copyToClipboard(fullCid);
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(fullCid);
+            }
+            if (typeof showToast === 'function') {
+                showToast('✓ Content ID copiado: ' + fullCid, 'success');
+            }
+        }
+
+        function highlightPlayingCard(streamUrl, channelName, forceContentId) {
+            document.querySelectorAll('.bento-card').forEach(card => {
+                card.classList.remove('is-playing');
+                const oldBadge = card.querySelector('.playing-now-badge');
+                if (oldBadge) oldBadge.remove();
+            });
+
+            if (!streamUrl && !channelName && !forceContentId) return;
+
+            const targetCid = forceContentId || extractAceId(streamUrl);
+            let matchedCard = null;
+
+            document.querySelectorAll('.bento-card').forEach(card => {
+                if (matchedCard) return;
+                const cardTitle = card.querySelector('.channel-name');
+                const playBtn = card.querySelector('.btn-play');
+                const onclickAttr = playBtn ? playBtn.getAttribute('onclick') : '';
+                const cardAceIdEl = card.querySelector('.channel-ace-id');
+                const cardAceIdAttr = cardAceIdEl ? cardAceIdEl.getAttribute('title') : '';
+
+                if (targetCid && (onclickAttr.includes(targetCid) || cardAceIdAttr.includes(targetCid))) {
+                    matchedCard = card;
+                } else if (channelName && cardTitle && cardTitle.textContent.trim().toLowerCase() === channelName.trim().toLowerCase()) {
+                    matchedCard = card;
+                }
+            });
+
+            if (matchedCard) {
+                matchedCard.classList.add('is-playing');
+                const metaTags = matchedCard.querySelector('.channel-meta-tags');
+                if (metaTags) {
+                    const badge = document.createElement('span');
+                    badge.className = 'playing-now-badge';
+                    badge.innerHTML = '🔴 EN VIVO';
+                    metaTags.insertBefore(badge, metaTags.firstChild);
+                }
+            }
+        }
+
         function stopWebPlayer() {
             if (nerdStatsInterval) {
                 clearInterval(nerdStatsInterval);
@@ -1658,6 +1770,10 @@
             if (panel) panel.style.display = 'none';
             const btn = document.getElementById('btn-nerd-stats');
             if (btn) btn.classList.remove('active');
+
+            highlightPlayingCard(null, null, null);
+            const cidBox = document.getElementById('player-content-id-box');
+            if (cidBox) cidBox.style.display = 'none';
 
             const wrapper = document.getElementById('player-wrapper');
             const videoEl = document.getElementById('web-player');
@@ -1683,6 +1799,7 @@
             if (wrapper) {
                 wrapper.style.display = 'none';
             }
+            updatePlayerStatus('Detenido', 'loading');
         }
 
         function updatePlayerStatus(statusText, badgeClass) {
@@ -1722,7 +1839,7 @@
             }
         }
 
-        function playChannelInWebPlayer(streamUrl, channelName) {
+        function playChannelInWebPlayer(streamUrl, channelName, forceContentId) {
             stopWebPlayer();
 
             const wrapper = document.getElementById('player-wrapper');
@@ -1732,6 +1849,22 @@
             if (wrapper) wrapper.style.display = 'block';
             if (titleEl) titleEl.textContent = channelName || 'Canal en Directo';
             updatePlayerStatus('Cargando stream...', 'loading');
+
+            const currentCid = forceContentId || extractAceId(streamUrl);
+            const cidBox = document.getElementById('player-content-id-box');
+            const cidText = document.getElementById('player-cid-text');
+            if (cidBox && cidText) {
+                if (currentCid && currentCid.length >= 10) {
+                    cidText.textContent = `ID: ${currentCid.substring(0, 8)}...${currentCid.substring(32)}`;
+                    cidBox.style.display = 'inline-flex';
+                    cidBox.setAttribute('data-full-cid', currentCid);
+                } else {
+                    cidBox.style.display = 'none';
+                    cidBox.removeAttribute('data-full-cid');
+                }
+            }
+
+            highlightPlayingCard(streamUrl, channelName, currentCid);
 
             currentStreamStats = { speedKBps: 0, fps: 0, totalBytes: 0, droppedFrames: 0, decodedFrames: 0 };
             lastDecodedFrames = 0;

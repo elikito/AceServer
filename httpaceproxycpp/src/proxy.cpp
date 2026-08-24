@@ -275,6 +275,7 @@ void Proxy::set_engine(const std::string& name_or_mode) {
         engine_mode_ = mode_label;
         config_.ace_host = target_engine;
         broadcasts_.config().ace_host = target_engine;
+        channel_verifier_.set_ace_engine(target_engine, config_.ace_http_port);
         ace_status_cache_ = Json();
         ace_status_time_ = {};
     }
@@ -2063,6 +2064,100 @@ Json Proxy::get_channel_health_one(const std::string& content_id) {
     auto j = cached.to_json().as_object();
     j["status"] = "success";
     return Json(j);
+}
+
+Json Proxy::get_network_diagnostics() {
+    std::string public_ip = "Desconocida";
+    std::string warp_status = "disconnected"; // "active", "proxy", "disconnected"
+    std::string warp_raw = "off";
+    std::string loc = "ES";
+    std::string isp = "Local ISP";
+    bool tailscale_connected = false;
+    bool safe_route = false;
+
+    // 1. Consultar Cloudflare trace
+    try {
+        auto resp = http_client_.get_single("https://1.1.1.1/cdn-cgi/trace", {}, 3, false);
+        if (resp.status == 200 && !resp.body.empty()) {
+            std::istringstream stream(resp.body);
+            std::string line;
+            while (std::getline(stream, line)) {
+                auto eq = line.find('=');
+                if (eq != std::string::npos) {
+                    std::string key = trim(line.substr(0, eq));
+                    std::string val = trim(line.substr(eq + 1));
+                    if (key == "ip") public_ip = val;
+                    else if (key == "warp") {
+                        warp_raw = val;
+                        if (val == "on" || val == "plus") warp_status = "active";
+                        else if (val == "proxy") warp_status = "proxy";
+                        else warp_status = "disconnected";
+                    }
+                    else if (key == "loc") loc = val;
+                }
+            }
+        }
+    } catch (...) {
+        try {
+            auto resp2 = http_client_.get_single("https://www.cloudflare.com/cdn-cgi/trace", {}, 3, false);
+            if (resp2.status == 200 && !resp2.body.empty()) {
+                std::istringstream stream(resp2.body);
+                std::string line;
+                while (std::getline(stream, line)) {
+                    auto eq = line.find('=');
+                    if (eq != std::string::npos) {
+                        std::string key = trim(line.substr(0, eq));
+                        std::string val = trim(line.substr(eq + 1));
+                        if (key == "ip") public_ip = val;
+                        else if (key == "warp") {
+                            warp_raw = val;
+                            if (val == "on" || val == "plus") warp_status = "active";
+                            else if (val == "proxy") warp_status = "proxy";
+                            else warp_status = "disconnected";
+                        }
+                        else if (key == "loc") loc = val;
+                    }
+                }
+            }
+        } catch (...) {}
+    }
+
+    // 2. Detección de Tailscale (revisar si existe interfaz de red)
+    try {
+        if (std::filesystem::exists("/sys/class/net/tailscale0") ||
+            std::filesystem::exists("/sys/class/net/tun0")) {
+            tailscale_connected = true;
+        } else if (const char* ts_env = std::getenv("TAILSCALE_CONNECTED")) {
+            if (std::string(ts_env) == "true" || std::string(ts_env) == "1") tailscale_connected = true;
+        }
+    } catch (...) {}
+
+    // 3. Determinar Proveedor (ISP) y Ruta Segura
+    if (warp_status == "active" || warp_status == "proxy") {
+        isp = "Cloudflare WARP Network";
+        safe_route = true;
+    } else if (tailscale_connected) {
+        isp = "Tailscale Encrypted Mesh";
+        safe_route = true;
+    } else {
+        isp = "ISP Direct Traffic (Sin Túnel)";
+        safe_route = false;
+    }
+
+    return Json::object{
+        {"status", "success"},
+        {"ip", public_ip},
+        {"loc", loc},
+        {"isp", isp},
+        {"warp", Json::object{
+            {"status", warp_status},
+            {"raw", warp_raw}
+        }},
+        {"tailscale", Json::object{
+            {"connected", tailscale_connected}
+        }},
+        {"safe_route", safe_route}
+    };
 }
 
 bool Proxy::is_plugin_enabled(const std::string& name) const {

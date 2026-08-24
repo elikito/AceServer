@@ -37,7 +37,7 @@ public:
     Json check_epg_url(const std::string& url);
 
     // -----------------------------------------------------------------------
-    // v08.24.02 — API de verificación de salud con Worker Pool asíncrono
+    // v08.24.03 — API de verificación de salud y diagnóstico de red
     // -----------------------------------------------------------------------
     /// Verifica un Content ID de forma síncrona (espera hasta timeout_ms).
     Json verify_channel(const std::string& content_id, int timeout_ms = 10000);
@@ -53,6 +53,9 @@ public:
 
     /// Retorna el estado en memoria de un único CID sin lanzar nueva verificación.
     Json get_channel_health_one(const std::string& content_id);
+
+    /// Diagnóstico de protección de red (Cloudflare WARP, Tailscale, IP de salida, Ruta Segura).
+    Json get_network_diagnostics();
 
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);

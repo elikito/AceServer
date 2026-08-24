@@ -831,6 +831,12 @@ public:
             auto data = proxy_.get_channel_health_one(cid);
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
 
+        } else if (action == "network_diag") {
+            // Diagnóstico de nivel de protección de red (WARP, Tailscale, IP de salida, Ruta Segura).
+            // GET /statplugin?action=network_diag
+            auto data = proxy_.get_network_diagnostics();
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+
         } else {
             // Servir el frontend HTML del statplugin.
             try {

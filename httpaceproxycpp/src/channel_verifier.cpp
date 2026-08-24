@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// channel_verifier.cpp  —  v08.24.02
+// channel_verifier.cpp  —  v08.24.03
 //
 // Implementación del Worker Pool asíncrono y del pipeline de verificación
 // de Content IDs de AceStream en 4 fases.
@@ -95,6 +95,21 @@ ChannelVerifier::ChannelVerifier(const HttpClient& http_client,
       max_workers_(std::max(1, std::min(max_workers, kDefaultMaxWorkers))),
       semaphore_(kDefaultMaxWorkers)   // semáforo con capacidad fija en tiempo de compilación
 {
+    // Resolver host primario mediante env var ACE_HOST / ACESTREAM_HOST si ace_host_ está vacío o es default
+    if (const char* env_host = std::getenv("ACE_HOST")) {
+        if (*env_host) ace_host_ = env_host;
+    } else if (const char* env_host2 = std::getenv("ACESTREAM_HOST")) {
+        if (*env_host2) ace_host_ = env_host2;
+    }
+
+    if (ace_host_.empty()) {
+        ace_host_ = "aceserve-modern";
+    }
+
+    if (ace_http_port_ <= 0) {
+        ace_http_port_ = 6878;
+    }
+
     // Leer override del puerto HTTP del motor desde variable de entorno.
     if (const char* env_port = std::getenv("ACE_ENGINE_HTTP_PORT")) {
         try {
@@ -408,19 +423,59 @@ VerifyResult ChannelVerifier::run_pipeline(const std::string& content_id) {
 // ---------------------------------------------------------------------------
 
 ChannelVerifier::SessionUrls ChannelVerifier::phase_handshake(const std::string& content_id) {
-    const std::string url = engine_base_url()
-                            + "/ace/getstream?id=" + content_id
-                            + "&format=json";
+    std::string base_url = engine_base_url();
+    std::string url = base_url + "/ace/getstream?id=" + content_id + "&format=json";
 
     HttpClientResponse resp;
+    bool connected = false;
     try {
         resp = http_client_.get_single(url, {}, kHandshakeTimeoutSec, false);
+        if (resp.status == 200) {
+            connected = true;
+        }
     } catch (const std::exception& e) {
-        throw std::runtime_error(std::string("Fase1 handshake timeout: ") + e.what());
+        log_line("ERROR", "[verifier] Error de conexión al motor AceStream en Fase 1 (" + url + "): " + e.what());
     }
 
-    if (resp.status != 200) {
-        throw std::runtime_error("Fase1 HTTP " + std::to_string(resp.status));
+    // Si falló la conexión inicial, intentar resolver fallback host si se usaba 127.0.0.1 / localhost o aceserve-modern
+    if (!connected) {
+        std::string current_host;
+        int current_port;
+        {
+            std::lock_guard<std::mutex> lk(engine_mutex_);
+            current_host = ace_host_;
+            current_port = ace_http_port_;
+        }
+
+        std::string fallback_host;
+        if (current_host == "127.0.0.1" || current_host == "localhost" || current_host.empty()) {
+            fallback_host = "aceserve-modern";
+        } else if (current_host == "aceserve-modern") {
+            fallback_host = "127.0.0.1";
+        }
+
+        if (!fallback_host.empty() && fallback_host != current_host) {
+            std::string fallback_url = "http://" + fallback_host + ":" + std::to_string(current_port)
+                                      + "/ace/getstream?id=" + content_id + "&format=json";
+            try {
+                resp = http_client_.get_single(fallback_url, {}, kHandshakeTimeoutSec, false);
+                if (resp.status == 200) {
+                    log_line("INFO", "[verifier] Fallback exitoso de host en Fase 1: cambiado de " + current_host + " a " + fallback_host);
+                    set_ace_engine(fallback_host, current_port);
+                    connected = true;
+                }
+            } catch (const std::exception& fb_err) {
+                log_line("ERROR", "[verifier] Fallback de conexión (" + fallback_url + ") también falló: " + fb_err.what());
+            }
+        }
+    }
+
+    if (!connected) {
+        if (resp.status > 0 && resp.status != 200) {
+            log_line("ERROR", "[verifier] Fase 1 HTTP status " + std::to_string(resp.status) + " en URL: " + url + " - body: " + resp.body.substr(0, 100));
+            throw std::runtime_error("Fase1 HTTP " + std::to_string(resp.status));
+        }
+        throw std::runtime_error("Fase1 handshake fallo conexion motor (" + url + ")");
     }
 
     // Parsear JSON de respuesta del motor.

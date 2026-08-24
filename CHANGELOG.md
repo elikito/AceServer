@@ -4,6 +4,35 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.24.03] - 2026-08-24
+
+### 🛠️ Corrección Crítica de Enrutamiento en `ChannelVerifier` y Mejoras de Diagnóstico
+
+#### Backend C++ — Corrección del Host y Fallback de Red
+- **Resolución dinámica de Host y Puerto en `ChannelVerifier` (`channel_verifier.cpp`)**:
+  - Corrección del fallo de conexión en Fase 1 que generaba falsos negativos ("Error / Bloqueado").
+  - Soporte de variables de entorno `ACE_HOST` / `ACESTREAM_HOST` / `ACE_ENGINE_HTTP_PORT` para adaptar el Worker Pool al entorno del contenedor.
+  - Fallback inteligente en Fase 1: si la conexión inicial a `127.0.0.1` o `aceserve-modern` en puerto 6878 falla, se reintenta automáticamente contra el host alternativo de la red Docker y se actualiza el motor activo en runtime.
+  - Registro de errores explícito en logs (`[verifier] Error de conexión al motor AceStream en Fase 1`) para depuración inmediata.
+  - Sincronización automática de `channel_verifier_.set_ace_engine()` al solicitar cambios de motor vía `set_engine()`.
+
+#### Panel de Nivel de Protección de Red (`/statplugin`)
+- **Nuevo Endpoint Backend `/statplugin?action=network_diag`**:
+  - Detección de **Cloudflare WARP** (`Activo` / `Modo Proxy` / `Desconectado`) mediante traza `/cdn-cgi/trace`.
+  - Detección de **Tailscale Mesh Network** (`Conectado` / `Inactivo`) inspeccionando la presencia de interfaces de red.
+  - Detección de IP pública de salida y proveedor/ISP.
+  - Generación del indicador de **"Ruta Segura"** (🟢 Verde si transita por túnel con evasión de bloqueos de ISP activa / 🟡 Amarillo/Gris si la ruta es directa por ISP local).
+- **Banner UI en `/statplugin`**:
+  - Incorporada tarjeta interactiva de Estado de Protección de Red con badges de estado y botón de actualización manual.
+
+#### Reproductor IPTV Bento (`/player`)
+- **Visualización de Content ID en Barra de Estado**:
+  - Añadida insignia interactiva `#player-content-id-box` en la cabecera mostrando el hash en reproducción actual y botón de copia rápida con notificación Toast (`✓ Content ID copiado`).
+- **Resaltado Activo de Tarjeta de Canal en Cuadrícula (Bento Grid)**:
+  - Destacado visual en tiempo real de la tarjeta en reproducción (`.bento-card.is-playing`) con borde brillante verde (`#4CAF50`), resplandor dinámico y distintivo `🔴 REPRODUCIENDO EN VIVO`.
+
+---
+
 ## [08.24.02] - 2026-08-24
 
 ### ⚡ Refactorización Profunda del Módulo de Verificación de Canales (`/statplugin`)
