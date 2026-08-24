@@ -1908,25 +1908,96 @@ Json Proxy::acestream_engine_status() {
     return status;
 }
 
+namespace {
+
+std::string extract_acestream_content_id(const std::string& input_url) {
+    std::string s = trim(input_url);
+    if (s.empty()) return "";
+
+    if (starts_with(s, "acestream://")) {
+        s = s.substr(12);
+        auto slash = s.find('/');
+        if (slash != std::string::npos) s = s.substr(0, slash);
+        return trim(s);
+    }
+
+    auto pos = s.find("/content_id/");
+    if (pos != std::string::npos) {
+        std::string rest = s.substr(pos + 12);
+        auto slash = rest.find('/');
+        if (slash != std::string::npos) rest = rest.substr(0, slash);
+        return trim(rest);
+    }
+
+    if (s.size() >= 40) {
+        std::string hex_candidate;
+        for (char c : s) {
+            if (std::isxdigit(static_cast<unsigned char>(c))) {
+                hex_candidate.push_back(c);
+                if (hex_candidate.size() == 40) return hex_candidate;
+            } else {
+                hex_candidate.clear();
+            }
+        }
+    }
+
+    return "";
+}
+
+} // namespace
+
 Json Proxy::plugins_json() {
     Json::array plugin_array;
     for (const auto& plugin : plugins_.unique_plugins()) {
         if (plugin->name() == "stat" || plugin->name() == "statplugin" || plugin->name() == "aio") continue;
         if (!is_plugin_enabled(plugin->name())) continue;
+
         Json::array channels;
         auto picons = plugin->picons();
-        for (const auto& [name, url] : plugin->channels()) {
-            auto parsed = parse_url(url);
-            if (parsed.scheme != "acestream") continue;
+        auto items = plugin->playlist_items();
+
+        for (const auto& item : items) {
+            std::string cid = extract_acestream_content_id(item.url);
+            if (cid.empty() && !item.name.empty()) {
+                auto ch_map = plugin->channels();
+                auto it = ch_map.find(item.name);
+                if (it != ch_map.end()) {
+                    cid = extract_acestream_content_id(it->second);
+                }
+            }
+            if (cid.empty()) continue;
+
+            std::string logo = item.logo;
+            if (logo.empty() && picons.contains(item.name)) {
+                logo = picons[item.name];
+            }
+
             channels.push_back(Json::object{
-                {"name", name},
-                {"content_id", parsed.host},
-                {"logo", picons.contains(name) ? picons[name] : ""},
+                {"name", item.name},
+                {"content_id", cid},
+                {"logo", logo},
+                {"group", item.group},
                 {"status", "unknown"},
                 {"last_check", nullptr},
                 {"infohash", ""}
             });
         }
+
+        if (channels.empty()) {
+            for (const auto& [name, url] : plugin->channels()) {
+                std::string cid = extract_acestream_content_id(url);
+                if (cid.empty()) continue;
+                channels.push_back(Json::object{
+                    {"name", name},
+                    {"content_id", cid},
+                    {"logo", picons.contains(name) ? picons[name] : ""},
+                    {"status", "unknown"},
+                    {"last_check", nullptr},
+                    {"infohash", ""}
+                });
+            }
+        }
+
         if (!channels.empty()) {
             plugin_array.push_back(Json::object{
                 {"name", plugin->name()},

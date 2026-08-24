@@ -7,7 +7,7 @@
 
 namespace httpace {
 
-inline constexpr const char* kAppVersion = "08.24.04";
+inline constexpr const char* kAppVersion = "08.24.05";
 
 struct Config {
     std::string ace_host = "127.0.0.1";

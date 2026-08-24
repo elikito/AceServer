@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// channel_verifier.cpp  —  v08.24.04
+// channel_verifier.cpp  —  v08.24.05
 //
 // Implementación del Worker Pool asíncrono y del pipeline de verificación
 // de Content IDs de AceStream en 4 fases.
