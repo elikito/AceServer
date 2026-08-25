@@ -4,6 +4,25 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.03] - 2026-08-25
+
+### ⚡ Integración de Cloudflare WARP en Docker & Ajustes de Negociación de Red
+
+#### Docker & Comunicación con el Host
+- **Montaje de Socket IPC y Binario de Cloudflare WARP**:
+  - Configurados los volúmenes en `docker-compose.yml` (y `docker-compose-httpaceproxycpp.yml`) para comunicar de forma transparente el backend C++ con el daemon `warp-svc` del host:
+    - `/run/cloudflare-warp:/run/cloudflare-warp` (Socket IPC).
+    - `/usr/bin/warp-cli:/usr/bin/warp-cli:ro` (Binario de control en modo lectura).
+  - Diseñado con tolerancia a fallos para nodos que no tengan WARP instalado, garantizando que el arranque del contenedor nunca se interrumpa.
+
+#### Backend C++ (`plugins.cpp`)
+- **Validación de Disponibilidad de `warp-cli`**:
+  - Añadida comprobación previa de existencia y ejecutabilidad de `warp-cli` antes de invocar órdenes del sistema. Si el binario o socket no está accesible, se devuelve una respuesta JSON estructurada con `status: "error"` y el diagnóstico de red actual en lugar de fallar silenciosamente.
+- **Incremento del Tiempo de Negociación (2000 ms)**:
+  - Ampliado el retardo tras la ejecución de `warp_connect`, `warp_disconnect` y `warp_toggle` de 500 ms a **2000 ms** (`std::chrono::milliseconds(2000)`), permitiendo a Cloudflare WARP completar el *handshake* de la interfaz virtual y el túnel seguro antes de consultar el diagnóstico actualizado.
+
+---
+
 ## [08.25.01] - 2026-08-25
 
 ### 🚀 Unificación, Modularización, Cabeceras y Mejoras EPG/UI

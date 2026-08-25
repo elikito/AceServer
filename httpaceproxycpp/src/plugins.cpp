@@ -839,20 +839,39 @@ public:
 
         } else if (action == "warp_connect" || action == "warp_disconnect" || action == "warp_toggle") {
             // Control interactivo de Cloudflare WARP (connect / disconnect / toggle)
+            bool warp_available = std::filesystem::exists("/usr/bin/warp-cli") || (::system("which warp-cli >/dev/null 2>&1") == 0);
+            if (!warp_available) {
+                Json::object err_obj;
+                err_obj["status"] = "error";
+                err_obj["message"] = "warp-cli is not accessible inside container";
+                auto diag = proxy_.get_network_diagnostics();
+                if (diag.is_object()) {
+                    for (const auto& [k, v] : diag.as_object()) {
+                        err_obj[k] = v;
+                    }
+                }
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(err_obj).dump(2));
+                return true;
+            }
+
             if (action == "warp_connect") {
-                ::system("warp-cli connect >/dev/null 2>&1");
+                auto ret = ::system("warp-cli connect >/dev/null 2>&1");
+                (void)ret;
             } else if (action == "warp_disconnect") {
-                ::system("warp-cli disconnect >/dev/null 2>&1");
+                auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
+                (void)ret;
             } else if (action == "warp_toggle") {
                 auto diag = proxy_.get_network_diagnostics();
                 std::string current_warp = diag.contains("warp") && diag["warp"].is_object() && diag["warp"].contains("status") ? diag["warp"]["status"].as_string() : "disconnected";
                 if (current_warp == "active" || current_warp == "proxy") {
-                    ::system("warp-cli disconnect >/dev/null 2>&1");
+                    auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
+                    (void)ret;
                 } else {
-                    ::system("warp-cli connect >/dev/null 2>&1");
+                    auto ret = ::system("warp-cli connect >/dev/null 2>&1");
+                    (void)ret;
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
             auto data = proxy_.get_network_diagnostics();
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
 
