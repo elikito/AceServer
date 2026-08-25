@@ -1,9 +1,16 @@
 {
-  "acepl": true,
-  "af1c1onados": true,
+  "acepl": false,
+  "af1c1onados": false,
   "aio": true,
-  "custom_lists": [],
-  "elcano": true,
+  "custom_lists": [
+    {
+      "enabled": true,
+      "name": "unificada",
+      "title": "Unificada",
+      "url": "/listas/locales/lista_acestream_unificada.m3u"
+    }
+  ],
+  "elcano": false,
   "newera": false,
   "urls": {
     "acepl": "https://api.acestream.me/all?api_version=1.0&api_key=test_api_key",
@@ -12,5 +19,5 @@
     "epg": "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz",
     "newera": "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"
   },
-  "version": "08.24.06"
+  "version": "08.25.01"
 }

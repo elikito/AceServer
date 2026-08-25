@@ -7,6 +7,7 @@
     <meta name="description" content="Panel de diagnóstico y verificación de canales AceStream — HTTPAceProxy">
     <title>Diagnóstico de Canales — HTTPAceProxy</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="stylesheet" href="/stat/css/navbar.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -65,138 +66,6 @@
             min-height: 100vh;
             padding-bottom: 56px;
             -webkit-font-smoothing: antialiased;
-        }
-
-        /* ------------------------------------------------------------------ */
-        /* NAVBAR                                                               */
-        /* ------------------------------------------------------------------ */
-        .navbar {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            height: 56px;
-            position: sticky;
-            top: 0;
-            z-index: 200;
-            backdrop-filter: blur(12px);
-        }
-
-        .nav-brand {
-            font-weight: 700;
-            font-size: 17px;
-            color: var(--text);
-            text-decoration: none;
-            letter-spacing: -.3px;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 4px;
-        }
-
-        .nav-links a {
-            color: var(--muted);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 7px 12px;
-            border-radius: var(--radius-sm);
-            transition: color .15s, background .15s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text);
-            background: var(--border);
-        }
-
-        .nav-links a.active {
-            color: #ffffff;
-            background: var(--border);
-            font-weight: 600;
-        }
-
-        .navbar-toggle {
-            display: none;
-            flex-direction: column;
-            gap: 5px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px;
-        }
-
-        .navbar-toggle .bar {
-            width: 22px;
-            height: 2px;
-            background: var(--muted);
-            border-radius: 2px;
-            transition: all .2s;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 56px;
-                left: 0;
-                right: 0;
-                background: var(--surface);
-                border-bottom: 1px solid var(--border);
-                padding: 12px 20px;
-                gap: 4px;
-                z-index: 199;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .nav-links a {
-                width: 100%;
-                text-align: center;
-                padding: 10px;
-            }
-        }
-
-        /* ------------------------------------------------------------------ */
-        /* LAYOUT                                                               */
-        /* ------------------------------------------------------------------ */
-        .container {
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 24px 20px;
-        }
-
-        /* ------------------------------------------------------------------ */
-        /* PAGE HEADER                                                          */
-        /* ------------------------------------------------------------------ */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-
-        .page-header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -.4px;
-        }
-
-        .page-header p {
-            font-size: 13px;
-            color: var(--muted);
-            margin-top: 3px;
         }
 
         /* ------------------------------------------------------------------ */
@@ -1291,10 +1160,12 @@
     <!-- ================================================================== -->
     <!-- NAVBAR                                                               -->
     <!-- ================================================================== -->
-    <nav class="navbar" role="navigation" aria-label="Navegación principal">
+    <nav class="navbar">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
-            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
         </button>
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
@@ -1311,12 +1182,12 @@
     <!-- ================================================================== -->
     <div class="container">
 
-        <!-- Page header -->
-        <div class="page-header">
-            <div>
-                <h1>Panel de Diagnóstico de Canales</h1>
+        <!-- Header Section -->
+        <div class="header-section">
+            <div class="header-title">
+                <h2>Panel de Diagnóstico de Canales</h2>
                 <p>Verifica la reproducibilidad real de los Content IDs mediante el Worker Pool de 4 fases — v<span
-                        class="app-version">08.24.06</span></p>
+                        class="app-version">08.25.01</span></p>
             </div>
         </div>
 
@@ -1476,10 +1347,11 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">08.24.06</span>
+            <span class="val version-badge app-version">08.25.01</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
+    <script src="/stat/js/navbar.js"></script>
 
     <!-- ================================================================== -->
     <!-- SCRIPT                                                               -->
@@ -1501,8 +1373,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme();
             bindThemeToggle();
-            bindNavToggle();
-            bindFooter();
             loadPlugins();
         });
 
@@ -1532,14 +1402,6 @@
                 : '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
         }
 
-        // =========================================================================
-        // NAV TOGGLE
-        // =========================================================================
-        function bindNavToggle() {
-            const btn = document.getElementById('navbar-toggle');
-            const links = document.getElementById('nav-links');
-            if (btn && links) btn.addEventListener('click', () => links.classList.toggle('show'));
-        }
 
         // =========================================================================
         // NETWORK PROTECTION DIAGNOSTICS
@@ -1651,33 +1513,7 @@
             loadNetworkDiagnostics(false);
         }
 
-        // =========================================================================
-        // FOOTER
-        // =========================================================================
-        function bindFooter() {
-            const ipEl = document.getElementById('server-ip');
-            const verEl = document.querySelector('.version-badge');
-            const host = window.location.hostname || '127.0.0.1';
-            if (ipEl) ipEl.textContent = host;
-            fetch('/stat/?action=get_status').then(r => r.json()).then(d => {
-                const hn = d.server_info?.hostname || d.sys_info?.hostname || '';
-                if (hn && ipEl) ipEl.textContent = `${host} (${hn})`;
-            }).catch(() => { });
-            document.getElementById('footer-ip-block')?.addEventListener('click', () => {
-                copyText(host, null, '✓ IP copiada');
-                animateCopied(ipEl);
-            });
-            document.getElementById('footer-ver-block')?.addEventListener('click', () => {
-                const v = verEl?.textContent || '08.24.06';
-                copyText(v, null, '✓ Versión copiada');
-                if (verEl) animateCopied(verEl);
-            });
-        }
-        function animateCopied(el) {
-            if (!el) return;
-            el.classList.add('copied');
-            setTimeout(() => el.classList.remove('copied'), 1600);
-        }
+
 
         // =========================================================================
         // LOAD PLUGINS (get_plugins + load health cache)

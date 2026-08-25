@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuentes de Canales - HTTPAceProxy</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/stat/css/navbar.css">
     <style>
         * {
             margin: 0;
@@ -47,137 +51,6 @@
             color: var(--text-color);
             min-height: 100vh;
             padding-bottom: 70px;
-        }
-
-        /* Navbar */
-        .navbar {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            height: 56px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-brand {
-            font-weight: 700;
-            font-size: 18px;
-            color: #ffffff;
-            text-decoration: none;
-        }
-
-        body.light-theme .nav-brand {
-            color: #18181b;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 12px;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: color 0.2s, background-color 0.2s;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: var(--text-color);
-            background-color: var(--border-color);
-        }
-
-        .navbar-toggle {
-            display: none;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 24px;
-            height: 18px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            z-index: 101;
-        }
-
-        .navbar-toggle .icon-bar {
-            width: 100%;
-            height: 2px;
-            background-color: var(--text-color);
-            border-radius: 1px;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 56px;
-                left: 0;
-                right: 0;
-                background-color: var(--header-bg);
-                border-bottom: 1px solid var(--border-color);
-                padding: 16px 24px;
-                gap: 8px;
-                z-index: 99;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .nav-links a {
-                width: 100%;
-                text-align: center;
-                padding: 12px;
-            }
-        }
-
-        /* Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px 20px;
-        }
-
-        /* Header Section */
-        .header-section {
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .header-title p {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-top: 4px;
         }
 
         /* Stats Overview Cards */
@@ -703,7 +576,7 @@
     <!-- Navbar -->
     <nav class="navbar">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -723,37 +596,40 @@
         <!-- Header -->
         <div class="header-section">
             <div class="header-title">
-                <h1>
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                        <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
-                    </svg>
-                    Gestión de Fuentes M3U / URLs
-                </h1>
-                <p>Edita URLs, activa o apaga listas en caliente, analiza el contador de canales y grupos detectados.
-                </p>
+                <h2>Gestión de Fuentes M3U / URLs</h2>
+                <p>Administra, sincroniza y añade listas de reproducción dinámicas</p>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <button class="btn-action btn-copy" style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;" onclick="exportSources('m3u')" title="Exportar fuentes en formato M3U estándar (IPTV / HTTPAceProxy)">
+                <button class="btn-action btn-copy"
+                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
+                    onclick="exportSources('m3u')"
+                    title="Exportar fuentes en formato M3U estándar (IPTV / HTTPAceProxy)">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                     </svg>
                     <span>Exportar M3U</span>
                 </button>
-                <button class="btn-action btn-copy" style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; background: #667eea; font-weight: 500;" onclick="exportSources('json')" title="Exportar copia de seguridad en formato JSON">
+                <button class="btn-action btn-copy"
+                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; background: #667eea; font-weight: 500;"
+                    onclick="exportSources('json')" title="Exportar copia de seguridad en formato JSON">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                     </svg>
                     <span>Exportar JSON</span>
                 </button>
-                <button class="btn-action btn-save" style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;" onclick="toggleImportCard()" title="Importar paquete de fuentes (M3U, M3U8, JSON, TXT)">
+                <button class="btn-action btn-save"
+                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
+                    onclick="toggleImportCard()" title="Importar paquete de fuentes (M3U, M3U8, JSON, TXT)">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+                        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
                     </svg>
                     <span>Importar Fuentes</span>
                 </button>
-                <button class="btn-action btn-refresh" style="padding: 9px 16px;" onclick="refreshAllSources()" title="Actualizar todas las fuentes">
+                <button class="btn-action btn-refresh" style="padding: 9px 16px;" onclick="refreshAllSources()"
+                    title="Actualizar todas las fuentes">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" id="refresh-all-icon">
-                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                        <path
+                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                     </svg>
                 </button>
             </div>
@@ -924,45 +800,66 @@
         </div>
         <div class="config-card" id="import-export-card">
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                Exporta tus fuentes de canales para utilizarlas en un reproductor IPTV genérico (VLC, Tivimate, Kodi, IPTV Smarters) o para importarlas directamente en HTTPAceProxy. También puedes importar paquetes de fuentes en formato .m3u, .m3u8, .json o .txt.
+                Exporta tus fuentes de canales para utilizarlas en un reproductor IPTV genérico (VLC, Tivimate, Kodi,
+                IPTV Smarters) o para importarlas directamente en HTTPAceProxy. También puedes importar paquetes de
+                fuentes en formato .m3u, .m3u8, .json o .txt.
             </p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                <div style="background: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
-                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬇️ Exportar Fuentes Configuradas</div>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Genera la salida estandarizada en el formato de tu elección.</p>
+
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div
+                    style="background: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬇️
+                        Exportar Fuentes Configuradas</div>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Genera la salida
+                        estandarizada en el formato de tu elección.</p>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn-action btn-copy" style="padding: 8px 14px; font-size: 13px; font-weight: 500;" onclick="exportSources('m3u')">
+                        <button class="btn-action btn-copy"
+                            style="padding: 8px 14px; font-size: 13px; font-weight: 500;"
+                            onclick="exportSources('m3u')">
                             📄 Descargar M3U
                         </button>
-                        <button class="btn-action btn-copy" style="padding: 8px 14px; font-size: 13px; background: #667eea; font-weight: 500;" onclick="exportSources('json')">
+                        <button class="btn-action btn-copy"
+                            style="padding: 8px 14px; font-size: 13px; background: #667eea; font-weight: 500;"
+                            onclick="exportSources('json')">
                             ⚙️ Backup JSON
                         </button>
                     </div>
                 </div>
 
-                <div style="background: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
-                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬆️ Importar desde Archivo (.M3U / .JSON / .TXT)</div>
+                <div
+                    style="background: var(--stat-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬆️
+                        Importar desde Archivo (.M3U / .JSON / .TXT)</div>
                     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <input type="file" id="import-file-input" class="url-input" accept=".m3u,.m3u8,.json,.txt" style="padding: 4px; font-size: 12px;">
-                        <select id="import-mode-select" class="url-input" style="width: 110px; font-size: 12px; padding: 4px;" title="Modo de importación">
+                        <input type="file" id="import-file-input" class="url-input" accept=".m3u,.m3u8,.json,.txt"
+                            style="padding: 4px; font-size: 12px;">
+                        <select id="import-mode-select" class="url-input"
+                            style="width: 110px; font-size: 12px; padding: 4px;" title="Modo de importación">
                             <option value="merge" selected>Fusionar</option>
                             <option value="replace">Reemplazar</option>
                         </select>
                     </div>
-                    <button class="btn-action btn-save" style="padding: 8px 16px; width: 100%; font-size: 13px; font-weight: 500;" onclick="importSourcesFile()">
+                    <button class="btn-action btn-save"
+                        style="padding: 8px 16px; width: 100%; font-size: 13px; font-weight: 500;"
+                        onclick="importSourcesFile()">
                         Subir e Importar Fuentes
                     </button>
                 </div>
             </div>
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 14px;">
-                <label for="import-text-area" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Pegar contenido de paquete de fuentes (M3U / JSON):</label>
-                <textarea id="import-text-area" class="url-input" rows="4" style="width: 100%; font-family: monospace; font-size: 12px; padding: 8px; resize: vertical;" placeholder="#EXTM3U
+                <label for="import-text-area"
+                    style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Pegar contenido de
+                    paquete de fuentes (M3U / JSON):</label>
+                <textarea id="import-text-area" class="url-input" rows="4"
+                    style="width: 100%; font-family: monospace; font-size: 12px; padding: 8px; resize: vertical;"
+                    placeholder="#EXTM3U
 #EXTINF:-1 tvg-id=&quot;mi_fuente&quot; tvg-name=&quot;Deportes M3U&quot;, Deportes M3U
 http://servidor.com/lista.m3u"></textarea>
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
-                    <button class="btn-action btn-save" style="padding: 8px 20px; font-size: 13px; font-weight: 500;" onclick="importSourcesText()">
+                    <button class="btn-action btn-save" style="padding: 8px 20px; font-size: 13px; font-weight: 500;"
+                        onclick="importSourcesText()">
                         Procesar e Importar Texto
                     </button>
                 </div>
@@ -1065,14 +962,6 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                         document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
                     }
                 }).catch(() => { });
-
-            const navbarToggle = document.getElementById('navbar-toggle');
-            const navLinks = document.getElementById('nav-links');
-            if (navbarToggle && navLinks) {
-                navbarToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('show');
-                });
-            }
 
             loadSources();
         });
@@ -1783,6 +1672,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
         }
     </script>
     <script src="/js/footer.js"></script>
+    <script src="/stat/js/navbar.js"></script>
 </body>
 
 </html>

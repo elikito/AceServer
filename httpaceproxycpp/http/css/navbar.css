@@ -1,0 +1,291 @@
+/* ==========================================================================
+   HTTPAceProxy — Unified Navigation Bar (v08.25.01)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --nav-height: 56px;
+    --nav-bg: rgba(18, 18, 24, 0.88);
+    --nav-bg-solid: #121218;
+    --nav-border: rgba(255, 255, 255, 0.08);
+    --nav-text: #ffffff;
+    --nav-muted: rgba(255, 255, 255, 0.65);
+    --nav-hover-bg: rgba(255, 255, 255, 0.08);
+    --nav-active-bg: rgba(34, 197, 94, 0.15);
+    --nav-active-border: rgba(34, 197, 94, 0.35);
+    --nav-active-color: #22c55e;
+    --nav-active-glow: 0 0 12px rgba(34, 197, 94, 0.18);
+}
+
+/* Reset / Box sizing for nav elements */
+.navbar,
+.navbar * {
+    box-sizing: border-box;
+}
+
+/* Main Navbar Bar */
+.navbar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: var(--nav-height);
+    background: var(--nav-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--nav-border);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Brand Link */
+.navbar .nav-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.4px;
+    color: var(--nav-text);
+    text-decoration: none;
+    padding: 6px 0;
+    user-select: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.navbar .nav-brand:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.navbar .nav-brand::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--nav-active-color);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--nav-active-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.navbar .nav-brand:hover::before {
+    transform: scale(1.25);
+    box-shadow: 0 0 12px var(--nav-active-color);
+}
+
+/* Nav Links Container */
+.navbar .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Nav Links Items */
+.navbar .nav-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--nav-muted);
+    text-decoration: none;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    white-space: nowrap;
+}
+
+.navbar .nav-links a:hover {
+    color: #ffffff;
+    background: var(--nav-hover-bg);
+    border-color: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Active Link State */
+.navbar .nav-links a.active {
+    color: #ffffff;
+    background: var(--nav-active-bg);
+    border-color: var(--nav-active-border);
+    font-weight: 600;
+    box-shadow: var(--nav-active-glow);
+}
+
+.navbar .nav-links a:active {
+    transform: translateY(0);
+}
+
+/* Hamburger Toggle Button */
+.navbar-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 38px;
+    height: 38px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--nav-border);
+    border-radius: 7px;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.navbar-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.navbar-toggle .icon-bar {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background-color: var(--nav-text);
+    border-radius: 2px;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+/* Hamburger Active / Open State -> Transform to X */
+.navbar-toggle.is-active .icon-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.navbar-toggle.is-active .icon-bar:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.navbar-toggle.is-active .icon-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Responsive Drawer Styles */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0 16px;
+    }
+
+    .navbar-toggle {
+        display: flex;
+    }
+
+    .navbar .nav-links {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: var(--nav-height);
+        left: 0;
+        right: 0;
+        width: 100%;
+        background: rgba(18, 18, 24, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--nav-border);
+        padding: 12px 16px 16px;
+        gap: 6px;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+        z-index: 999;
+        animation: navSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .navbar .nav-links.show {
+        display: flex;
+    }
+
+    .navbar .nav-links a {
+        width: 100%;
+        text-align: center;
+        padding: 11px 16px;
+        font-size: 14.5px;
+        border-radius: 8px;
+    }
+}
+
+@keyframes navSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================================================
+   Unified Layout & Header Section
+   ========================================================================== */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    min-height: 48px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.light-theme .header-section {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.header-title h1,
+.header-title h2,
+.header-title h4 {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-color, #e1e1e6);
+    letter-spacing: -0.3px;
+    margin: 0;
+    line-height: 1.25;
+}
+
+body.light-theme .header-title h1,
+body.light-theme .header-title h2,
+body.light-theme .header-title h4 {
+    color: #18181b;
+}
+
+.header-title p {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    color: var(--text-muted, #a8a8b2);
+    margin: 0;
+    line-height: 1.4;
+}
+
+body.light-theme .header-title p {
+    color: #71717a;
+}

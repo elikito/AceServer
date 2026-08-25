@@ -10,8 +10,11 @@
     const SUN_SVG = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
     const MOON_SVG = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
 
-    let currentIp = window.location.hostname || '127.0.0.1';
-    let currentVersion = '08.24.06';
+    let canonicalIp = window.location.hostname || '127.0.0.1';
+    let canonicalHostname = '';
+    let canonicalVersion = '08.25.01';
+    let ipResetTimer = null;
+    let verResetTimer = null;
 
     function copyToClipboard(text) {
         if (navigator.clipboard && window.isSecureContext) {
@@ -47,21 +50,23 @@
 
         // 1. Mostrar IP inicial
         if (serverIpEl) {
-            serverIpEl.textContent = currentIp;
+            serverIpEl.textContent = canonicalIp;
         }
 
         // 2. Obtener estado del sistema (IP, Hostname y Versión)
         fetch('/stat/?action=get_status')
             .then(r => r.json())
             .then(data => {
-                const sysHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
+                canonicalHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
                 const ver = data.version || data.server_info?.version || '';
-                if (sysHostname && serverIpEl) {
-                    serverIpEl.textContent = `${currentIp} (${sysHostname})`;
+                if (serverIpEl && !ipResetTimer) {
+                    serverIpEl.textContent = canonicalHostname ? `${canonicalIp} (${canonicalHostname})` : canonicalIp;
                 }
                 if (ver) {
-                    currentVersion = ver;
-                    versionEls.forEach(el => el.textContent = ver);
+                    canonicalVersion = ver;
+                    if (!verResetTimer) {
+                        versionEls.forEach(el => el.textContent = ver);
+                    }
                 }
             })
             .catch(() => {});
@@ -70,48 +75,55 @@
             .then(r => r.json())
             .then(cfg => {
                 if (cfg && cfg.version) {
-                    currentVersion = cfg.version;
-                    versionEls.forEach(el => el.textContent = cfg.version);
+                    canonicalVersion = cfg.version;
+                    if (!verResetTimer) {
+                        versionEls.forEach(el => el.textContent = cfg.version);
+                    }
                 }
             })
             .catch(() => {});
 
-        // 3. Copiado de IP al hacer clic en footer-left
+        // 3. Copiado de IP al hacer clic en footer-left (copia siempre la IP canónica)
         if (footerLeft) {
             footerLeft.style.cursor = 'pointer';
             footerLeft.title = 'Clic para copiar la IP del servidor';
             footerLeft.addEventListener('click', () => {
-                copyToClipboard(currentIp).then(() => {
-                    const originalText = serverIpEl ? serverIpEl.textContent : '';
+                copyToClipboard(canonicalIp).then(() => {
+                    if (ipResetTimer) clearTimeout(ipResetTimer);
                     if (serverIpEl) {
                         serverIpEl.textContent = '✓ Copiado!';
                         serverIpEl.classList.add('copied');
                     }
-                    setTimeout(() => {
+                    ipResetTimer = setTimeout(() => {
                         if (serverIpEl) {
-                            serverIpEl.textContent = originalText;
+                            serverIpEl.textContent = canonicalHostname ? `${canonicalIp} (${canonicalHostname})` : canonicalIp;
                             serverIpEl.classList.remove('copied');
                         }
+                        ipResetTimer = null;
                     }, 1500);
                 }).catch(err => console.error('Error al copiar IP:', err));
             });
         }
 
-        // 4. Copiado de Versión al hacer clic en footer-right
+        // 4. Copiado de Versión al hacer clic en footer-right (copia siempre la versión canónica)
         if (footerRight) {
             footerRight.style.cursor = 'pointer';
             footerRight.title = 'Clic para copiar el número de versión';
             footerRight.addEventListener('click', () => {
-                copyToClipboard(currentVersion).then(() => {
-                    versionEls.forEach(el => {
-                        const orig = el.textContent;
-                        el.textContent = '✓ Copiado!';
-                        el.classList.add('copied');
-                        setTimeout(() => {
-                            el.textContent = orig;
-                            el.classList.remove('copied');
-                        }, 1500);
-                    });
+                copyToClipboard(canonicalVersion).then(() => {
+                    if (verResetTimer) clearTimeout(verResetTimer);
+                    const footerBadge = footerRight.querySelector('.version-badge') || footerRight.querySelector('.app-version') || footerRight;
+                    if (footerBadge) {
+                        footerBadge.textContent = '✓ Copiado!';
+                        footerBadge.classList.add('copied');
+                    }
+                    verResetTimer = setTimeout(() => {
+                        if (footerBadge) {
+                            footerBadge.textContent = canonicalVersion;
+                            footerBadge.classList.remove('copied');
+                        }
+                        verResetTimer = null;
+                    }, 1500);
                 }).catch(err => console.error('Error al copiar versión:', err));
             });
         }

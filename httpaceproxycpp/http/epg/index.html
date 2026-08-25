@@ -7,6 +7,10 @@
     <meta name="description" content="HTTPAceProxy Guía de Programación EPG">
     <title>HTTPAceProxy - Guía EPG</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/stat/css/navbar.css">
     <style>
         * {
             margin: 0;
@@ -44,140 +48,6 @@
             color: var(--text-color);
             min-height: 100vh;
             padding-bottom: 60px;
-        }
-
-        /* Navbar */
-        .navbar {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            height: 56px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-brand {
-            font-weight: 700;
-            font-size: 18px;
-            color: #ffffff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        body.light-theme .nav-brand {
-            color: #18181b;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 16px;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 4px;
-            transition: color 0.2s, background-color 0.2s;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: var(--text-color);
-            background-color: var(--border-color);
-        }
-
-        /* Hamburger menu button */
-        .navbar-toggle {
-            display: none;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 24px;
-            height: 18px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            z-index: 101;
-        }
-
-        .navbar-toggle .icon-bar {
-            width: 100%;
-            height: 2px;
-            background-color: var(--text-color);
-            border-radius: 1px;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 56px;
-                left: 0;
-                right: 0;
-                background-color: var(--header-bg);
-                border-bottom: 1px solid var(--border-color);
-                padding: 16px 24px;
-                gap: 8px;
-                z-index: 99;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .nav-links a {
-                width: 100%;
-                text-align: center;
-                padding: 12px;
-            }
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px 20px;
-            box-sizing: border-box;
-        }
-
-        .header-section {
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .header-title p {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
         }
 
         /* Stats Badge */
@@ -774,10 +644,9 @@
 </head>
 
 <body>
-
     <nav class="navbar">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -786,7 +655,7 @@
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
             <a href="/fuentes/">Fuentes</a>
-            <a href="/epg/" class="active">EPG</a>
+            <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
             <a href="/player/legacy.html">Reproductor Legacy</a>
         </div>
@@ -795,16 +664,11 @@
     <div class="container">
         <div class="header-section">
             <div class="header-title">
-                <h1>
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="#4CAF50">
-                        <path
-                            d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10zM7 10h5v5H7z" />
-                    </svg>
-                    Guía de Programación TV (EPG)
-                </h1>
-                <p id="epg-source-url">Cargando fuente EPG...</p>
+                <h2>Guía de Programación TV (EPG)</h2>
+                <p>Parrilla interactiva de canales, eventos en directo y programación</p>
             </div>
             <div class="epg-stats-bar">
+                <div class="stat-pill" style="background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.3); color: #22c55e;" title="Hora actual del sistema">🕒 <strong id="live-clock" style="color: #ffffff;">--:--:--</strong></div>
                 <div class="stat-pill">Canales: <strong id="stat-channels-count">0</strong></div>
                 <div class="stat-pill">Programas: <strong id="stat-programmes-count">0</strong></div>
                 <div class="stat-pill">Estado: <strong id="stat-epg-status" style="color:#4CAF50;">Sincronizado</strong>
@@ -912,12 +776,6 @@
         let currentFilterMode = 'now';
 
         window.addEventListener('DOMContentLoaded', () => {
-            const navbarToggle = document.getElementById('navbar-toggle');
-            const navLinks = document.getElementById('nav-links');
-            if (navbarToggle && navLinks) {
-                navbarToggle.addEventListener('click', () => navLinks.classList.toggle('show'));
-            }
-
             const hostIp = window.location.hostname || '127.0.0.1';
             document.getElementById('server-ip').textContent = hostIp;
             fetch('/stat/?action=get_status')
@@ -927,7 +785,7 @@
                     if (sysHostname) {
                         document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
                     }
-                }).catch(() => {});
+                }).catch(() => { });
 
             // Theme toggle
             const themeToggle = document.getElementById('theme-toggle');
@@ -943,7 +801,17 @@
             }
 
             loadEpgData();
+            updateLiveClock();
+            setInterval(updateLiveClock, 1000);
         });
+
+        function updateLiveClock() {
+            const clockEl = document.getElementById('live-clock');
+            if (clockEl) {
+                const now = new Date();
+                clockEl.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+        }
 
         async function loadEpgData(forceRefresh = false) {
             const container = document.getElementById('epg-container');
@@ -968,7 +836,10 @@
                     sources = [{ name: 'default', title: 'EPG Principal', url: singleUrl, enabled: true }];
                 }
 
-                document.getElementById('epg-source-url').textContent = 'Fuentes activas: ' + sources.map(s => s.title || s.name).join(', ');
+                const epgSourceEl = document.getElementById('epg-source-url');
+                if (epgSourceEl) {
+                    epgSourceEl.textContent = 'Fuentes activas: ' + sources.map(s => s.title || s.name).join(', ');
+                }
 
                 epgChannels = [];
                 epgProgrammes = {};
@@ -1313,28 +1184,33 @@
         }
 
         function parseXMLTVDate(dateStr) {
-            const parts = dateStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s+([+-]\d{4})$/);
-            if (!parts) return new Date(dateStr);
+            if (!dateStr) return new Date();
+            const m = dateStr.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-]\d{2}):?(\d{2}))?/);
+            if (m) {
+                const year = parseInt(m[1], 10);
+                const month = parseInt(m[2], 10) - 1;
+                const day = parseInt(m[3], 10);
+                const hour = parseInt(m[4], 10);
+                const min = parseInt(m[5], 10);
+                const sec = parseInt(m[6], 10);
 
-            const year = parseInt(parts[1], 10);
-            const month = parseInt(parts[2], 10) - 1;
-            const day = parseInt(parts[3], 10);
-            const hour = parseInt(parts[4], 10);
-            const minute = parseInt(parts[5], 10);
-            const second = parseInt(parts[6], 10);
-
-            const tzStr = parts[7];
-            const tzSign = tzStr[0] === '+' ? 1 : -1;
-            const tzHours = parseInt(tzStr.substring(1, 3), 10);
-            const tzMinutes = parseInt(tzStr.substring(3, 5), 10);
-
-            const utcTime = Date.UTC(year, month, day, hour, minute, second);
-            const offsetMs = (tzHours * 60 + tzMinutes) * 60 * 1000 * tzSign;
-
-            return new Date(utcTime - offsetMs);
+                if (m[7] !== undefined) {
+                    const tzSign = m[7][0] === '+' ? 1 : -1;
+                    const tzHours = parseInt(m[7].substring(1), 10);
+                    const tzMins = parseInt(m[8] || '0', 10);
+                    const utc = Date.UTC(year, month, day, hour, min, sec);
+                    const offset = (tzHours * 60 + tzMins) * 60 * 1000 * tzSign;
+                    return new Date(utc - offset);
+                } else {
+                    return new Date(year, month, day, hour, min, sec);
+                }
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? new Date() : d;
         }
     </script>
     <script src="/js/footer.js"></script>
+    <script src="/stat/js/navbar.js"></script>
 </body>
 
 </html>

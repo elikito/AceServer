@@ -4,6 +4,54 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.01] - 2026-08-25
+
+### 🚀 Unificación, Modularización, Cabeceras y Mejoras EPG/UI
+
+#### UI, Navegación y Arquitectura Frontend
+- **Extracción de Componentes de Navegación (`navbar.css` y `navbar.js`)**:
+  - Creado `/stat/css/navbar.css` con diseño moderno en *glassmorphism* (`backdrop-filter: blur(14px)`), tokens armonizados, micro-animaciones en *hover*, estado `.active` con halo luminoso e icono hamburguesa responsivo animado a 'X'.
+  - Creado `/stat/js/navbar.js` para detección dinámica del enlace activo según `window.location.pathname`, control del cajón desplegable móvil y eventos de autocierre por clic externo y tecla `Escape`.
+  - Eliminado el código duplicado de navegación en todas las páginas (`/`, `/statplugin/`, `/fuentes/`, `/epg/`, `/player/index.html`, `/listas/`).
+- **Estructura y Orden Unificado del Menú Superior**:
+  - **HTTPAceProxy** (Brand / Enlace raíz a `/stat`).
+  - **Dashboard** (`/stat`)
+  - **Canales** (`/statplugin/`)
+  - **Fuentes** (`/fuentes/`)
+  - **EPG** (`/epg/`)
+  - **Reproductor** (`/player/index.html`)
+  - **Reproductor Legacy** (`/player/legacy.html`)
+- **Unificación Tipográfica Global**:
+  - Incorporada la fuente Google Fonts **Inter** (`wght@400;500;600;700`) tanto en `navbar.css` como en las cabeceras HTML de todas las vistas, garantizando idéntico ancho, grosor y kerning del logotipo y enlaces.
+- **Menú Legacy Exclusivo para iOS 12 (`/player/legacy.html`)**:
+  - Menú ultraligero y plano, 100% libre de animaciones o filtros gráficos pesados, totalmente optimizado para Safari WebKit / iOS 12.5.8 con flexbox seguro.
+
+#### Estandarización de Cabeceras (`header-section`)
+- **Homogeneización Visual y de Altura**:
+  - Centralizadas las clases `.container` (`max-width: 1400px; padding: 24px 20px;`) y `.header-section` (`min-height: 48px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);`) en `navbar.css`.
+  - Migrado `/statplugin/` de `.page-header` a `.header-section` con jerarquía uniforme (`h2` + `p`).
+  - Corregidas alturas desiguales entre páginas unificando los contenedores de títulos y acciones.
+
+#### Funcionalidades EPG y Reloj en Tiempo Real
+- **Reloj en Vivo del Sistema (`🕒 HH:MM:SS`)**:
+  - Añadido indicador de hora actual del cliente actualizado cada segundo en:
+    - **EPG** (`/epg/`): En la barra de estadísticas de la cabecera.
+    - **Reproductor Bento** (`/player/index.html`): En el subtítulo de la cabecera.
+    - **Reproductor Legacy** (`/player/legacy.html`): En la cabecera con compatibilidad ES5.
+- **Mejoras en el Parser XMLTV (`parseXMLTVDate`)**:
+  - Reescrita la expresión regular y cálculo de timestamp para soportar offsets de huso horario (`+0200`, `+02:00`, `+0000`, UTC y local), garantizando que las pestañas "● En Emisión" y "⏭ Próximos" sincronicen a la perfección con la hora real.
+- **Corrección de Error en EPG**:
+  - Añadido control de null-safety en `document.getElementById('epg-source-url')` y estadísticas, resolviendo la excepción `Cannot set properties of null (setting 'textContent')` que impedía la descarga de la guía.
+
+#### Correcciones en Portapapeles (`footer.js`)
+- **Eliminación del Bug de Copiado de Versión / IP**:
+  - Resuelto el problema por el cual el texto *"✓ Copiado!"* se copiaba en el portapapeles en pulsaciones sucesivas al leer el DOM mutado.
+  - Implementado almacenamiento en memoria de valores canónicos inmutables (`canonicalVersion`, `canonicalIp`, `canonicalHostname`).
+  - Control de temporizadores con `clearTimeout` para evitar que el estado visual quede bloqueado tras múltiples clics rápidos.
+  - Eliminado el manejador local duplicado `bindFooter()` en `statplugin/index.html`.
+
+---
+
 ## [08.24.06] - 2026-08-24
 
 ### 🛠️ Estandarización de Navegación, Control WARP Web y Corrección de Verificador

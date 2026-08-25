@@ -7,6 +7,10 @@
     <meta name="description" content="HTTPAceProxy IPTV Player">
     <title>HTTPAceProxy - Reproductor Bento</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/stat/css/navbar.css">
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
     <script>
         if (typeof mpegts === 'undefined') {
@@ -51,139 +55,7 @@
             padding-bottom: 60px;
         }
 
-        /* Navbar Plano Superior */
-        .navbar {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            height: 56px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
 
-        .nav-brand {
-            font-weight: 700;
-            font-size: 18px;
-            color: #ffffff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        body.light-theme .nav-brand {
-            color: #18181b;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 16px;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 4px;
-            transition: color 0.2s, background-color 0.2s;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: var(--text-color);
-            background-color: var(--border-color);
-        }
-
-        /* Hamburger menu button */
-        .navbar-toggle {
-            display: none;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 24px;
-            height: 18px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            z-index: 101;
-        }
-
-        .navbar-toggle .icon-bar {
-            width: 100%;
-            height: 2px;
-            background-color: var(--text-color);
-            border-radius: 1px;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 56px;
-                left: 0;
-                right: 0;
-                background-color: var(--header-bg);
-                border-bottom: 1px solid var(--border-color);
-                padding: 16px 24px;
-                gap: 8px;
-                z-index: 99;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .nav-links a {
-                width: 100%;
-                text-align: center;
-                padding: 12px;
-            }
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding-left: 20px;
-            padding-right: 20px;
-            padding-top: 24px;
-            padding-bottom: 24px;
-            box-sizing: border-box;
-        }
-
-        .header-section {
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-color);
-        }
-
-        .header-title p {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
 
         /* Unified Search Box */
         .search-container {
@@ -865,9 +737,20 @@
         }
 
         @keyframes pulse-live {
-            0% { opacity: 0.9; box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-            70% { opacity: 1; box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
-            100% { opacity: 0.9; box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+            0% {
+                opacity: 0.9;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+
+            70% {
+                opacity: 1;
+                box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
+            }
+
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
         }
 
         .player-close-btn {
@@ -1119,10 +1002,9 @@
 </head>
 
 <body>
-
     <nav class="navbar">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -1139,10 +1021,10 @@
 
     <!-- Container -->
     <div class="container">
-        <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div class="header-section">
             <div class="header-title">
-                <h4>Reproductor IPTV</h4>
-                <p>Canales organizados por grupos con guía de programación (EPG).</p>
+                <h2>Reproductor IPTV</h2>
+                <p>Reproducción web Bento en directo y por Content ID — <span id="live-clock" style="font-weight: 600; color: #22c55e;">🕒 --:--:--</span></p>
             </div>
             <!-- Entrada Directa de Content ID a Mano -->
             <div class="direct-play-container">
@@ -1170,8 +1052,12 @@
                     <span class="player-live-dot"></span>
                     <span id="player-title" class="player-title-text">Canal en Directo</span>
                     <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
-                    <div id="player-content-id-box" class="player-cid-badge" style="display: none;" onclick="copyPlayerContentId()" title="Clic para copiar Content ID en reproducción">
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    <div id="player-content-id-box" class="player-cid-badge" style="display: none;"
+                        onclick="copyPlayerContentId()" title="Clic para copiar Content ID en reproducción">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                            <path
+                                d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                        </svg>
                         <span id="player-cid-text">ID: ...</span>
                     </div>
                 </div>
@@ -1334,16 +1220,7 @@
                     if (sysHostname) {
                         document.getElementById('server-ip').textContent = `${hostIp} (${sysHostname})`;
                     }
-                }).catch(() => {});
-
-            // Hamburger menu toggle
-            const navbarToggle = document.getElementById('navbar-toggle');
-            const navLinks = document.getElementById('nav-links');
-            if (navbarToggle && navLinks) {
-                navbarToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('show');
-                });
-            }
+                }).catch(() => { });
 
             initSourcesAndLoad();
         });
@@ -2079,7 +1956,7 @@
                                     xmlText = await response.text();
                                 }
                                 combinedXml += xmlText;
-                            } catch (e) {}
+                            } catch (e) { }
                         }
 
                         if (combinedXml) {
@@ -2171,7 +2048,7 @@
                         }
                     });
                     if (channels.length > 0) return channels;
-                } catch (e) {}
+                } catch (e) { }
             }
 
             // 2. Soporte Texto Plano (hashes.txt)
@@ -2682,26 +2559,40 @@
         }
 
         function parseXMLTVDate(dateStr) {
-            const parts = dateStr.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s+([+-]\d{4})$/);
-            if (!parts) return new Date(dateStr);
+            if (!dateStr) return new Date();
+            const m = dateStr.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-]\d{2}):?(\d{2}))?/);
+            if (m) {
+                const year = parseInt(m[1], 10);
+                const month = parseInt(m[2], 10) - 1;
+                const day = parseInt(m[3], 10);
+                const hour = parseInt(m[4], 10);
+                const min = parseInt(m[5], 10);
+                const sec = parseInt(m[6], 10);
 
-            const year = parseInt(parts[1], 10);
-            const month = parseInt(parts[2], 10) - 1;
-            const day = parseInt(parts[3], 10);
-            const hour = parseInt(parts[4], 10);
-            const minute = parseInt(parts[5], 10);
-            const second = parseInt(parts[6], 10);
-
-            const tzStr = parts[7];
-            const tzSign = tzStr[0] === '+' ? 1 : -1;
-            const tzHours = parseInt(tzStr.substring(1, 3), 10);
-            const tzMinutes = parseInt(tzStr.substring(3, 5), 10);
-
-            const utcTime = Date.UTC(year, month, day, hour, minute, second);
-            const offsetMs = (tzHours * 60 + tzMinutes) * 60 * 1000 * tzSign;
-
-            return new Date(utcTime - offsetMs);
+                if (m[7] !== undefined) {
+                    const tzSign = m[7][0] === '+' ? 1 : -1;
+                    const tzHours = parseInt(m[7].substring(1), 10);
+                    const tzMins = parseInt(m[8] || '0', 10);
+                    const utc = Date.UTC(year, month, day, hour, min, sec);
+                    const offset = (tzHours * 60 + tzMins) * 60 * 1000 * tzSign;
+                    return new Date(utc - offset);
+                } else {
+                    return new Date(year, month, day, hour, min, sec);
+                }
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? new Date() : d;
         }
+
+        function updateLiveClock() {
+            const clockEl = document.getElementById('live-clock');
+            if (clockEl) {
+                const now = new Date();
+                clockEl.textContent = '🕒 ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+        }
+        updateLiveClock();
+        setInterval(updateLiveClock, 1000);
         function setLightIcon(themeIcon) {
             if (!themeIcon) return;
             themeIcon.innerHTML = '<path d="M12 7a5 5 0 1 1-4.99 5A5 5 0 0 1 12 7zm0 2a3 3 0 1 0 3 3 3 3 0 0 0-3-3zm0-8a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.636 4.222a1 1 0 0 1 0 1.414L4.222 7.05a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zm14.142 14.142a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM5.636 19.778a1 1 0 0 1-1.414 0L2.808 18.364a1 1 0 1 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414zm14.142-14.142a1 1 0 0 1-1.414 0L16.95 4.222a1 1 0 0 1 1.414-1.414l1.414 1.414a1 1 0 0 1 0 1.414z"/>';
@@ -2713,6 +2604,7 @@
         }
     </script>
     <script src="/js/footer.js"></script>
+    <script src="/stat/js/navbar.js"></script>
 </body>
 
 </html>

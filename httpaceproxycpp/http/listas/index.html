@@ -7,6 +7,10 @@
     <meta name="description" content="HTTPAceProxy Sources Management">
     <title>HTTPAceProxy - Listas</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/stat/css/navbar.css">
     <style>
         * {
             margin: 0;
@@ -43,140 +47,6 @@
             color: var(--text-color);
             min-height: 100vh;
             padding-bottom: 60px;
-        }
-
-        /* Navbar Plano Superior */
-        .navbar {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            height: 56px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-brand {
-            font-weight: 700;
-            font-size: 18px;
-            color: #ffffff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        body.light-theme .nav-brand {
-            color: #18181b;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 16px;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 4px;
-            transition: color 0.2s, background-color 0.2s;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: var(--text-color);
-            background-color: var(--border-color);
-        }
-
-        /* Hamburger menu button */
-        .navbar-toggle {
-            display: none;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 24px;
-            height: 18px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            z-index: 101;
-        }
-
-        .navbar-toggle .icon-bar {
-            width: 100%;
-            height: 2px;
-            background-color: var(--text-color);
-            border-radius: 1px;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 56px;
-                left: 0;
-                right: 0;
-                background-color: var(--header-bg);
-                border-bottom: 1px solid var(--border-color);
-                padding: 16px 24px;
-                gap: 8px;
-                z-index: 99;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .nav-links a {
-                width: 100%;
-                text-align: center;
-                padding: 12px;
-            }
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding-left: 20px;
-            padding-right: 20px;
-            padding-top: 24px;
-            padding-bottom: 24px;
-            box-sizing: border-box;
-        }
-
-        .header-section {
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-color);
-        }
-
-        .header-title p {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
         }
 
         /* Toast notification */
@@ -591,18 +461,6 @@
         }
 
         @media (max-width: 768px) {
-            .navbar {
-                flex-direction: column;
-                height: auto;
-                padding: 12px 16px;
-                gap: 12px;
-            }
-
-            .nav-links {
-                width: 100%;
-                justify-content: space-around;
-            }
-
             .add-form-grid {
                 grid-template-columns: 1fr;
             }
@@ -611,10 +469,9 @@
 </head>
 
 <body>
-
     <nav class="navbar">
         <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú">
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -622,7 +479,6 @@
         <div class="nav-links" id="nav-links">
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
-            <a href="/listas/" class="active">Listas</a>
             <a href="/fuentes/">Fuentes</a>
             <a href="/epg/">EPG</a>
             <a href="/player/index.html">Reproductor</a>
@@ -634,9 +490,9 @@
     <div class="container">
         <div class="header-section">
             <div class="header-title">
-                <h4>Gestión de Fuentes de Canales</h4>
+                <h2>Gestión de Fuentes de Canales</h2>
                 <p>Edita o añade listas de canales M3U dinámicamente y comprueba su estado en caliente.</p>
-            </div>añade
+            </div>
         </div>
 
         <!-- Fuentes Predefinidas -->
@@ -850,15 +706,6 @@ acestream://1234567890abcdef1234567890abcdef12345678
             }
 
             document.getElementById('server-ip').textContent = window.location.hostname || '127.0.0.1';
-
-            // Hamburger menu toggle
-            const navbarToggle = document.getElementById('navbar-toggle');
-            const navLinks = document.getElementById('nav-links');
-            if (navbarToggle && navLinks) {
-                navbarToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('show');
-                });
-            }
 
             loadConfigs();
         });
@@ -1589,6 +1436,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
         }
     </script>
     <script src="/js/footer.js"></script>
+    <script src="/stat/js/navbar.js"></script>
 </body>
 
 </html>
