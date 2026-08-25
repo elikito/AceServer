@@ -19,7 +19,8 @@ void handle_signal(int) {
 
 void ensure_local_m3u_structure(const std::string& root_dir) {
     try {
-        auto locales_dir = std::filesystem::path(root_dir) / "http" / "listas" / "locales";
+        auto listas_dir = std::filesystem::path(root_dir) / "http" / "listas";
+        auto locales_dir = listas_dir / "locales";
         std::filesystem::create_directories(locales_dir);
         auto interna = locales_dir / "Interna.m3u";
         if (!std::filesystem::exists(interna)) {
@@ -30,6 +31,11 @@ void ensure_local_m3u_structure(const std::string& root_dir) {
         if (!std::filesystem::exists(hashes)) {
             std::ofstream out(hashes);
             out << "#EXTM3U\n";
+        }
+        auto favs_file = listas_dir / "epg_favorites.json";
+        if (!std::filesystem::exists(favs_file)) {
+            std::ofstream out(favs_file);
+            out << "{\n  \"favorites\": [\n    \"teledeporte\"\n  ],\n  \"disabled_cids\": []\n}\n";
         }
     } catch (const std::exception& e) {
         httpace::log_line("WARNING", "ensure_local_m3u_structure error: " + std::string(e.what()));

@@ -144,3 +144,8 @@ logs/
 *.old
 /data
 /gluetun
+
+# User dynamic data files
+*favorites.json
+**/epg_favorites.json
+httpaceproxycpp/http/listas/epg_favorites.json

@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.09] - 2026-08-25
+
+### 💾 Módulo de Lista Interna y Persistencia Garantizada de Favoritos
+
+#### Importador de Lista Interna (`save_internal` & `proxy.cpp`)
+- **Compilación a Archivo M3U Único**:
+  - Corrección en el guardado de canales internos: en lugar de inyectar entradas individuales en `plugins_state.json`, el importador compila y guarda un único archivo `/app/http/listas/locales/interna.m3u` (y `Interna.m3u`).
+  - Registro de la lista interna como una única fuente `custom_list`:
+    `{ "name": "interna", "title": "Interna", "url": "/listas/locales/interna.m3u", "enabled": true }`.
+  - Soporte universal de formatos de entrada: texto plano (`Nombre, Hash` o `Nombre \n Hash`), listas de URLs y bloques `#EXTINF:`.
+  - Compatibilidad de endpoints: recepción y procesamiento de `save_internal` tanto en `/config` como en `/statplugin` y `/fuentes`.
+
+#### Persistencia Garantizada de Favoritos (`epg_favorites.json`)
+- **Directorio de Datos Persistente**:
+  - Asegurada la ruta de persistencia en `/app/http/listas/epg_favorites.json` (mapeada a `/opt/HTTPAceProxy/httpaceproxycpp/http/listas/epg_favorites.json` en el host).
+  - Creación automática y recursiva de directorios padre con `std::filesystem::create_directories(favs_file.parent_path())` tanto al arrancar el proxy como al guardar configuraciones.
+- **Protección contra Sobrescrituras Accidentales**:
+  - Al iniciar el proxy, se valida si el archivo `epg_favorites.json` ya existe en disco; de ser así, se carga íntegramente respetando la selección del usuario y nunca se sobreescribe con valores por defecto.
+  - Añadido `*favorites.json` a `.gitignore` para evitar que comandos Git en el host sobreescriban los favoritos configurados por el usuario.
+
+---
+
 ## [08.25.08] - 2026-08-25
 
 ### 🚀 Favoritos Avanzados, Tokenizador Estricto y Curación de Candidatos

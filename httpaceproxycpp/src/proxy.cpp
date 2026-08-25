@@ -512,7 +512,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         return;
     }
 
-    if (ctx.parts.size() > 1 && ctx.parts[1] == "config") {
+    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || ((ctx.parts[1] == "statplugin" || ctx.parts[1] == "fuentes") && ctx.query.find("action=") != std::string::npos))) {
         auto action = query_get(ctx.query, "action");
         std::map<std::string, std::string> headers = {
             {"Access-Control-Allow-Origin", "*"},
@@ -730,13 +730,18 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
 
             auto locales_dir = std::filesystem::path(config_.root_dir) / "http" / "listas" / "locales";
             std::filesystem::create_directories(locales_dir);
-            auto file_path = locales_dir / "Interna.m3u";
+            auto file_path = locales_dir / "interna.m3u";
+            auto file_path_cap = locales_dir / "Interna.m3u";
 
             std::ofstream out(file_path, std::ios::binary);
             out << m3u_out.str();
             out.close();
 
-            std::string relative_url = "/listas/locales/Interna.m3u";
+            std::ofstream out2(file_path_cap, std::ios::binary);
+            out2 << m3u_out.str();
+            out2.close();
+
+            std::string relative_url = "/listas/locales/interna.m3u";
 
             {
                 std::lock_guard<std::mutex> lock(plugins_state_mutex_);
@@ -750,18 +755,24 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 }
                 bool found = false;
                 for (auto& item : arr) {
-                    if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == "Interna") {
-                        Json::object item_obj = item.as_object();
-                        item_obj["url"] = relative_url;
-                        item_obj["enabled"] = true;
-                        item = item_obj;
-                        found = true;
-                        break;
+                    if (item.is_object() && item.as_object().contains("name")) {
+                        auto n = lower(item.as_object().at("name").as_string());
+                        if (n == "interna") {
+                            Json::object item_obj = item.as_object();
+                            item_obj["name"] = "interna";
+                            item_obj["title"] = "Interna";
+                            item_obj["url"] = relative_url;
+                            item_obj["enabled"] = true;
+                            item = item_obj;
+                            found = true;
+                            break;
+                        }
                     }
                 }
                 if (!found) {
                     arr.push_back(Json::object{
-                        {"name", "Interna"},
+                        {"name", "interna"},
+                        {"title", "Interna"},
                         {"url", relative_url},
                         {"enabled", true}
                     });
@@ -770,12 +781,13 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 plugins_state_json_ = obj;
             }
             save_plugins_state();
-            add_custom_list_plugin("Interna", relative_url);
+            add_custom_list_plugin("interna", relative_url);
 
             Json res = Json::object{
                 {"status", "success"},
-                {"name", "Interna"},
-                {"channels_count", channel_count},
+                {"name", "interna"},
+                {"title", "Interna"},
+                {"channels_count", static_cast<double>(channel_count)},
                 {"url", relative_url}
             };
             connection.send_response_headers(200, status_reason(200), headers);
@@ -3056,6 +3068,7 @@ void Proxy::load_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     epg_favorites_.clear();
     disabled_cids_.clear();
+    bool file_loaded = false;
     try {
         auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
         if (std::filesystem::exists(favs_file)) {
@@ -3068,6 +3081,7 @@ void Proxy::load_epg_favorites() {
                             epg_favorites_.push_back(el.as_string());
                         }
                     }
+                    file_loaded = true;
                 } else if (j.is_object()) {
                     if (j.contains("favorites") && j["favorites"].is_array()) {
                         for (const auto& el : j["favorites"].as_array()) {
@@ -3083,12 +3097,16 @@ void Proxy::load_epg_favorites() {
                             }
                         }
                     }
+                    file_loaded = true;
                 }
             }
         }
-    } catch (...) {}
+    } catch (const std::exception& e) {
+        log_line("WARNING", "Error loading epg_favorites.json: " + std::string(e.what()));
+    }
 
-    if (epg_favorites_.empty()) {
+    // NUNCA sobreescribir si el archivo ya existía y fue leído en disco.
+    if (!file_loaded && epg_favorites_.empty()) {
         epg_favorites_ = {"teledeporte"};
     }
 }
@@ -3096,9 +3114,8 @@ void Proxy::load_epg_favorites() {
 void Proxy::save_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     try {
-        auto listas_dir = std::filesystem::path(config_.root_dir) / "http" / "listas";
-        std::filesystem::create_directories(listas_dir);
-        auto favs_file = listas_dir / "epg_favorites.json";
+        auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
+        std::filesystem::create_directories(favs_file.parent_path());
 
         Json::array fav_arr;
         for (const auto& f : epg_favorites_) {
@@ -3115,9 +3132,15 @@ void Proxy::save_epg_favorites() {
         };
 
         std::ofstream out(favs_file, std::ios::binary);
-        out << root.dump(2);
-        out.close();
-    } catch (...) {}
+        if (out.is_open()) {
+            out << root.dump(2);
+            out.close();
+        } else {
+            log_line("ERROR", "Failed to open " + favs_file.string() + " for writing");
+        }
+    } catch (const std::exception& e) {
+        log_line("ERROR", "Error saving epg_favorites.json: " + std::string(e.what()));
+    }
 }
 
 bool Proxy::toggle_disabled_candidate(const std::string& content_id, bool disabled) {
