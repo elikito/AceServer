@@ -4,6 +4,21 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.04] - 2026-08-25
+
+### 🛡️ Modo No Interactivo (--accept-tos) y Persistencia de Registro WARP
+
+#### Docker & Montajes de Persistencia
+- **Montaje de Datos y Registro de Cloudflare WARP**:
+  - Añadido el montaje del directorio `/var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro` en `docker-compose.yml` y `docker-compose-httpaceproxycpp.yml`.
+  - Permite que el cliente `warp-cli` dentro del contenedor acceda a las credenciales, registro (`reg.json`, `conf.json`) y base de datos de estado del host sin requerir re-registro manual.
+
+#### Backend C++ (`plugins.cpp`)
+- **Flag No Interactivo `--accept-tos`**:
+  - Incorporado el parámetro `--accept-tos` en todas las llamadas de sistema a `warp-cli` (`warp-cli --accept-tos connect`, `warp-cli --accept-tos disconnect`, etc.), previniendo bloqueos por prompts interactivos de confirmación de términos de servicio dentro del contenedor.
+
+---
+
 ## [08.25.03] - 2026-08-25
 
 ### ⚡ Integración de Cloudflare WARP en Docker & Ajustes de Negociación de Red

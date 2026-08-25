@@ -855,19 +855,19 @@ public:
             }
 
             if (action == "warp_connect") {
-                auto ret = ::system("warp-cli connect >/dev/null 2>&1");
+                auto ret = ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
                 (void)ret;
             } else if (action == "warp_disconnect") {
-                auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
+                auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
                 (void)ret;
             } else if (action == "warp_toggle") {
                 auto diag = proxy_.get_network_diagnostics();
                 std::string current_warp = diag.contains("warp") && diag["warp"].is_object() && diag["warp"].contains("status") ? diag["warp"]["status"].as_string() : "disconnected";
                 if (current_warp == "active" || current_warp == "proxy") {
-                    auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
+                    auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
                     (void)ret;
                 } else {
-                    auto ret = ::system("warp-cli connect >/dev/null 2>&1");
+                    auto ret = ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
                     (void)ret;
                 }
             }

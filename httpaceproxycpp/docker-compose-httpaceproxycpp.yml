@@ -25,6 +25,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
       - /run/cloudflare-warp:/run/cloudflare-warp
+      - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
     restart: unless-stopped
     healthcheck:

@@ -81,8 +81,9 @@ services:
       # Mapeos de hora local del sistema
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      # Socket IPC y binario de Cloudflare WARP del host
+      # Socket IPC, datos de registro y binario de Cloudflare WARP del host
       - /run/cloudflare-warp:/run/cloudflare-warp
+      - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
     depends_on:
       - aceserve-modern
