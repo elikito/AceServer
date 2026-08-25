@@ -830,6 +830,8 @@
                     document.querySelectorAll('.app-version').forEach(el => el.textContent = cfg.version);
                 }
 
+                await loadServerFavorites();
+
                 let sources = (cfg && cfg.epg_sources) ? cfg.epg_sources.filter(s => s.enabled) : [];
                 if (sources.length === 0) {
                     const singleUrl = (cfg && cfg.urls && cfg.urls.epg) ? cfg.urls.epg : DEFAULT_EPG_URL;
@@ -974,6 +976,33 @@
             renderEpg();
         }
 
+        async function loadServerFavorites() {
+            try {
+                const resp = await fetch('/epg?action=get_favorites');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.status === 'success' && Array.isArray(data.favorites)) {
+                        localStorage.setItem('epg_favorites', JSON.stringify(data.favorites));
+                        renderEpg();
+                    }
+                }
+            } catch (e) {
+                console.warn('No se pudieron obtener los favoritos del servidor:', e);
+            }
+        }
+
+        async function syncFavoritesWithServer(favs) {
+            try {
+                await fetch('/epg?action=set_favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ favorites: favs })
+                });
+            } catch (e) {
+                console.warn('Error al sincronizar favoritos con el servidor:', e);
+            }
+        }
+
         function getFavoriteChannels() {
             try {
                 return JSON.parse(localStorage.getItem('epg_favorites')) || [];
@@ -997,6 +1026,7 @@
                 showToast('⭐ Canal añadido a Favoritos', 'success');
             }
             localStorage.setItem('epg_favorites', JSON.stringify(favs));
+            syncFavoritesWithServer(favs);
             renderEpg();
         }
 

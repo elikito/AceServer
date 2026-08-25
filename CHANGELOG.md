@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.07] - 2026-08-25
+
+### ⭐️ Persistencia de Favoritos EPG & Redirección Absoluta con Pre-Verificación
+
+#### Redirección Virtual `/auto/<slug>` (`proxy.cpp`)
+- **Cabecera `Location` Absoluta**:
+  - Garantizado que las respuestas `HTTP 307 Temporary Redirect` en `/auto/<slug>` devuelven la URL absoluta construida con `raw_host` (`http://<host>:<puerto>/content_id/<cid>/stream.ts`), maximizando la compatibilidad con reproductores IPTV externos (VLC, Kodi, TiviMate, OTT Navigator, Smart TVs).
+- **Verificación Ligera Pre-Redirección**:
+  - Si todos los candidatos a un canal se encuentran en estado `UNKNOWN`, se dispara una verificación síncrona ligera (2.5s) sobre el candidato prioritario antes de redirigir, evitando enviar al cliente a un enjambre inactivo con 0 peers / 0 KB/s.
+
+#### Persistencia y Sincronización de Favoritos EPG (`plugins.cpp` / `epg/index.html`)
+- **Persistencia en Servidor (`epg_favorites.json`)**:
+  - Implementados los endpoints `GET /epg?action=get_favorites` y `POST /epg?action=set_favorites`.
+  - Los canales favoritos se almacenan de forma persistente en `/http/listas/epg_favorites.json`.
+- **Sincronización Bidireccional Frontend**:
+  - La interfaz EPG (`/epg/index.html`) sincroniza automáticamente los favoritos con el backend al cargar la página y al alternar la estrella ⭐ en cualquier canal.
+- **Filtro Estricto en `/channels/favoritos.m3u`**:
+  - El endpoint `/channels/favoritos.m3u` exporta **únicamente** los canales marcados como favoritos por el usuario.
+  - La lista completa de canales automáticos se mantiene accesible en `/channels/auto.m3u` y `/auto/playlist.m3u`.
+
+---
+
 ## [08.25.06] - 2026-08-25
 
 ### 🎯 Motor de Selección Automática y Fallback Inteligente (Fase 1: Teledeporte)

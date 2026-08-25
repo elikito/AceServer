@@ -59,11 +59,17 @@ public:
     Json get_network_diagnostics();
 
     // -----------------------------------------------------------------------
-    // v08.25.06 — Motor de Selección Automática y Fallback de Canales
+    // v08.25.06 & v08.25.07 — Motor de Selección Automática, Fallback y Favoritos EPG
     // -----------------------------------------------------------------------
     std::vector<ChannelCandidate> find_candidates_for_channel(const std::string& query_or_slug);
     std::optional<ChannelCandidate> resolve_best_candidate(const std::string& query_or_slug);
     std::string generate_auto_playlist(const std::string& hostport, const std::string& specific_slug = "");
+    std::string generate_favorites_playlist(const std::string& hostport);
+
+    std::vector<std::string> get_epg_favorites() const;
+    void set_epg_favorites(const std::vector<std::string>& favs);
+    void load_epg_favorites();
+    void save_epg_favorites();
 
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);
@@ -117,6 +123,10 @@ private:
 
     // v08.24.02 — Worker Pool de verificación de canales
     ChannelVerifier channel_verifier_;
+
+    // v08.25.07 — Favoritos EPG persistidos
+    mutable std::mutex epg_favorites_mutex_;
+    std::vector<std::string> epg_favorites_;
 };
 
 } // namespace httpace

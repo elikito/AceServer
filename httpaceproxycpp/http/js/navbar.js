@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v08.25.06)
+ * HTTPAceProxy — Unified Navigation Component (v08.25.07)
  */
 (function () {
     'use strict';

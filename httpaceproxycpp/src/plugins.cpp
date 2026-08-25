@@ -996,11 +996,62 @@ private:
 
 class EpgPlugin : public Plugin {
 public:
-    EpgPlugin(Config cfg) : config_(std::move(cfg)) {}
+    EpgPlugin(Config cfg, Proxy& proxy) : config_(std::move(cfg)), proxy_(proxy) {}
     std::string name() const override { return "epg"; }
     std::vector<std::string> handlers() const override { return {"epg"}; }
     
     bool handle(RequestContext& ctx) override {
+        auto action = query_get(ctx.query, "action");
+        if (action == "get_favorites") {
+            auto favs = proxy_.get_epg_favorites();
+            Json::array arr;
+            for (const auto& f : favs) arr.push_back(f);
+            Json res = Json::object{
+                {"status", "success"},
+                {"count", static_cast<double>(favs.size())},
+                {"favorites", Json(arr)}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "set_favorites") {
+            std::vector<std::string> favs;
+            if (!ctx.request.body.empty()) {
+                try {
+                    auto j = Json::parse(ctx.request.body);
+                    if (j.is_object() && j.contains("favorites") && j["favorites"].is_array()) {
+                        for (const auto& el : j["favorites"].as_array()) {
+                            if (el.is_string() && !el.as_string().empty()) {
+                                favs.push_back(el.as_string());
+                            }
+                        }
+                    } else if (j.is_array()) {
+                        for (const auto& el : j.as_array()) {
+                            if (el.is_string() && !el.as_string().empty()) {
+                                favs.push_back(el.as_string());
+                            }
+                        }
+                    }
+                } catch (...) {}
+            }
+            if (favs.empty()) {
+                auto favs_query = query_get(ctx.query, "favorites");
+                for (auto f : split(favs_query, ',', false)) {
+                    f = trim(f);
+                    if (!f.empty()) favs.push_back(f);
+                }
+            }
+            proxy_.set_epg_favorites(favs);
+            Json::array arr;
+            for (const auto& f : favs) arr.push_back(f);
+            Json res = Json::object{
+                {"status", "success"},
+                {"count", static_cast<double>(favs.size())},
+                {"favorites", Json(arr)}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        }
+
         std::string relative = "index.html";
         if (ctx.path != "/epg") {
             if (starts_with(ctx.path, "/epg/")) {
@@ -1023,6 +1074,7 @@ public:
     }
 private:
     Config config_;
+    Proxy& proxy_;
 };
 
 class CustomListPlugin : public PlaylistPlugin {
@@ -1179,7 +1231,7 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
     plugins.push_back(std::make_shared<PlayerPlugin>(config));
     plugins.push_back(std::make_shared<ListasPlugin>(config));
     plugins.push_back(std::make_shared<FuentesPlugin>(config));
-    plugins.push_back(std::make_shared<EpgPlugin>(config));
+    plugins.push_back(std::make_shared<EpgPlugin>(config, proxy));
 
     // Dynamic Custom Lists
     auto state = proxy.plugins_state_json();
