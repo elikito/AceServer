@@ -4,6 +4,22 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.10] - 2026-08-25
+
+### 📝 Corrección Definitiva del Guardado de Lista Interna (Frontend & Backend)
+
+#### Frontend en Fuentes (`/fuentes/index.html` & `/listas/index.html`)
+- **Aislamiento Estricto de Lista Interna**:
+  - El botón "Guardar Lista Interna" toma el texto íntegro del `<textarea>` y envía exclusivamente un único `POST /config?action=save_internal` (o `/statplugin?action=save_internal`) con payload JSON `{ "content": "..." }`.
+  - Se elimina cualquier llamada o fragmentación hacia `custom_lists` / `save_plugins`, impidiendo la creación de entradas fragmentadas tipo `fuente_1`, `fuente_2`... en `plugins_state.json`.
+
+#### Parser Robusto de Lista Interna (`proxy.cpp` `save_internal`)
+- **Tolerancia de Pares y Líneas en Blanco**:
+  - El parser tolera líneas en blanco intermedias entre el Nombre del Canal y su Hash/URL de 40 caracteres, manteniendo el `pending_name` intacto a través de saltos de línea.
+  - Soporte de delimitadores adicionales (`,`, `-`, `:`, `;`, `|`) para nombres pegados con hashes en una misma línea.
+
+---
+
 ## [08.25.09] - 2026-08-25
 
 ### 💾 Módulo de Lista Interna y Persistencia Garantizada de Favoritos
