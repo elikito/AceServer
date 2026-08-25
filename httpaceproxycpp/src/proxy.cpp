@@ -327,6 +327,37 @@ Proxy::Proxy(Config config)
     add_bunker_log("Búnker HTTPAceProxy iniciado.");
     add_bunker_log("CPU Detectada: " + cpu_info_.cpu_detected);
 
+    // Registrar verificador de streams activos para bypass de verificación instantáneo
+    channel_verifier_.set_active_stream_checker([this](const std::string& cid) -> std::optional<VerifyResult> {
+        auto broadcast = broadcasts_.find(cid);
+        if (broadcast && broadcast->client_count() > 0) {
+            auto p2p = broadcast->get_p2p_status();
+            int peers = 0;
+            long long speed_down = 0;
+            std::string status_text = "dl";
+            if (p2p.contains("peers")) {
+                try { peers = std::stoi(p2p.at("peers")); } catch (...) {}
+            }
+            if (p2p.contains("speed_down")) {
+                try { speed_down = std::stoll(p2p.at("speed_down")); } catch (...) {}
+            }
+            if (p2p.contains("status") && !p2p.at("status").empty()) {
+                status_text = p2p.at("status");
+            }
+            VerifyResult r;
+            r.content_id = cid;
+            r.health = (peers >= 2 || speed_down > 102400) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+            r.peers = std::max(peers, 1);
+            r.speed_down = speed_down;
+            r.status_text = status_text;
+            r.error = "";
+            r.checked_at = unix_time();
+            r.phase_reached = 4;
+            return r;
+        }
+        return std::nullopt;
+    });
+
     if (config_.ace_host == "auto" || config_.ace_host == "aceserve-engine") {
         set_engine("auto");
     } else {
@@ -2100,6 +2131,40 @@ Json Proxy::check_channel_peers(const std::string& content_id, int max_wait, con
 Json Proxy::verify_channel(const std::string& content_id, int timeout_ms) {
     if (content_id.empty())
         return Json::object{{"status", "error"}, {"error", "content_id requerido"}};
+
+    // Comprobación de bypass para streams activos
+    auto broadcast = broadcasts_.find(content_id);
+    if (broadcast && broadcast->client_count() > 0) {
+        auto p2p = broadcast->get_p2p_status();
+        int peers = 0;
+        long long speed_down = 0;
+        std::string status_text = "dl";
+        if (p2p.contains("peers")) {
+            try { peers = std::stoi(p2p.at("peers")); } catch (...) {}
+        }
+        if (p2p.contains("speed_down")) {
+            try { speed_down = std::stoll(p2p.at("speed_down")); } catch (...) {}
+        }
+        if (p2p.contains("status") && !p2p.at("status").empty()) {
+            status_text = p2p.at("status");
+        }
+        VerifyResult r;
+        r.content_id = content_id;
+        r.health = (peers >= 2 || speed_down > 102400) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+        r.peers = std::max(peers, 1);
+        r.speed_down = speed_down;
+        r.status_text = status_text;
+        r.error = "";
+        r.checked_at = unix_time();
+        r.phase_reached = 4;
+
+        channel_verifier_.update_state(r);
+
+        auto j = r.to_json().as_object();
+        j["status"] = "success";
+        return Json(j);
+    }
+
     auto result = channel_verifier_.verify_sync(content_id, timeout_ms);
     auto j = result.to_json().as_object();
     j["status"] = "success";
@@ -2110,7 +2175,7 @@ Json Proxy::verify_channels_batch(const std::vector<std::string>& ids) {
     Json::array results;
     for (const auto& cid : ids) {
         if (cid.empty()) continue;
-        // Encolar sin callback — la UI puede ir consultando get_health_map.
+        // Encolar — si está activo, se resuelve de inmediato por el bypass
         channel_verifier_.enqueue(cid);
         auto cached = channel_verifier_.get_cached(cid);
         results.push_back(cached.to_json());

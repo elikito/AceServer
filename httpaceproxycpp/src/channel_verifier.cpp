@@ -31,11 +31,11 @@ namespace httpace {
 // Timeouts del pipeline (en segundos para get_single)
 // ---------------------------------------------------------------------------
 namespace {
-    constexpr long kHandshakeTimeoutSec = 6;       // Fase 1: getstream handshake (ampliado para túnel/WARP)
-    constexpr long kStatPollTimeoutSec  = 3;       // Fase 3: cada poll stat_url
+    constexpr long kHandshakeTimeoutSec = 4;       // Fase 1: getstream handshake
+    constexpr long kStatPollTimeoutSec  = 2;       // Fase 3: cada poll stat_url
     constexpr long kStopTimeoutSec      = 2;       // Cierre: command_url?method=stop
-    constexpr int  kObserveTotalMs      = 4500;    // Fase 3: ventana de observación (ms)
-    constexpr int  kObservePollMs       = 400;     // Fase 3: intervalo entre polls (ms)
+    constexpr int  kObserveTotalMs      = 3500;    // Fase 3: ventana de observación (ms)
+    constexpr int  kObservePollMs       = 350;     // Fase 3: intervalo entre polls (ms)
 }
 
 // ---------------------------------------------------------------------------
@@ -119,8 +119,6 @@ ChannelVerifier::ChannelVerifier(const HttpClient& http_client,
     }
 
     // Arrancar threads de worker.
-    // Usamos max_workers_ + 1 threads: los workers extra están siempre en espera
-    // bloqueados en queue_cv_; la semáforo limita los que ejecutan el pipeline.
     int thread_count = max_workers_ + 1;
     workers_.reserve(thread_count);
     for (int i = 0; i < thread_count; ++i) {
@@ -157,9 +155,19 @@ void ChannelVerifier::set_ace_engine(const std::string& host, int http_port) {
     ace_http_port_ = http_port;
 }
 
+void ChannelVerifier::set_active_stream_checker(ActiveChecker checker) {
+    active_checker_ = std::move(checker);
+}
+
 // ---------------------------------------------------------------------------
 // Estado en memoria
 // ---------------------------------------------------------------------------
+
+void ChannelVerifier::update_state(const VerifyResult& result) {
+    std::unique_lock<std::shared_mutex> lk(state_mutex_);
+    state_[result.content_id] = result;
+    sync_cv_.notify_all();
+}
 
 void ChannelVerifier::clear_state(const std::string& content_id) {
     std::unique_lock<std::shared_mutex> lk(state_mutex_);
@@ -206,7 +214,18 @@ VerifyResult ChannelVerifier::verify_sync(const std::string& content_id,
         return r;
     }
 
-    // Comprobar caché válida.
+    // 1. Bypass para streams activamente reproduciéndose en el proxy
+    if (active_checker_) {
+        auto active_res = active_checker_(content_id);
+        if (active_res.has_value()) {
+            std::unique_lock<std::shared_mutex> lk(state_mutex_);
+            state_[content_id] = *active_res;
+            sync_cv_.notify_all();
+            return *active_res;
+        }
+    }
+
+    // 2. Comprobar caché válida
     if (max_cache_age_s > 0) {
         auto cached = get_cached(content_id);
         if (cached.health != ChannelHealth::UNKNOWN &&
@@ -218,67 +237,78 @@ VerifyResult ChannelVerifier::verify_sync(const std::string& content_id,
         }
     }
 
-    // Marcar como PENDING en el estado.
+    // 3. Comprobar si ya hay una verificación en curso y esperar su finalización
     {
         std::unique_lock<std::shared_mutex> lk(state_mutex_);
-        auto& r = state_[content_id];
-        if (r.health == ChannelHealth::PENDING) {
-            // Ya hay una verificación en curso: esperar a que termine.
-            lk.unlock();
-            auto deadline = std::chrono::steady_clock::now()
-                            + std::chrono::milliseconds(timeout_ms);
-            std::unique_lock<std::mutex> slk(sync_mutex_);
-            bool finished = sync_cv_.wait_until(slk, deadline, [&] {
-                std::shared_lock<std::shared_mutex> rlk(state_mutex_);
-                auto it = state_.find(content_id);
-                return it != state_.end()
-                       && it->second.health != ChannelHealth::PENDING;
-            });
-            if (!finished) {
-                VerifyResult timeout_r;
-                timeout_r.content_id = content_id;
-                timeout_r.health     = ChannelHealth::ERROR;
-                timeout_r.error      = "timeout esperando verificación en curso";
-                timeout_r.checked_at = unix_time();
-                return timeout_r;
+        auto it = state_.find(content_id);
+        if (it != state_.end() && it->second.health == ChannelHealth::PENDING) {
+            int64_t pending_age = unix_time() - it->second.checked_at;
+            if (pending_age < 12) {
+                // Tarea en curso legítima: esperar notificación de finalización
+                lk.unlock();
+                auto deadline = std::chrono::steady_clock::now()
+                                + std::chrono::milliseconds(timeout_ms);
+                std::unique_lock<std::mutex> slk(sync_mutex_);
+                bool finished = sync_cv_.wait_until(slk, deadline, [&] {
+                    std::shared_lock<std::shared_mutex> rlk(state_mutex_);
+                    auto sit = state_.find(content_id);
+                    return sit != state_.end()
+                           && sit->second.health != ChannelHealth::PENDING;
+                });
+                if (finished) {
+                    return get_cached(content_id);
+                }
+                // Si venció el timeout de espera de la verificación previa, forzamos nueva ejecución
             }
-            return get_cached(content_id);
         }
+        // Marcar como PENDING con timestamp actual
+        VerifyResult& r = state_[content_id];
         r.content_id = content_id;
         r.health     = ChannelHealth::PENDING;
+        r.checked_at = unix_time();
     }
 
-    // Resultado compartido entre lambda de callback y este hilo.
-    bool completed = false;
-    VerifyResult sync_result;
-    std::mutex result_mutex;
-    std::condition_variable result_cv;
+    // 4. Encolar tarea y esperar por condition_variable con punteros compartidos seguros
+    auto res_mutex = std::make_shared<std::mutex>();
+    auto res_cv = std::make_shared<std::condition_variable>();
+    auto completed = std::make_shared<bool>(false);
+    auto sync_result = std::make_shared<VerifyResult>();
 
-    enqueue(content_id, [&](VerifyResult res) {
+    auto cb = [res_mutex, res_cv, completed, sync_result](VerifyResult res) {
         {
-            std::lock_guard<std::mutex> lk(result_mutex);
-            sync_result = res;
-            completed   = true;
+            std::lock_guard<std::mutex> lk(*res_mutex);
+            *sync_result = res;
+            *completed   = true;
         }
-        result_cv.notify_all();
-    });
+        res_cv->notify_all();
+    };
 
-    // Esperar resultado con timeout.
     {
-        std::unique_lock<std::mutex> lk(result_mutex);
-        bool ok = result_cv.wait_for(lk,
-                                     std::chrono::milliseconds(timeout_ms),
-                                     [&] { return completed; });
-        if (!ok) {
-            VerifyResult timeout_r;
-            timeout_r.content_id  = content_id;
-            timeout_r.health      = ChannelHealth::ERROR;
-            timeout_r.error       = "timeout de verificación síncrona";
-            timeout_r.checked_at  = unix_time();
-            return timeout_r;
-        }
+        std::lock_guard<std::mutex> lk(queue_mutex_);
+        task_queue_.push(Task{content_id, std::move(cb), true});
     }
-    return sync_result;
+    queue_cv_.notify_one();
+
+    std::unique_lock<std::mutex> lk(*res_mutex);
+    bool ok = res_cv->wait_for(lk,
+                                 std::chrono::milliseconds(timeout_ms),
+                                 [&] { return *completed; });
+
+    if (!ok) {
+        VerifyResult timeout_r;
+        timeout_r.content_id  = content_id;
+        timeout_r.health      = ChannelHealth::ERROR;
+        timeout_r.error       = "timeout de verificación síncrona";
+        timeout_r.checked_at  = unix_time();
+        {
+            std::unique_lock<std::shared_mutex> slk(state_mutex_);
+            state_[content_id] = timeout_r;
+        }
+        sync_cv_.notify_all();
+        return timeout_r;
+    }
+
+    return *sync_result;
 }
 
 // ---------------------------------------------------------------------------
@@ -289,18 +319,40 @@ void ChannelVerifier::enqueue(const std::string& content_id,
                                std::function<void(VerifyResult)> callback) {
     if (content_id.empty()) return;
 
+    // Bypass para streams activos
+    if (active_checker_) {
+        auto active_res = active_checker_(content_id);
+        if (active_res.has_value()) {
+            {
+                std::unique_lock<std::shared_mutex> lk(state_mutex_);
+                state_[content_id] = *active_res;
+            }
+            sync_cv_.notify_all();
+            if (callback) {
+                try { callback(*active_res); } catch (...) {}
+            }
+            return;
+        }
+    }
+
     {
-        // Marcar como PENDING si no está ya marcado.
         std::unique_lock<std::shared_mutex> lk(state_mutex_);
-        auto& r = state_[content_id];
-        if (r.health == ChannelHealth::PENDING) return;  // ya encolado
+        auto it = state_.find(content_id);
+        if (it != state_.end() && it->second.health == ChannelHealth::PENDING) {
+            // Si ya está pendiente y tiene menos de 12 segundos, no duplicar encolado
+            if (unix_time() - it->second.checked_at < 12) {
+                return;
+            }
+        }
+        VerifyResult& r = state_[content_id];
         r.content_id = content_id;
         r.health     = ChannelHealth::PENDING;
+        r.checked_at = unix_time();
     }
 
     {
         std::lock_guard<std::mutex> lk(queue_mutex_);
-        task_queue_.push(Task{content_id, std::move(callback)});
+        task_queue_.push(Task{content_id, std::move(callback), false});
     }
     queue_cv_.notify_one();
 }
@@ -322,8 +374,40 @@ void ChannelVerifier::worker_loop() {
             task_queue_.pop();
         }
 
-        // Adquirir semáforo: bloquea si ya hay max_workers_ verificaciones activas.
-        semaphore_.acquire();
+        // Bypass para streams activos antes de solicitar semáforo o motor
+        if (active_checker_) {
+            auto active_res = active_checker_(task.content_id);
+            if (active_res.has_value()) {
+                {
+                    std::unique_lock<std::shared_mutex> lk(state_mutex_);
+                    state_[task.content_id] = *active_res;
+                }
+                sync_cv_.notify_all();
+                if (task.callback) {
+                    try { task.callback(*active_res); } catch (...) {}
+                }
+                continue;
+            }
+        }
+
+        // Adquirir semáforo con timeout de seguridad (8s) para evitar bloqueos perpetuos
+        bool acquired = semaphore_.try_acquire_for(std::chrono::seconds(8));
+        if (!acquired) {
+            VerifyResult r;
+            r.content_id  = task.content_id;
+            r.health      = ChannelHealth::ERROR;
+            r.error       = "timeout esperando worker disponible";
+            r.checked_at  = unix_time();
+            {
+                std::unique_lock<std::shared_mutex> lk(state_mutex_);
+                state_[task.content_id] = r;
+            }
+            sync_cv_.notify_all();
+            if (task.callback) {
+                try { task.callback(r); } catch (...) {}
+            }
+            continue;
+        }
 
         VerifyResult result;
         try {
@@ -340,19 +424,19 @@ void ChannelVerifier::worker_loop() {
             result.checked_at  = unix_time();
         }
 
-        // Persistir resultado en estado.
+        // Liberar semáforo
+        semaphore_.release();
+
+        // Persistir resultado en estado
         {
             std::unique_lock<std::shared_mutex> lk(state_mutex_);
             state_[task.content_id] = result;
         }
 
-        // Liberar semáforo.
-        semaphore_.release();
-
-        // Notificar a verify_sync y otros waiters.
+        // Notificar a verify_sync y otros waiters
         sync_cv_.notify_all();
 
-        // Ejecutar callback si lo hay.
+        // Ejecutar callback si lo hay
         if (task.callback) {
             try { task.callback(result); } catch (...) {}
         }

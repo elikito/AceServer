@@ -160,8 +160,15 @@ public:
     void set_ace_engine(const std::string& host, int http_port);
 
     // ------------------------------------------------------------------
-    // Limpia el estado en memoria de un CID específico o de todos.
+    // Bypass / Verificador de streams activos en vivo
     // ------------------------------------------------------------------
+    using ActiveChecker = std::function<std::optional<VerifyResult>(const std::string&)>;
+    void set_active_stream_checker(ActiveChecker checker);
+
+    // ------------------------------------------------------------------
+    // Actualización y limpieza de estado en memoria
+    // ------------------------------------------------------------------
+    void update_state(const VerifyResult& result);
     void clear_state(const std::string& content_id);
     void clear_all_state();
 
@@ -227,6 +234,7 @@ private:
     struct Task {
         std::string                          content_id;
         std::function<void(VerifyResult)>    callback;
+        bool                                 force = false;
     };
     mutable std::mutex              queue_mutex_;
     std::condition_variable         queue_cv_;
@@ -235,6 +243,9 @@ private:
     // Estado persistente en memoria (readers-writer lock)
     mutable std::shared_mutex       state_mutex_;
     std::unordered_map<std::string, VerifyResult> state_;
+
+    // Bypass de streams activos
+    ActiveChecker                   active_checker_;
 
     // Notificación para verify_sync (por CID)
     mutable std::mutex              sync_mutex_;

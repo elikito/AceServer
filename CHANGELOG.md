@@ -4,6 +4,22 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.05] - 2026-08-25
+
+### 🚀 Bypass de Canales Activos & Desbloqueo del Worker Pool de Verificación
+
+#### Verificación de Canales & Rendimiento (`channel_verifier.cpp` / `proxy.cpp`)
+- **Bypass Inmediato para Canales en Reproducción Activa**:
+  - Incorporado mecanismo de bypass de latencia cero para cualquier Content ID que ya posea una sesión o broadcast activo con clientes (`speed_down > 0` o `peers > 0`).
+  - Devuelve instantáneamente el estado `ONLINE` / `LOW_PEERS` con los peers y bitrate en vivo observados por el proxy, evitando crear sesiones duplicadas e innecesarias en el motor AceStream.
+- **Resolución de Bloqueos en el Worker Pool**:
+  - Corregido el defecto crítico que provocaba errores de *"timeout esperando verificación en curso"* o *"timeout de verificación síncrona"* al consultar CIDs pendientes.
+  - Implementada purga automática de verificaciones zombis o colgadas que superen los 12 segundos.
+  - Implementado timeout estricto de seguridad (`try_acquire_for(8s)`) en la adquisición de semáforos del worker pool y ajustados los timeouts por fase (handshake a 4s, poll a 2s).
+  - Garantizada la notificación de variables de condición (`sync_cv_`) y liberación de mutexes mediante punteros compartidos (`std::shared_ptr`) ante cualquier excepción o salida temprana.
+
+---
+
 ## [08.25.04] - 2026-08-25
 
 ### 🛡️ Modo No Interactivo (--accept-tos) y Persistencia de Registro WARP
