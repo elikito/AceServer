@@ -1,5 +1,5 @@
 #EXTM3U url-tvg="https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz"
-#EXTINF:-1 group-title="Interna" tvg-name="DAZN 1 HD", DAZN 1 HD
-acestream://77cf022557c56cdf8d8115f50e61f846ad72ee05
-#EXTINF:-1 group-title="Interna" tvg-name="Teledeporte FHD", Teledeporte FHD
-acestream://b35b3eb8e22365bf3469efd6d1f3b82618a6e18a
+#EXTINF:-1 group-title="Interna" tvg-name="Sky Sports F1", Sky Sports F1
+acestream://b04372b9543d763bd2dbd2a1842d9723fd080076
+#EXTINF:-1 group-title="Interna" tvg-name="DAZN 1", DAZN 1
+acestream://d719181097d256073844390b3e094fbcb1bceaa4

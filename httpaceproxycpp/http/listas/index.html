@@ -1214,19 +1214,59 @@ acestream://1234567890abcdef1234567890abcdef12345678
                 });
         }
 
+        function validateCustomSourceUrl(rawUrl) {
+            if (!rawUrl) {
+                return { valid: false, message: 'La dirección URL no puede estar vacía.' };
+            }
+            const trimmed = rawUrl.trim();
+            const isMultiline = /[\r\n]/.test(rawUrl);
+            const isPlainHash = /^[a-fA-F0-9]{40}$/i.test(trimmed);
+            const containsHash = /[a-fA-F0-9]{40}/i.test(trimmed);
+            const hasAcestream = /acestream:\/\//i.test(trimmed);
+            const hasChannelDelim = (trimmed.includes(' - ') || (trimmed.includes(',') && !trimmed.startsWith('http://') && !trimmed.startsWith('https://')));
+
+            if (isMultiline || isPlainHash || hasAcestream || (containsHash && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/') && !trimmed.startsWith('file://')) || hasChannelDelim) {
+                return {
+                    valid: false,
+                    isChannelFormat: true,
+                    message: "Has pegado canales/hashes en el campo de URL. Usa la sección 'Editar / Importar Lista Interna' para gestionar canales individuales."
+                };
+            }
+
+            const isValidPrefix = trimmed.startsWith('http://') ||
+                                  trimmed.startsWith('https://') ||
+                                  trimmed.startsWith('/listas/locales/') ||
+                                  trimmed.startsWith('/') ||
+                                  trimmed.startsWith('file://');
+
+            if (!isValidPrefix) {
+                return {
+                    valid: false,
+                    isChannelFormat: false,
+                    message: "La URL de la fuente debe comenzar por http://, https:// o ruta local (/listas/locales/)."
+                };
+            }
+
+            return { valid: true, url: trimmed };
+        }
+
         function saveCustomUrl(listName, button) {
             const urlInput = document.getElementById(`url-${listName}`);
             const titleInput = document.getElementById(`title-${listName}`);
-            let urlVal = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+            let rawUrl = urlInput ? urlInput.value : '';
+            let urlVal = normalizeUrlGateway(rawUrl.trim());
+
+            const valResult = validateCustomSourceUrl(urlVal);
+            if (!valResult.valid) {
+                showAlert(valResult.message, 'error');
+                if (urlInput) urlInput.focus();
+                return;
+            }
+            urlVal = valResult.url;
             if (urlInput && urlInput.value.trim() !== urlVal) {
                 urlInput.value = urlVal;
             }
             const titleVal = titleInput ? titleInput.value.trim() : listName;
-
-            if (!urlVal) {
-                showAlert('La URL no puede estar vacía.', 'error');
-                return;
-            }
 
             button.disabled = true;
             button.style.opacity = '0.5';
@@ -1259,14 +1299,24 @@ acestream://1234567890abcdef1234567890abcdef12345678
             const urlInput = document.getElementById('new-list-url');
             const name = nameInput ? nameInput.value.trim() : '';
             const title = titleInput ? titleInput.value.trim() : name;
-            let url = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
-            if (urlInput && urlInput.value.trim() !== url) {
-                urlInput.value = url;
+            let rawUrl = urlInput ? urlInput.value : '';
+            let url = normalizeUrlGateway(rawUrl.trim());
+
+            if (!name) {
+                showAlert('El identificador es un campo obligatorio.', 'error');
+                if (nameInput) nameInput.focus();
+                return;
             }
 
-            if (!name || !url) {
-                showAlert('El identificador y la URL son campos obligatorios.', 'error');
+            const valResult = validateCustomSourceUrl(url);
+            if (!valResult.valid) {
+                showAlert(valResult.message, 'error');
+                if (urlInput) urlInput.focus();
                 return;
+            }
+            url = valResult.url;
+            if (urlInput && urlInput.value.trim() !== url) {
+                urlInput.value = url;
             }
 
             fetch(`/config?action=save_custom_list&name=${encodeURIComponent(name)}&title=${encodeURIComponent(title || name)}&url=${encodeURIComponent(url)}&enabled=true`)

@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.11] - 2026-08-25
+
+### 🛡️ Validación Estricta de Fuentes Dinámicas y Acceso Rápido al Editor Interno
+
+#### Validación de URLs en Fuentes Dinámicas Personalizadas (`/fuentes/` & `/listas/`)
+- **Frontend (`fuentes/index.html` & `listas/index.html`)**:
+  - Implementada validación obligatoria para que cualquier dirección URL de lista personalizada comience obligatoriamente por `http://`, `https://` o ruta local `/listas/locales/` (o `/`).
+  - Detección inteligente de texto multilínea, nombres de canales (`Nombre - Hash` o `Nombre, Hash`), URLs `acestream://` o hashes planos de 40 caracteres hexadecimales pegados en el campo de URL remota.
+  - Bloqueo inmediato del guardado y alerta al usuario: *"Has pegado canales/hashes en el campo de URL. Usa la sección 'Editar / Importar Lista Interna' para gestionar canales individuales."* con redirección asistida al editor interno.
+- **Backend C++ (`proxy.cpp`, `util.cpp`, `plugins.cpp`)**:
+  - Función de validación de sistema `httpace::is_valid_source_url()` para verificar la validez sintáctica de URLs de listas remotas y locales.
+  - En `save_custom_list`, rechazo de URLs inválidas o hashes planos con código HTTP 400.
+  - En `import_sources` y `create_plugins`, descarte automático de entradas de fuentes personalizadas con formato incorrecto.
+
+#### Acceso Visible al Editor de Lista Interna
+- **Botón Destacado en el Panel Superior (`/fuentes/`)**:
+  - Incorporado botón verde esmeralda **"📝 Editor de Lista Interna"** en la barra de acciones superior.
+  - Interacción dinámica (`openInternalEditor()`) con desplazamiento suave (*smooth scroll*), foco inmediato en el `<textarea>` y resalte perimetral luminoso (*glow effect*).
+  - Tarjeta estilizada y delimitada para gestionar canales y hashes individuales sin interferir con las fuentes dinámicas.
+
+---
+
 ## [08.25.10] - 2026-08-25
 
 ### 📝 Corrección Definitiva del Guardado de Lista Interna (Frontend & Backend)

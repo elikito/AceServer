@@ -863,8 +863,14 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             auto url = query_get(ctx.query, "url");
             auto enabled_str = query_get(ctx.query, "enabled");
             if (!name.empty() && !url.empty()) {
+                auto decoded_url = url_decode(url);
+                if (!is_valid_source_url(decoded_url)) {
+                    send_error(connection, 400, "URL de fuente inválida. Debe comenzar por http://, https:// o ruta local (/listas/locales/)");
+                    return;
+                }
                 bool enabled = (enabled_str != "false");
                 if (title.empty()) title = name;
+                auto decoded_title = url_decode(title);
                 {
                     std::lock_guard<std::mutex> lock(plugins_state_mutex_);
                     Json::object obj;
@@ -879,8 +885,8 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     for (auto& item : arr) {
                         if (item.is_object() && item.as_object().contains("name") && item.as_object().at("name").as_string() == name) {
                             Json::object item_obj = item.as_object();
-                            item_obj["title"] = url_decode(title);
-                            item_obj["url"] = url_decode(url);
+                            item_obj["title"] = decoded_title;
+                            item_obj["url"] = decoded_url;
                             item_obj["enabled"] = enabled;
                             item = item_obj;
                             found = true;
@@ -890,8 +896,8 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     if (!found) {
                         arr.push_back(Json::object{
                             {"name", name},
-                            {"title", url_decode(title)},
-                            {"url", url_decode(url)},
+                            {"title", decoded_title},
+                            {"url", decoded_url},
                             {"enabled", enabled}
                         });
                     }
@@ -899,7 +905,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     plugins_state_json_ = obj;
                 }
                 save_plugins_state();
-                add_custom_list_plugin(name, url_decode(url));
+                add_custom_list_plugin(name, decoded_url);
                 connection.send_response_headers(200, status_reason(200), headers);
                 connection.send_text("{\"status\":\"success\"}");
             } else {
@@ -1080,7 +1086,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                                 std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : "";
                                 bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool() : true;
 
-                                if (c_name.empty() || c_url.empty()) continue;
+                                if (c_name.empty() || c_url.empty() || !is_valid_source_url(c_url)) continue;
 
                                 bool found = false;
                                 for (auto& existing : custom_arr) {
@@ -1143,6 +1149,12 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
 
                     if (!starts_with(line, "#")) {
                         std::string url = line;
+                        if (!is_valid_source_url(url)) {
+                            pending_id.clear();
+                            pending_title.clear();
+                            pending_enabled = true;
+                            continue;
+                        }
                         if (pending_title.empty()) {
                             pending_title = "Fuente " + std::to_string(imported_count + 1);
                         }
@@ -2595,6 +2607,10 @@ Json Proxy::plugins_state_json() const {
 extern std::shared_ptr<Plugin> create_custom_list_plugin_helper(Config config, HttpClient& http_client, Proxy& proxy, const std::string& name, const std::string& url);
 
 void Proxy::add_custom_list_plugin(const std::string& name, const std::string& url) {
+    if (!is_valid_source_url(url)) {
+        log_line("WARN", "Descartando registro de fuente personalizada con URL inválida: " + name + " -> " + url);
+        return;
+    }
     auto existing = plugins_.by_handler(name);
     if (existing) {
         if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(existing)) {

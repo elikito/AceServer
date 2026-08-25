@@ -36,6 +36,7 @@ std::string read_file_binary(const std::string& path);
 bool path_is_safe_relative(std::string_view path);
 std::string replace_all(std::string value, std::string_view needle, std::string_view replacement);
 std::string regex_escape(std::string_view value);
+bool is_valid_source_url(std::string_view raw_url);
 
 struct ParsedUrl {
     std::string scheme;

@@ -600,6 +600,11 @@
                 <p>Administra, sincroniza y añade listas de reproducción dinámicas</p>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button class="btn-action btn-save"
+                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);"
+                    onclick="openInternalEditor()" title="Abrir Editor de Lista Interna (pegar nombres y hashes)">
+                    <span>📝 Editor de Lista Interna</span>
+                </button>
                 <button class="btn-action btn-copy"
                     style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
                     onclick="exportSources('m3u')"
@@ -867,16 +872,23 @@ http://servidor.com/lista.m3u"></textarea>
         </div>
 
         <!-- Pegar Canales Directos (Lista Interna) -->
-        <div class="section-header">
-            <div class="section-title">
-                📝 Pegar Canales Directos (Lista Interna, se sobreescribe)
+        <div class="section-header" id="internal-editor-header">
+            <div class="section-title" style="display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="color: #10b981;">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                </svg>
+                <span>📝 Editor de Lista Interna (Pegar Canales / Hashes Individuales)</span>
             </div>
         </div>
-        <div class="config-card">
+        <div class="config-card" id="internal-editor-card" style="border-left: 4px solid #10b981;">
             <div class="form-group" style="margin-bottom: 12px;">
-                <label for="paste-channels-text">Pega tus canales (Formatos flexibles: "Nombre - Hash", "Nombre, Hash",
-                    "acestream://Hash", o Hash directo por línea)</label>
-                <textarea id="paste-channels-text" class="url-input" rows="6"
+                <label for="paste-channels-text" style="font-weight: 600; color: var(--text-color);">
+                    Pega tus canales (Formatos flexibles: "Nombre - acestream://Hash", "Nombre, Hash", "acestream://Hash" o Hash directo por línea):
+                </label>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-bottom: 8px;">
+                    Esta sección compila y guarda exclusivamente la lista interna unificada (<code style="color: #10b981; font-weight: 600;">/listas/locales/interna.m3u</code>) sin alterar tus fuentes remotas dinámicas.
+                </p>
+                <textarea id="paste-channels-text" class="url-input" rows="7"
                     style="width: 100%; font-family: monospace; font-size: 13px; padding: 10px; resize: vertical;"
                     placeholder="Ejemplos de formatos aceptados por línea:
 Sky Sports f1 DE - acestream://b04372b9543d763bd2dbd2a1842d9723fd080076
@@ -884,9 +896,12 @@ DAZN F1 1080p * - acestream://d719181097d256073844390b3e094fbcb1bceaa4
 DAZN F1 1080p ** - acestream://b08e158ea3f5c72084f5ff8e3c30ca2e4d1ff6d1
 DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textarea>
             </div>
-            <div style="display: flex; justify-content: flex-end;">
-                <button class="btn-action btn-save" style="padding: 10px 24px;" onclick="saveInternalList()">
-                    Guardar en Lista Interna
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <span style="font-size: 12px; color: var(--text-muted);">
+                    💡 Si tienes una URL de lista completa remota (HTTP/HTTPS), agrégala en <strong>"Agregar Nueva Fuente por URL"</strong>.
+                </span>
+                <button class="btn-action btn-save" style="padding: 10px 24px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);" onclick="saveInternalList()">
+                    💾 Guardar en Lista Interna
                 </button>
             </div>
         </div>
@@ -984,6 +999,62 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
 
         function sanitizeName(input) {
             input.value = input.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        }
+
+        function validateCustomSourceUrl(rawUrl) {
+            if (!rawUrl) {
+                return { valid: false, message: 'La dirección URL no puede estar vacía.' };
+            }
+            const trimmed = rawUrl.trim();
+            const isMultiline = /[\r\n]/.test(rawUrl);
+            const isPlainHash = /^[a-fA-F0-9]{40}$/i.test(trimmed);
+            const containsHash = /[a-fA-F0-9]{40}/i.test(trimmed);
+            const hasAcestream = /acestream:\/\//i.test(trimmed);
+            const hasChannelDelim = (trimmed.includes(' - ') || (trimmed.includes(',') && !trimmed.startsWith('http://') && !trimmed.startsWith('https://')));
+
+            // Detección de canales o hashes pegados en el campo de URL
+            if (isMultiline || isPlainHash || hasAcestream || (containsHash && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/') && !trimmed.startsWith('file://')) || hasChannelDelim) {
+                return {
+                    valid: false,
+                    isChannelFormat: true,
+                    message: "Has pegado canales/hashes en el campo de URL. Usa la sección 'Editar / Importar Lista Interna' para gestionar canales individuales."
+                };
+            }
+
+            const isValidPrefix = trimmed.startsWith('http://') ||
+                                  trimmed.startsWith('https://') ||
+                                  trimmed.startsWith('/listas/locales/') ||
+                                  trimmed.startsWith('/') ||
+                                  trimmed.startsWith('file://');
+
+            if (!isValidPrefix) {
+                return {
+                    valid: false,
+                    isChannelFormat: false,
+                    message: "La URL de la fuente debe comenzar por http://, https:// o ruta local (/listas/locales/)."
+                };
+            }
+
+            return { valid: true, url: trimmed };
+        }
+
+        function openInternalEditor() {
+            const card = document.getElementById('internal-editor-card');
+            const textarea = document.getElementById('paste-channels-text');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.style.transition = 'all 0.3s ease';
+                card.style.boxShadow = '0 0 0 3px #10b981, 0 8px 24px rgba(16, 185, 129, 0.25)';
+                setTimeout(() => {
+                    if (textarea) {
+                        textarea.focus();
+                        textarea.select();
+                    }
+                }, 300);
+                setTimeout(() => {
+                    card.style.boxShadow = '';
+                }, 2500);
+            }
         }
 
         function normalizeUrlGateway(url) {
@@ -1349,14 +1420,21 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
 
         function savePredefinedSource(pluginId) {
             const input = document.getElementById(`url-${pluginId}`);
-            let urlVal = input ? normalizeUrlGateway(input.value.trim()) : '';
+            let rawUrl = input ? input.value : '';
+            let urlVal = normalizeUrlGateway(rawUrl.trim());
+
+            const valResult = validateCustomSourceUrl(urlVal);
+            if (!valResult.valid) {
+                showToast(valResult.message, 'error');
+                if (valResult.isChannelFormat) {
+                    setTimeout(() => openInternalEditor(), 1200);
+                }
+                if (input) input.focus();
+                return;
+            }
+            urlVal = valResult.url;
             if (input && input.value.trim() !== urlVal) {
                 input.value = urlVal;
-            }
-
-            if (!urlVal) {
-                showToast('La URL de la fuente no puede estar vacía', 'error');
-                return;
             }
 
             fetch(`/config?action=set_url&plugin=${encodeURIComponent(pluginId)}&url=${encodeURIComponent(urlVal)}`)
@@ -1378,16 +1456,23 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
         function saveCustomSource(name) {
             const urlInput = document.getElementById(`url-${name}`);
             const titleInput = document.getElementById(`title-${name}`);
-            let urlVal = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+            let rawUrl = urlInput ? urlInput.value : '';
+            let urlVal = normalizeUrlGateway(rawUrl.trim());
+
+            const valResult = validateCustomSourceUrl(urlVal);
+            if (!valResult.valid) {
+                showToast(valResult.message, 'error');
+                if (valResult.isChannelFormat) {
+                    setTimeout(() => openInternalEditor(), 1200);
+                }
+                if (urlInput) urlInput.focus();
+                return;
+            }
+            urlVal = valResult.url;
             if (urlInput && urlInput.value.trim() !== urlVal) {
                 urlInput.value = urlVal;
             }
             const titleVal = titleInput ? titleInput.value.trim() : name;
-
-            if (!urlVal) {
-                showToast('La URL no puede estar vacía', 'error');
-                return;
-            }
 
             fetch(`/config?action=save_custom_list&name=${encodeURIComponent(name)}&title=${encodeURIComponent(titleVal)}&url=${encodeURIComponent(urlVal)}&enabled=true`)
                 .then(r => r.json())
@@ -1412,11 +1497,27 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
 
             const name = idInput ? idInput.value.trim() : '';
             const title = titleInput ? titleInput.value.trim() : name;
-            let url = urlInput ? normalizeUrlGateway(urlInput.value.trim()) : '';
+            let rawUrl = urlInput ? urlInput.value : '';
+            let url = normalizeUrlGateway(rawUrl.trim());
 
-            if (!name || !url) {
-                showToast('El identificador (ID) y la URL son campos obligatorios', 'error');
+            if (!name) {
+                showToast('El identificador (ID) es un campo obligatorio', 'error');
+                if (idInput) idInput.focus();
                 return;
+            }
+
+            const valResult = validateCustomSourceUrl(url);
+            if (!valResult.valid) {
+                showToast(valResult.message, 'error');
+                if (valResult.isChannelFormat) {
+                    setTimeout(() => openInternalEditor(), 1200);
+                }
+                if (urlInput) urlInput.focus();
+                return;
+            }
+            url = valResult.url;
+            if (urlInput && urlInput.value.trim() !== url) {
+                urlInput.value = url;
             }
 
             fetch(`/config?action=save_custom_list&name=${encodeURIComponent(name)}&title=${encodeURIComponent(title || name)}&url=${encodeURIComponent(url)}&enabled=true`)

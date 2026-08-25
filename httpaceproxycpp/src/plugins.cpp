@@ -1271,7 +1271,9 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
             if (item.is_object() && item.contains("name") && item.contains("url")) {
                 auto name = item["name"].as_string();
                 auto url = item["url"].as_string();
-                plugins.push_back(std::make_shared<CustomListPlugin>(config, http_client, proxy, name, url));
+                if (is_valid_source_url(url)) {
+                    plugins.push_back(std::make_shared<CustomListPlugin>(config, http_client, proxy, name, url));
+                }
             }
         }
     }

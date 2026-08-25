@@ -437,6 +437,18 @@ std::string normalize_list_url(const std::string& input_url) {
     return url;
 }
 
+bool is_valid_source_url(std::string_view raw_url) {
+    auto url = trim(raw_url);
+    if (url.empty()) return false;
+    if (url.find('\n') != std::string_view::npos || url.find('\r') != std::string_view::npos) return false;
+    if (starts_with(url, "http://") || starts_with(url, "https://") ||
+        starts_with(url, "/listas/locales/") || starts_with(url, "/") ||
+        starts_with(url, "file://")) {
+        return true;
+    }
+    return false;
+}
+
 void log_line(const std::string& level, const std::string& message) {
     tzset();
     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
