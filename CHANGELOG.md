@@ -4,6 +4,36 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.06] - 2026-08-25
+
+### 🎯 Motor de Selección Automática y Fallback Inteligente (Fase 1: Teledeporte)
+
+#### Algoritmo de Normalización y Agrupación Canónica (`stream_scorer.cpp`)
+- **Normalización Multicadena y Slugs Universales**:
+  - Implementada la función `canonical_name()` y `canonical_slug()` para agrupar streams redundantes del mismo canal:
+    - Eliminación de sufijos y etiquetas de calidad: `1080p`, `720p`, `FHD`, `HD`, `4K`, `UHD`, `SD`, `HEVC`, `H.265`.
+    - Eliminación de modificadores y caracteres especiales: `*`, `**`, `(back)`, `backup`, `[fhd]`, etc.
+    - Normalización de acentos UTF-8 (`á`, `é`, `í`, `ó`, `ú`, `ñ`, `ü`) y caracteres en minúsculas.
+  - **Ejemplo**: `Teledeporte 720p **`, `Teledeporte 1080p *`, `Teledeporte 1080p **` y `TELEDEPORTE FHD` se agrupan unívocamente bajo el slug canónico `teledeporte`.
+
+#### Evaluador y Clasificador de Enjambres (`StreamScorer`)
+- **Fórmula de Puntuación Inteligente**:
+  - Puntuación ponderada basada en:
+    $$\text{Score} = (\text{Peers} \times 10) + (\text{SpeedDown KB/s} \times 0.5) + \text{BonusCalidad} + \text{BonusActivo}$$
+  - Bonificaciones por resolución: `1080p/FHD` (+30 pts), `720p/HD` (+15 pts), `4K/UHD` (+40 pts).
+  - Prioridad de sesión activa (+100 pts) si el stream ya está siendo transmitido por `BroadcastManager` para reusar en caliente.
+  - Penalización a streams marcados como `OFFLINE` o `BLOCKED`.
+
+#### Endpoints de Despacho y Playlists Dinámicas (`proxy.cpp`)
+- **Ruta Virtual Persistente (`/auto/<slug>`)**:
+  - Permite reproducir mediante `/auto/teledeporte` o `/auto?channel=Teledeporte`.
+  - Busca todos los candidatos coincidentes en las listas cargadas, evalúa su estado y redirige de forma transparente al mejor Content ID en tiempo real (`HTTP 307 Temporary Redirect` a `/content_id/<CID>/stream.ts`).
+  - Endpoint de introspección JSON: `/auto/teledeporte?action=resolve` para consultar el ranking detallado de candidatos y puntuaciones.
+- **Lista Dinámica de Favoritos (`/channels/favoritos.m3u` & `/auto/playlist.m3u`)**:
+  - Exporta una lista M3U estructurada con los canales consolidados apuntando a sus URLs automáticas `/auto/<slug>/stream.ts`.
+
+---
+
 ## [08.25.05] - 2026-08-25
 
 ### 🚀 Bypass de Canales Activos & Desbloqueo del Worker Pool de Verificación

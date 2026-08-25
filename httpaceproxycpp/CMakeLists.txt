@@ -22,6 +22,7 @@ add_library(httpaceproxycpp_core
   src/playlist.cpp
   src/plugins.cpp
   src/proxy.cpp
+  src/stream_scorer.cpp
   src/util.cpp
 )
 

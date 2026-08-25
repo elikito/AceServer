@@ -7,6 +7,7 @@
 #include "httpaceproxycpp/http_client.hpp"
 #include "httpaceproxycpp/http_server.hpp"
 #include "httpaceproxycpp/plugins.hpp"
+#include "httpaceproxycpp/stream_scorer.hpp"
 
 #include <chrono>
 #include <memory>
@@ -56,6 +57,13 @@ public:
 
     /// Diagnóstico de protección de red (Cloudflare WARP, Tailscale, IP de salida, Ruta Segura).
     Json get_network_diagnostics();
+
+    // -----------------------------------------------------------------------
+    // v08.25.06 — Motor de Selección Automática y Fallback de Canales
+    // -----------------------------------------------------------------------
+    std::vector<ChannelCandidate> find_candidates_for_channel(const std::string& query_or_slug);
+    std::optional<ChannelCandidate> resolve_best_candidate(const std::string& query_or_slug);
+    std::string generate_auto_playlist(const std::string& hostport, const std::string& specific_slug = "");
 
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);

@@ -6,8 +6,10 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <thread>
+#include <unordered_set>
 
 #include <sys/utsname.h>
 
@@ -405,6 +407,90 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
     }
 
     RequestContext ctx{request, connection, request.path, request.query, split(request.path, '/', true), "", "m3u8"};
+
+    std::string raw_host = request.header("host", "127.0.0.1:8888");
+
+    // -----------------------------------------------------------------------
+    // v08.25.06 — Endpoint de Lista Dinámica de Favoritos / Auto
+    // -----------------------------------------------------------------------
+    if (ctx.path == "/channels/favoritos.m3u" || ctx.path == "/auto/playlist.m3u" ||
+        ctx.path == "/auto/favoritos.m3u" || ctx.path == "/channels/auto.m3u") {
+        std::string m3u = generate_auto_playlist(raw_host);
+        connection.send_response_headers(200, status_reason(200), {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Content-Type", "application/x-mpegurl; charset=utf-8"},
+            {"Connection", "close"}
+        });
+        connection.send_text(m3u);
+        return;
+    }
+
+    // -----------------------------------------------------------------------
+    // v08.25.06 — Endpoint Despachador Virtual /auto/<slug>
+    // -----------------------------------------------------------------------
+    if (ctx.parts.size() > 1 && ctx.parts[1] == "auto") {
+        std::string slug;
+        if (ctx.query.find("channel=") != std::string::npos) {
+            slug = query_get(ctx.query, "channel");
+        } else if (ctx.parts.size() > 2) {
+            slug = ctx.parts[2];
+            // Quitar sufijos comunes
+            if (ends_with(slug, ".ts")) slug = slug.substr(0, slug.size() - 3);
+            else if (ends_with(slug, ".m3u8")) slug = slug.substr(0, slug.size() - 5);
+            else if (ends_with(slug, ".m3u")) slug = slug.substr(0, slug.size() - 4);
+        }
+
+        auto action = query_get(ctx.query, "action");
+        if (action == "resolve" || action == "list") {
+            auto candidates = find_candidates_for_channel(slug);
+            StreamScorer::rank_candidates(candidates);
+            Json::array arr;
+            for (const auto& c : candidates) {
+                arr.push_back(Json::object{
+                    {"name", c.name},
+                    {"content_id", c.content_id},
+                    {"plugin", c.plugin_name},
+                    {"quality", static_cast<double>(static_cast<int>(c.quality))},
+                    {"quality_bonus", static_cast<double>(c.quality_bonus)},
+                    {"peers", static_cast<double>(c.peers)},
+                    {"speed_down", static_cast<double>(c.speed_down)},
+                    {"health", health_to_string(c.health)},
+                    {"is_active", c.is_active_stream},
+                    {"score", c.score}
+                });
+            }
+            Json res = Json::object{
+                {"status", "success"},
+                {"slug", canonical_slug(slug)},
+                {"canonical_name", canonical_name(slug)},
+                {"candidates_count", static_cast<double>(candidates.size())},
+                {"best_candidate", candidates.empty() ? Json(nullptr) : arr[0]},
+                {"candidates", Json(arr)}
+            };
+            connection.send_response_headers(200, status_reason(200), {
+                {"Access-Control-Allow-Origin", "*"},
+                {"Content-Type", "application/json; charset=utf-8"},
+                {"Connection", "close"}
+            });
+            connection.send_text(res.dump(2));
+            return;
+        }
+
+        auto best = resolve_best_candidate(slug);
+        if (!best.has_value()) {
+            send_error(connection, 404, "No candidates found for channel: " + slug);
+            return;
+        }
+
+        // Redirigir al mejor stream disponible (HTTP 307 Temporary Redirect)
+        std::string redirect_target = "/content_id/" + best->content_id + "/stream.ts";
+        connection.send_response_headers(307, "Temporary Redirect", {
+            {"Location", redirect_target},
+            {"Access-Control-Allow-Origin", "*"},
+            {"Connection", "close"}
+        });
+        return;
+    }
 
     if (ctx.parts.size() > 1 && ctx.parts[1] == "config") {
         auto action = query_get(ctx.query, "action");
@@ -2552,6 +2638,195 @@ Json Proxy::check_epg_url(const std::string& target_url) {
             {"error", e.what()}
         };
     }
+}
+
+// ---------------------------------------------------------------------------
+// v08.25.06 — Métodos de Selección Automática y Fallback de Canales
+// ---------------------------------------------------------------------------
+
+std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::string& query_or_slug) {
+    std::vector<ChannelCandidate> candidates;
+    if (query_or_slug.empty()) return candidates;
+
+    std::string target_slug = canonical_slug(query_or_slug);
+    std::string target_cname = canonical_name(query_or_slug);
+    std::unordered_set<std::string> seen_cids;
+
+    for (const auto& plugin : plugins_.unique_plugins()) {
+        if (!plugin->is_enabled()) continue;
+        auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin);
+        if (!playlist) continue;
+
+        auto channels_map = playlist->channels();
+        auto picons_map = playlist->picons();
+        auto items = playlist->playlist_items();
+
+        for (const auto& item : items) {
+            std::string raw_url;
+            auto cit = channels_map.find(item.name);
+            if (cit != channels_map.end()) {
+                raw_url = cit->second;
+            } else {
+                raw_url = item.url;
+            }
+
+            auto ace_url = extract_acestream_content_url(raw_url);
+            if (!ace_url) continue;
+
+            std::string cid;
+            if (starts_with(*ace_url, "acestream://")) {
+                cid = ace_url->substr(12);
+            } else if (starts_with(*ace_url, "infohash://")) {
+                cid = ace_url->substr(11);
+            } else {
+                cid = *ace_url;
+            }
+
+            auto qmark = cid.find('?');
+            if (qmark != std::string::npos) cid = cid.substr(0, qmark);
+            cid = trim(cid);
+            if (cid.size() < 40) continue;
+
+            std::string item_slug = canonical_slug(item.name);
+            std::string item_cname = canonical_name(item.name);
+
+            bool matches = (item_slug == target_slug) ||
+                           (item_cname == target_cname) ||
+                           (target_slug.size() >= 4 && item_slug.find(target_slug) != std::string::npos) ||
+                           (item_slug.size() >= 4 && target_slug.find(item_slug) != std::string::npos);
+
+            if (!matches && !item.tvgid.empty()) {
+                std::string tvg_slug = canonical_slug(item.tvgid);
+                if (tvg_slug == target_slug || (target_slug.size() >= 4 && tvg_slug.find(target_slug) != std::string::npos)) {
+                    matches = true;
+                }
+            }
+
+            if (matches) {
+                if (seen_cids.find(cid) != seen_cids.end()) continue;
+                seen_cids.insert(cid);
+
+                ChannelCandidate c;
+                c.name = item.name;
+                c.content_id = cid;
+                c.plugin_name = playlist->name();
+                c.logo = item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo;
+                c.group = item.group;
+                c.tvg_id = item.tvgid.empty() ? item.tvg : item.tvgid;
+
+                // Chequear si ya está activo en BroadcastManager
+                auto broadcast = broadcasts_.find(cid);
+                if (broadcast && broadcast->client_count() > 0) {
+                    c.is_active_stream = true;
+                    auto p2p = broadcast->get_p2p_status();
+                    if (p2p.contains("peers")) {
+                        try { c.peers = std::stoi(p2p.at("peers")); } catch (...) {}
+                    }
+                    if (p2p.contains("speed_down")) {
+                        try { c.speed_down = std::stoll(p2p.at("speed_down")); } catch (...) {}
+                    }
+                    c.health = ChannelHealth::ONLINE;
+                } else {
+                    auto cached = channel_verifier_.get_cached(cid);
+                    c.peers = cached.peers;
+                    c.speed_down = cached.speed_down;
+                    c.health = cached.health;
+                }
+
+                c.quality = detect_stream_quality(item.name);
+                switch (c.quality) {
+                    case StreamQuality::UHD_4K:   c.quality_bonus = 40; break;
+                    case StreamQuality::FHD_1080: c.quality_bonus = 30; break;
+                    case StreamQuality::HD_720:   c.quality_bonus = 15; break;
+                    default:                      c.quality_bonus = 0; break;
+                }
+
+                candidates.push_back(c);
+            }
+        }
+    }
+
+    return candidates;
+}
+
+std::optional<ChannelCandidate> Proxy::resolve_best_candidate(const std::string& query_or_slug) {
+    auto candidates = find_candidates_for_channel(query_or_slug);
+    if (candidates.empty()) return std::nullopt;
+
+    StreamScorer::rank_candidates(candidates);
+    return candidates.front();
+}
+
+std::string Proxy::generate_auto_playlist(const std::string& hostport, const std::string& specific_slug) {
+    std::map<std::string, std::vector<ChannelCandidate>> grouped;
+    std::map<std::string, PlaylistItem> exemplar;
+
+    for (const auto& plugin : plugins_.unique_plugins()) {
+        if (!plugin->is_enabled()) continue;
+        auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin);
+        if (!playlist) continue;
+
+        auto channels_map = playlist->channels();
+        auto picons_map = playlist->picons();
+
+        for (const auto& item : playlist->playlist_items()) {
+            std::string raw_url;
+            auto cit = channels_map.find(item.name);
+            if (cit != channels_map.end()) {
+                raw_url = cit->second;
+            } else {
+                raw_url = item.url;
+            }
+
+            auto ace_url = extract_acestream_content_url(raw_url);
+            if (!ace_url) continue;
+
+            std::string slug = canonical_slug(item.name);
+            if (slug.empty() || slug == "channel") continue;
+
+            if (!specific_slug.empty() && specific_slug != "favoritos" && specific_slug != "all") {
+                if (slug != specific_slug && slug.find(specific_slug) == std::string::npos) continue;
+            }
+
+            ChannelCandidate c;
+            c.name = item.name;
+            c.content_id = *ace_url;
+            c.plugin_name = playlist->name();
+            c.group = item.group;
+            c.logo = item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo;
+            c.tvg_id = item.tvgid.empty() ? item.tvg : item.tvgid;
+
+            grouped[slug].push_back(c);
+            if (exemplar.find(slug) == exemplar.end()) {
+                exemplar[slug] = item;
+            }
+        }
+    }
+
+    std::ostringstream out;
+    out << "#EXTM3U name=\"HTTPAceProxy Auto Channels\"\n";
+
+    for (const auto& [slug, list] : grouped) {
+        const auto& item = exemplar[slug];
+        std::string display_name = canonical_name(item.name);
+        bool cap = true;
+        for (char& c : display_name) {
+            if (std::isspace(static_cast<unsigned char>(c))) cap = true;
+            else if (cap) { c = std::toupper(static_cast<unsigned char>(c)); cap = false; }
+        }
+        if (display_name.empty()) display_name = slug;
+
+        std::string group = item.group.empty() ? "Auto Selección" : item.group;
+        std::string logo = item.logo;
+        std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
+
+        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
+        if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+        out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
+        out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
+    }
+
+    return out.str();
 }
 
 } // namespace httpace
