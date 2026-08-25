@@ -1004,12 +1004,16 @@ public:
         auto action = query_get(ctx.query, "action");
         if (action == "get_favorites") {
             auto favs = proxy_.get_epg_favorites();
+            auto disabled = proxy_.get_disabled_candidates();
             Json::array arr;
             for (const auto& f : favs) arr.push_back(f);
+            Json::array dis_arr;
+            for (const auto& d : disabled) dis_arr.push_back(d);
             Json res = Json::object{
                 {"status", "success"},
                 {"count", static_cast<double>(favs.size())},
-                {"favorites", Json(arr)}
+                {"favorites", Json(arr)},
+                {"disabled_cids", Json(dis_arr)}
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;
@@ -1018,10 +1022,12 @@ public:
             if (!ctx.request.body.empty()) {
                 try {
                     auto j = Json::parse(ctx.request.body);
-                    if (j.is_object() && j.contains("favorites") && j["favorites"].is_array()) {
-                        for (const auto& el : j["favorites"].as_array()) {
-                            if (el.is_string() && !el.as_string().empty()) {
-                                favs.push_back(el.as_string());
+                    if (j.is_object()) {
+                        if (j.contains("favorites") && j["favorites"].is_array()) {
+                            for (const auto& el : j["favorites"].as_array()) {
+                                if (el.is_string() && !el.as_string().empty()) {
+                                    favs.push_back(el.as_string());
+                                }
                             }
                         }
                     } else if (j.is_array()) {
@@ -1041,12 +1047,37 @@ public:
                 }
             }
             proxy_.set_epg_favorites(favs);
+            auto disabled = proxy_.get_disabled_candidates();
             Json::array arr;
             for (const auto& f : favs) arr.push_back(f);
+            Json::array dis_arr;
+            for (const auto& d : disabled) dis_arr.push_back(d);
             Json res = Json::object{
                 {"status", "success"},
                 {"count", static_cast<double>(favs.size())},
-                {"favorites", Json(arr)}
+                {"favorites", Json(arr)},
+                {"disabled_cids", Json(dis_arr)}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "toggle_candidate") {
+            std::string cid = query_get(ctx.query, "content_id");
+            std::string dis_str = query_get(ctx.query, "disabled");
+            if (cid.empty() && !ctx.request.body.empty()) {
+                try {
+                    auto j = Json::parse(ctx.request.body);
+                    if (j.is_object()) {
+                        if (j.contains("content_id")) cid = j["content_id"].as_string();
+                        if (j.contains("disabled")) dis_str = j["disabled"].as_bool() ? "true" : "false";
+                    }
+                } catch (...) {}
+            }
+            bool is_dis = (dis_str == "true" || dis_str == "1");
+            bool now_disabled = proxy_.toggle_disabled_candidate(cid, is_dis);
+            Json res = Json::object{
+                {"status", "success"},
+                {"content_id", cid},
+                {"disabled", now_disabled}
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;

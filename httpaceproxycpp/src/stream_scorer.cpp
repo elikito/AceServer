@@ -120,7 +120,28 @@ std::string canonical_slug(std::string name) {
     return slug.empty() ? "channel" : slug;
 }
 
+bool detect_is_foreign(const std::string& name) {
+    auto low = lower(strip_accents_utf8(name));
+    static const std::vector<std::string> foreign_patterns = {
+        "(de)", "(ru)", "(pl)", "(uk)", "(it)", "(fr)", "(pt)", "(tr)", "(ar)",
+        "[de]", "[ru]", "[pl]", "[uk]", "[it]", "[fr]", "[pt]", "[tr]", "[ar]",
+        " turk", " france", " poland", " germany", " russia", " italia", " portugal", " turkey",
+        "deutschland", "russian", "polski", "italiano", "francais"
+    };
+    for (const auto& pat : foreign_patterns) {
+        if (low.find(pat) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
+    // Si ha sido deshabilitado manualmente por el usuario en Favoritos/Curación
+    if (candidate.is_disabled) {
+        return -999.0;
+    }
+
     // Penalización total si está marcado como caído/erróneo
     if (candidate.health == ChannelHealth::OFFLINE ||
         candidate.health == ChannelHealth::ERROR ||
@@ -143,6 +164,11 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
         default: break;
     }
 
+    // Penalización por país/idioma extranjero no español
+    if (candidate.is_foreign) {
+        score -= 50.0;
+    }
+
     // Puntuación por enjambre (peers y velocidad de bajada)
     score += (candidate.peers * 10.0);
     score += (static_cast<double>(candidate.speed_down) / 1024.0 * 0.5);
@@ -162,6 +188,7 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
 void StreamScorer::rank_candidates(std::vector<ChannelCandidate>& candidates) {
     for (auto& c : candidates) {
         c.quality = detect_stream_quality(c.name);
+        c.is_foreign = detect_is_foreign(c.name);
         c.score = calculate_score(c);
     }
 

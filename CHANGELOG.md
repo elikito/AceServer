@@ -4,6 +4,37 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.08] - 2026-08-25
+
+### 🚀 Favoritos Avanzados, Tokenizador Estricto y Curación de Candidatos
+
+#### Tokenizador Canónico y Eliminación de Falsos Positivos (`stream_scorer.cpp`)
+- **Matching Estricto de Límites de Palabra**:
+  - Eliminado el emparejamiento por subcadena parcial difusa: `dazn-1` ahora solo empareja exactamente con `dazn-1` o `dazn 1`, evitando falsos positivos como `eleven-dazn-1`, `dazn-1-2`, o `dazn-f1`.
+  - El token de disciplina `f1` o `formula1` se distingue estrictamente de números simples.
+- **Filtro y Penalización de Idiomas / Países Extranjeros**:
+  - Detección automática mediante `detect_is_foreign()` de sufijos y etiquetas de país (`(PT)`, `(DE)`, `(RU)`, `(PL)`, `(UK)`, `(IT)`, `(FR)`, `(TR)`, etc.), penalizando streams extranjeros con -50 pts en el cálculo de scoring frente a feeds locales.
+- **Perfiles de Calidad Automáticos (Mirrors FHD/HD)**:
+  - Generación de enlaces diferenciados por resolución: `/auto/<slug>-fhd` (1080p/FHD) y `/auto/<slug>-hd` (720p/HD) además del mejor global `/auto/<slug>`.
+
+#### Panel EPG (`/epg/index.html`): Curation Drawer & Acciones Directas
+- **Acciones Rápidas por Canal**:
+  - Botones integrados en cada tarjeta de canal: **📋 Copiar URL Virtual** (`/auto/<slug>/stream.ts`), **▶ Ver en Web Player** y **⭐ Favorito**.
+- **Inspector y Curación de Candidatos (Curation Drawer)**:
+  - Nuevo botón interactivo `⚙ Fuentes` que despliega un panel en tiempo real con todos los Content IDs asignados al canal, mostrando calidad (`1080p`, `720p`, `4K`), peers, puntuación calculada, lista origen y estado de salud (`ONLINE`, `LOW_PEERS`, `OFFLINE`).
+  - Interruptores/toggles individuales para **habilitar o excluir manualmente** streams rotos o no deseados.
+  - Persistencia de fuentes deshabilitadas (`disabled_cids`) en `/http/listas/epg_favorites.json` vía `POST /epg?action=toggle_candidate`.
+
+#### Reproductores Web (`/player/index.html` y `/player/legacy.html`)
+- **Pestaña ⭐ Favoritos**:
+  - Añadida la pestaña / selector de canales `⭐ Favoritos` como primera opción en ambos reproductores web, cargando directamente `/channels/favoritos.m3u`.
+
+#### Metadatos en Dashboard (`/stat`)
+- **Nombre Real del Canal en Conexiones Activas**:
+  - Resolución y asignación automática del nombre real del canal (ej. `Teledeporte 1080p * (Auto)` o `Teledeporte (Auto)`) en la tabla de conexiones activas en lugar de `stream / stream`.
+
+---
+
 ## [08.25.07] - 2026-08-25
 
 ### ⭐️ Persistencia de Favoritos EPG & Redirección Absoluta con Pre-Verificación

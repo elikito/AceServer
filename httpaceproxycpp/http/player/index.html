@@ -1325,16 +1325,26 @@
                     sources.push({ key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio', sourceName: 'AIO' });
                 }
 
+                sources.unshift({
+                    key: 'favoritos',
+                    label: '⭐ Favoritos',
+                    url: '/channels/favoritos.m3u',
+                    sourceName: 'Favoritos'
+                });
+
                 activeSourcesList = sources;
                 currentSourceUrl = sources[0].url;
                 renderTabs();
                 loadData(currentSourceUrl);
             } catch (err) {
                 console.warn('No se pudo cargar la configuración de fuentes, usando AIO:', err);
-                activeSourcesList = [{ key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio' }];
-                currentSourceUrl = '/aio';
+                activeSourcesList = [
+                    { key: 'favoritos', label: '⭐ Favoritos', url: '/channels/favoritos.m3u', sourceName: 'Favoritos' },
+                    { key: 'aio', label: 'Todos los Canales (AIO)', url: '/aio', sourceName: 'AIO' }
+                ];
+                currentSourceUrl = '/channels/favoritos.m3u';
                 renderTabs();
-                loadData('/aio');
+                loadData(currentSourceUrl);
             }
         }
 

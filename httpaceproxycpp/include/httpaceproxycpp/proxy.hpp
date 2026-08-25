@@ -13,6 +13,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace httpace {
 
@@ -70,6 +72,9 @@ public:
     void set_epg_favorites(const std::vector<std::string>& favs);
     void load_epg_favorites();
     void save_epg_favorites();
+    bool toggle_disabled_candidate(const std::string& content_id, bool disabled);
+    bool is_candidate_disabled(const std::string& content_id) const;
+    std::vector<std::string> get_disabled_candidates() const;
 
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);
@@ -124,9 +129,10 @@ private:
     // v08.24.02 — Worker Pool de verificación de canales
     ChannelVerifier channel_verifier_;
 
-    // v08.25.07 — Favoritos EPG persistidos
+    // v08.25.07 & v08.25.08 — Favoritos EPG persistidos y candidatos deshabilitados
     mutable std::mutex epg_favorites_mutex_;
     std::vector<std::string> epg_favorites_;
+    std::unordered_set<std::string> disabled_cids_;
 };
 
 } // namespace httpace

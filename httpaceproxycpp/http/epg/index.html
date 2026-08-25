@@ -223,6 +223,152 @@
             border: 1px solid var(--border-color);
         }
 
+        /* Action Buttons Group & Drawer */
+        .channel-actions-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn-sm {
+            background-color: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn-sm:hover {
+            background-color: rgba(76, 175, 80, 0.15);
+            border-color: var(--brand-color);
+            color: var(--brand-color);
+        }
+
+        .action-btn-sm.active {
+            background-color: var(--brand-color);
+            border-color: var(--brand-color);
+            color: #ffffff;
+        }
+
+        .candidates-drawer {
+            background-color: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        .candidates-table-wrap {
+            overflow-x: auto;
+        }
+
+        .candidates-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .candidates-table th {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .candidates-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+        }
+
+        .candidates-table tr.candidate-disabled {
+            opacity: 0.45;
+            background-color: rgba(255, 0, 0, 0.05);
+        }
+
+        .health-pill {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .health-online { background-color: #22c55e; color: #ffffff; }
+        .health-low { background-color: #eab308; color: #000000; }
+        .health-offline { background-color: #ef4444; color: #ffffff; }
+        .health-unknown { background-color: var(--border-color); color: var(--text-muted); }
+
+        .quality-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .quality-4k { background-color: #a855f7; color: #fff; }
+        .quality-1080p { background-color: #3b82f6; color: #fff; }
+        .quality-720p { background-color: #06b6d4; color: #fff; }
+        .quality-sd { background-color: var(--border-color); color: var(--text-muted); }
+
+        /* Switch Toggle */
+        .switch-toggle {
+            position: relative;
+            display: inline-block;
+            width: 32px;
+            height: 18px;
+        }
+
+        .switch-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-toggle .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ef4444;
+            transition: .3s;
+            border-radius: 18px;
+        }
+
+        .switch-toggle .slider:before {
+            position: absolute;
+            content: "";
+            height: 12px;
+            width: 12px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        .switch-toggle input:checked + .slider {
+            background-color: #22c55e;
+        }
+
+        .switch-toggle input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+
         /* Programme Items List */
         .programmes-list {
             display: flex;
@@ -1047,6 +1193,158 @@
             }, 3000);
         }
 
+        function toCanonicalSlug(name) {
+            if (!name) return 'channel';
+            let n = name.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/1080p|1080i|1080|720p|720i|720|576p|576i|480p|4k|uhd|fhd|hd|sd|hevc|h265|h264|back|backup|opt|alt|directo|live|envivo|castellano|spanish|spain|espana|acestream/g, ' ')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return n || 'channel';
+        }
+
+        function copyChannelVirtualUrl(chanName, chanId, e) {
+            if (e) e.stopPropagation();
+            const slug = toCanonicalSlug(chanName);
+            const host = window.location.host || '127.0.0.1:8888';
+            const url = `http://${host}/auto/${slug}/stream.ts`;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast(`📋 URL Virtual copiada: /auto/${slug}/stream.ts`, 'success');
+            }).catch(() => {
+                showToast(`URL: ${url}`);
+            });
+        }
+
+        function playChannelInPlayer(chanName, chanId, e) {
+            if (e) e.stopPropagation();
+            const slug = toCanonicalSlug(chanName);
+            window.open(`/player/index.html?url=/auto/${slug}/stream.ts`, '_blank');
+        }
+
+        async function toggleCandidatesDrawer(chanName, chanId, btnEl, e) {
+            if (e) e.stopPropagation();
+            const slug = toCanonicalSlug(chanName);
+            const card = btnEl.closest('.channel-epg-card');
+            if (!card) return;
+
+            let drawer = card.querySelector('.candidates-drawer');
+            if (drawer) {
+                drawer.remove();
+                btnEl.classList.remove('active');
+                return;
+            }
+
+            btnEl.classList.add('active');
+            drawer = document.createElement('div');
+            drawer.className = 'candidates-drawer';
+            drawer.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div style="font-size:13px; font-weight:700; color:var(--brand-color); display:flex; align-items:center; gap:6px;">
+                        <span>⚙ Fuentes asignadas a "${chanName}"</span>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted);">Slug: <code style="color:#4CAF50;">/auto/${slug}</code></div>
+                </div>
+                <div class="candidates-loading" style="font-size:12px; color:var(--text-muted); padding:8px 0;">Consultando candidatos y salud del enjambre...</div>
+            `;
+            const header = card.querySelector('.channel-epg-header');
+            header.after(drawer);
+
+            try {
+                const res = await fetch(`/auto/${slug}?action=list`);
+                const data = await res.json();
+                if (!data || !Array.isArray(data.candidates) || data.candidates.length === 0) {
+                    drawer.innerHTML = `
+                        <div style="font-size:12px; color:var(--text-muted); padding:10px;">
+                            No se encontraron streams candidatos registrados para este canal.
+                        </div>
+                    `;
+                    return;
+                }
+
+                let candHtml = `
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <div style="font-size:13px; font-weight:700; color:var(--brand-color);">
+                            ⚙ Fuentes y Candidatos (${data.candidates.length})
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted);">URL Virtual: <code style="color:#4CAF50;">/auto/${slug}</code></div>
+                    </div>
+                    <div class="candidates-table-wrap">
+                        <table class="candidates-table">
+                            <thead>
+                                <tr>
+                                    <th>Estado</th>
+                                    <th>Nombre Original</th>
+                                    <th>Calidad</th>
+                                    <th>Peers</th>
+                                    <th>Puntuación</th>
+                                    <th>Lista / Plugin</th>
+                                    <th>Activo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                data.candidates.forEach(c => {
+                    const isDis = c.is_disabled === true;
+                    let healthClass = 'health-unknown';
+                    let healthText = c.health || 'UNKNOWN';
+                    if (c.health === 'online') { healthClass = 'health-online'; healthText = 'ONLINE'; }
+                    else if (c.health === 'low_peers') { healthClass = 'health-low'; healthText = 'LOW PEERS'; }
+                    else if (c.health === 'offline' || c.health === 'blocked' || c.health === 'error') { healthClass = 'health-offline'; healthText = c.health.toUpperCase(); }
+
+                    candHtml += `
+                        <tr class="${isDis ? 'candidate-disabled' : ''}">
+                            <td><span class="health-pill ${healthClass}">${healthText}</span></td>
+                            <td style="font-weight:600; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.name}">
+                                ${c.name}
+                                <div style="font-size:10px; font-family:monospace; color:var(--text-muted);">${c.content_id.substring(0, 16)}...</div>
+                            </td>
+                            <td><span class="quality-badge quality-${(c.quality_label || 'SD').toLowerCase()}">${c.quality_label || 'SD'}</span></td>
+                            <td style="font-family:monospace; font-weight:700;">${c.peers || 0}</td>
+                            <td style="font-family:monospace; color:var(--brand-color); font-weight:700;">${Math.round(c.score || 0)}</td>
+                            <td><span class="channel-badge">${c.plugin || 'Lista'}</span></td>
+                            <td style="text-align:center;">
+                                <label class="switch-toggle" title="${isDis ? 'Fuente excluida' : 'Fuente habilitada'}">
+                                    <input type="checkbox" ${isDis ? '' : 'checked'} onchange="toggleCandidateCID('${c.content_id}', this, event)">
+                                    <span class="slider"></span>
+                                </label>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                candHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                drawer.innerHTML = candHtml;
+            } catch (err) {
+                drawer.innerHTML = `<div style="color:#ff5252; font-size:12px; padding:10px;">Error al obtener fuentes: ${err.message}</div>`;
+            }
+        }
+
+        async function toggleCandidateCID(cid, checkboxEl, e) {
+            if (e) e.stopPropagation();
+            const disabled = !checkboxEl.checked;
+            const row = checkboxEl.closest('tr');
+            if (row) {
+                if (disabled) row.classList.add('candidate-disabled');
+                else row.classList.remove('candidate-disabled');
+            }
+            try {
+                const resp = await fetch(`/epg?action=toggle_candidate&content_id=${encodeURIComponent(cid)}&disabled=${disabled}`, {
+                    method: 'POST'
+                });
+                const res = await resp.json();
+                if (res.status === 'success') {
+                    showToast(disabled ? '🚫 Fuente excluida de la selección automática' : '✓ Fuente habilitada para la selección automática', disabled ? 'info' : 'success');
+                }
+            } catch (err) {
+                showToast('Error al actualizar fuente: ' + err.message, 'error');
+            }
+        }
+
         function renderEpg() {
             const container = document.getElementById('epg-container');
             const searchVal = document.getElementById('epg-search').value.toLowerCase().trim();
@@ -1141,11 +1439,22 @@
                                 <div style="font-size:12px; color:var(--text-muted);">${progs.length} programas</div>
                             </div>
                         </div>
-                        <button class="btn-fav-star ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="${isFav ? '#FFD700' : 'none'}" stroke="${isFav ? '#FFD700' : 'var(--text-muted)'}" stroke-width="2">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                            </svg>
-                        </button>
+                        <div class="channel-actions-group">
+                            <button class="action-btn-sm" onclick="copyChannelVirtualUrl('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Copiar enlace M3U / stream virtual">
+                                📋 Copiar URL
+                            </button>
+                            <button class="action-btn-sm" onclick="playChannelInPlayer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Reproducir stream automático en Web Player">
+                                ▶ Ver
+                            </button>
+                            <button class="action-btn-sm" onclick="toggleCandidatesDrawer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', this, event)" title="Ver y gestionar fuentes / candidatos asignados">
+                                ⚙ Fuentes
+                            </button>
+                            <button class="btn-fav-star ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="${isFav ? '#FFD700' : 'none'}" stroke="${isFav ? '#FFD700' : 'var(--text-muted)'}" stroke-width="2">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="programmes-list">
                         ${listHtml}

@@ -518,6 +518,8 @@
                         sources.push({ key: 'aio', label: 'AIO', url: '/aio' });
                     }
 
+                    sources.unshift({ key: 'favoritos', label: '⭐ Favoritos', url: '/channels/favoritos.m3u' });
+
                     activeSourcesListLegacy = sources;
                     renderTabsLegacy();
                     switchTabLegacy(sources[0].url);

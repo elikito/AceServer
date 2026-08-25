@@ -74,9 +74,9 @@ void test_stream_scorer() {
     require(canonical_slug("Teledeporte 1080p **") == "teledeporte", "teledeporte slug");
     require(canonical_slug("La 1 HD") == "la-1", "la 1 slug");
 
-    ChannelCandidate c1{"Teledeporte 1080p *", "cid1", "unificada", "", "General", "tdp", StreamQuality::FHD_1080, 30, 10, 500000, ChannelHealth::ONLINE, false, 0.0};
-    ChannelCandidate c2{"Teledeporte 720p **", "cid2", "unificada", "", "General", "tdp", StreamQuality::HD_720, 15, 2, 50000, ChannelHealth::ONLINE, false, 0.0};
-    ChannelCandidate c3{"TELEDEPORTE FHD", "cid3", "elcano", "", "General", "tdp", StreamQuality::FHD_1080, 30, 0, 0, ChannelHealth::OFFLINE, false, 0.0};
+    ChannelCandidate c1{"Teledeporte 1080p *", "cid1", "unificada", "", "General", "tdp", StreamQuality::FHD_1080, 30, 10, 500000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate c2{"Teledeporte 720p **", "cid2", "unificada", "", "General", "tdp", StreamQuality::HD_720, 15, 2, 50000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate c3{"TELEDEPORTE FHD", "cid3", "elcano", "", "General", "tdp", StreamQuality::FHD_1080, 30, 0, 0, ChannelHealth::OFFLINE, false, false, false, 0.0};
 
     std::vector<ChannelCandidate> list = {c2, c3, c1};
     StreamScorer::rank_candidates(list);
@@ -84,6 +84,8 @@ void test_stream_scorer() {
     require(list[0].content_id == "cid1", "c1 should rank highest");
     require(list[1].content_id == "cid2", "c2 should rank second");
     require(list[2].content_id == "cid3", "c3 offline should rank lowest");
+    require(detect_is_foreign("Sport TV1 (PT)") == true, "foreign detected");
+    require(detect_is_foreign("Teledeporte 1080p *") == false, "not foreign");
 }
 
 } // namespace

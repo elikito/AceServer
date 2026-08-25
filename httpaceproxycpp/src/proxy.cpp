@@ -457,16 +457,24 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             StreamScorer::rank_candidates(candidates);
             Json::array arr;
             for (const auto& c : candidates) {
+                std::string quality_str = "SD";
+                if (c.quality == StreamQuality::UHD_4K) quality_str = "4K";
+                else if (c.quality == StreamQuality::FHD_1080) quality_str = "1080p";
+                else if (c.quality == StreamQuality::HD_720) quality_str = "720p";
+
                 arr.push_back(Json::object{
                     {"name", c.name},
                     {"content_id", c.content_id},
                     {"plugin", c.plugin_name},
                     {"quality", static_cast<double>(static_cast<int>(c.quality))},
+                    {"quality_label", quality_str},
                     {"quality_bonus", static_cast<double>(c.quality_bonus)},
                     {"peers", static_cast<double>(c.peers)},
                     {"speed_down", static_cast<double>(c.speed_down)},
                     {"health", health_to_string(c.health)},
                     {"is_active", c.is_active_stream},
+                    {"is_disabled", c.is_disabled},
+                    {"is_foreign", c.is_foreign},
                     {"score", c.score}
                 });
             }
@@ -493,8 +501,9 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             return;
         }
 
-        // Redirigir al mejor stream disponible con URL ABSOLUTA (HTTP 307 Temporary Redirect)
-        std::string redirect_target = "http://" + raw_host + "/content_id/" + best->content_id + "/stream.ts";
+        // Redirigir al mejor stream disponible con URL ABSOLUTA y nombre descriptivo
+        std::string display_title = best->name.empty() ? canonical_name(slug) : best->name;
+        std::string redirect_target = "http://" + raw_host + "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)", "") + ".ts";
         connection.send_response_headers(307, "Temporary Redirect", {
             {"Location", redirect_target},
             {"Access-Control-Allow-Origin", "*"},
@@ -1617,7 +1626,32 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
     params[ctx.reqtype] = req_value;
 
     std::string infohash;
-    std::string channel_name = ctx.channel_name.empty() ? url_decode(basename_no_ext(ctx.path)) : ctx.channel_name;
+    std::string channel_name = ctx.channel_name;
+    if (channel_name.empty() && ctx.query.find("channel_name=") != std::string::npos) {
+        channel_name = url_decode(query_get(ctx.query, "channel_name"));
+    }
+    if (channel_name.empty() && ctx.query.find("title=") != std::string::npos) {
+        channel_name = url_decode(query_get(ctx.query, "title"));
+    }
+    if (channel_name.empty()) {
+        auto base = basename_no_ext(ctx.path);
+        if (base != "stream" && base != "live" && !base.empty()) {
+            channel_name = url_decode(base);
+        }
+    }
+    if (channel_name.empty() || channel_name == "NoNameChannel" || channel_name == "stream") {
+        for (const auto& plugin : plugins_.unique_plugins()) {
+            if (auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin)) {
+                for (const auto& [name, url] : playlist->channels()) {
+                    if (url.find(req_value) != std::string::npos) {
+                        channel_name = name;
+                        break;
+                    }
+                }
+                if (!channel_name.empty() && channel_name != "stream" && channel_name != "NoNameChannel") break;
+            }
+        }
+    }
     if (channel_name.empty()) channel_name = "NoNameChannel";
 
     std::string raw_host = ctx.request.header("host", "127.0.0.1:8888");
@@ -2659,8 +2693,26 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
     std::vector<ChannelCandidate> candidates;
     if (query_or_slug.empty()) return candidates;
 
-    std::string target_slug = canonical_slug(query_or_slug);
-    std::string target_cname = canonical_name(query_or_slug);
+    std::string clean_query = query_or_slug;
+    bool want_fhd_only = false;
+    bool want_hd_only = false;
+
+    if (ends_with(clean_query, "-fhd")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 4);
+        want_fhd_only = true;
+    } else if (ends_with(clean_query, "-1080p")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 6);
+        want_fhd_only = true;
+    } else if (ends_with(clean_query, "-hd")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 3);
+        want_hd_only = true;
+    } else if (ends_with(clean_query, "-720p")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 5);
+        want_hd_only = true;
+    }
+
+    std::string target_slug = canonical_slug(clean_query);
+    std::string target_cname = canonical_name(clean_query);
     std::unordered_set<std::string> seen_cids;
 
     for (const auto& plugin : plugins_.unique_plugins()) {
@@ -2701,21 +2753,20 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
             std::string item_slug = canonical_slug(item.name);
             std::string item_cname = canonical_name(item.name);
 
-            bool matches = (item_slug == target_slug) ||
-                           (item_cname == target_cname) ||
-                           (target_slug.size() >= 4 && item_slug.find(target_slug) != std::string::npos) ||
-                           (item_slug.size() >= 4 && target_slug.find(item_slug) != std::string::npos);
-
-            if (!matches && !item.tvgid.empty()) {
-                std::string tvg_slug = canonical_slug(item.tvgid);
-                if (tvg_slug == target_slug || (target_slug.size() >= 4 && tvg_slug.find(target_slug) != std::string::npos)) {
-                    matches = true;
-                }
-            }
+            // Matching estricto de límites de palabra / slug exacto
+            bool matches = (item_slug == target_slug) || (item_cname == target_cname);
 
             if (matches) {
                 if (seen_cids.find(cid) != seen_cids.end()) continue;
                 seen_cids.insert(cid);
+
+                auto quality = detect_stream_quality(item.name);
+                if (want_fhd_only && quality < StreamQuality::FHD_1080) {
+                    continue;
+                }
+                if (want_hd_only && quality > StreamQuality::HD_720) {
+                    continue;
+                }
 
                 ChannelCandidate c;
                 c.name = item.name;
@@ -2724,6 +2775,9 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 c.logo = item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo;
                 c.group = item.group;
                 c.tvg_id = item.tvgid.empty() ? item.tvg : item.tvgid;
+                c.quality = quality;
+                c.is_disabled = is_candidate_disabled(cid);
+                c.is_foreign = detect_is_foreign(item.name);
 
                 // Chequear si ya está activo en BroadcastManager
                 auto broadcast = broadcasts_.find(cid);
@@ -2744,7 +2798,6 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                     c.health = cached.health;
                 }
 
-                c.quality = detect_stream_quality(item.name);
                 switch (c.quality) {
                     case StreamQuality::UHD_4K:   c.quality_bonus = 40; break;
                     case StreamQuality::FHD_1080: c.quality_bonus = 30; break;
@@ -2770,7 +2823,7 @@ std::optional<ChannelCandidate> Proxy::resolve_best_candidate(const std::string&
     // disparamos una verificación ligera (2.5s) sobre los candidatos prioritarios antes de redirigir a ciegas a 0 KB/s.
     bool all_unknown = true;
     for (const auto& c : candidates) {
-        if (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS) {
+        if (!c.is_disabled && (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS)) {
             all_unknown = false;
             break;
         }
@@ -2795,6 +2848,10 @@ std::optional<ChannelCandidate> Proxy::resolve_best_candidate(const std::string&
         StreamScorer::rank_candidates(candidates);
     }
 
+    // Retornar el primer candidato no deshabilitado
+    for (const auto& c : candidates) {
+        if (!c.is_disabled) return c;
+    }
     return candidates.front();
 }
 
@@ -2861,10 +2918,30 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
         std::string logo = item.logo;
         std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
 
+        bool has_fhd = false;
+        bool has_hd = false;
+        for (const auto& c : list) {
+            auto q = detect_stream_quality(c.name);
+            if (q >= StreamQuality::FHD_1080) has_fhd = true;
+            else if (q == StreamQuality::HD_720 || q == StreamQuality::SD) has_hd = true;
+        }
+
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
+
+        if (has_fhd && has_hd) {
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
+            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
+            out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
+
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
+            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
+            out << "http://" << hostport << "/auto/" << slug << "-hd/stream.ts\n";
+        }
     }
 
     return out.str();
@@ -2908,9 +2985,6 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             if (slug.empty() || slug == "channel") continue;
 
             bool is_fav = (fav_slugs.find(slug) != fav_slugs.end());
-            if (!is_fav && !item.tvgid.empty()) {
-                is_fav = (fav_slugs.find(canonical_slug(item.tvgid)) != fav_slugs.end());
-            }
             if (!is_fav && !item.name.empty()) {
                 is_fav = (fav_slugs.find(canonical_slug(item.name)) != fav_slugs.end());
             }
@@ -2949,10 +3023,30 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         std::string logo = item.logo;
         std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
 
+        bool has_fhd = false;
+        bool has_hd = false;
+        for (const auto& c : list) {
+            auto q = detect_stream_quality(c.name);
+            if (q >= StreamQuality::FHD_1080) has_fhd = true;
+            else if (q == StreamQuality::HD_720 || q == StreamQuality::SD) has_hd = true;
+        }
+
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
+
+        if (has_fhd && has_hd) {
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
+            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
+            out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
+
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
+            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
+            out << "http://" << hostport << "/auto/" << slug << "-hd/stream.ts\n";
+        }
     }
 
     return out.str();
@@ -2961,6 +3055,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
 void Proxy::load_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     epg_favorites_.clear();
+    disabled_cids_.clear();
     try {
         auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
         if (std::filesystem::exists(favs_file)) {
@@ -2973,10 +3068,19 @@ void Proxy::load_epg_favorites() {
                             epg_favorites_.push_back(el.as_string());
                         }
                     }
-                } else if (j.is_object() && j.contains("favorites") && j["favorites"].is_array()) {
-                    for (const auto& el : j["favorites"].as_array()) {
-                        if (el.is_string() && !el.as_string().empty()) {
-                            epg_favorites_.push_back(el.as_string());
+                } else if (j.is_object()) {
+                    if (j.contains("favorites") && j["favorites"].is_array()) {
+                        for (const auto& el : j["favorites"].as_array()) {
+                            if (el.is_string() && !el.as_string().empty()) {
+                                epg_favorites_.push_back(el.as_string());
+                            }
+                        }
+                    }
+                    if (j.contains("disabled_cids") && j["disabled_cids"].is_array()) {
+                        for (const auto& el : j["disabled_cids"].as_array()) {
+                            if (el.is_string() && !el.as_string().empty()) {
+                                disabled_cids_.insert(el.as_string());
+                            }
                         }
                     }
                 }
@@ -2996,14 +3100,48 @@ void Proxy::save_epg_favorites() {
         std::filesystem::create_directories(listas_dir);
         auto favs_file = listas_dir / "epg_favorites.json";
 
-        Json::array arr;
+        Json::array fav_arr;
         for (const auto& f : epg_favorites_) {
-            arr.push_back(f);
+            fav_arr.push_back(f);
         }
+        Json::array dis_arr;
+        for (const auto& d : disabled_cids_) {
+            dis_arr.push_back(d);
+        }
+
+        Json root = Json::object{
+            {"favorites", Json(fav_arr)},
+            {"disabled_cids", Json(dis_arr)}
+        };
+
         std::ofstream out(favs_file, std::ios::binary);
-        out << Json(arr).dump(2);
+        out << root.dump(2);
         out.close();
     } catch (...) {}
+}
+
+bool Proxy::toggle_disabled_candidate(const std::string& content_id, bool disabled) {
+    if (content_id.empty()) return false;
+    {
+        std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
+        if (disabled) {
+            disabled_cids_.insert(content_id);
+        } else {
+            disabled_cids_.erase(content_id);
+        }
+    }
+    save_epg_favorites();
+    return disabled;
+}
+
+bool Proxy::is_candidate_disabled(const std::string& content_id) const {
+    std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
+    return disabled_cids_.find(content_id) != disabled_cids_.end();
+}
+
+std::vector<std::string> Proxy::get_disabled_candidates() const {
+    std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
+    return std::vector<std::string>(disabled_cids_.begin(), disabled_cids_.end());
 }
 
 std::vector<std::string> Proxy::get_epg_favorites() const {

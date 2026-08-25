@@ -1,6 +1,9 @@
-[
-  "teledeporte",
-  "la-1",
-  "dazn-1",
-  "dazn-2"
-]
+{
+  "disabled_cids": [],
+  "favorites": [
+    "teledeporte",
+    "la-1",
+    "dazn-1",
+    "dazn-2"
+  ]
+}

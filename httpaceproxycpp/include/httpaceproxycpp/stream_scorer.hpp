@@ -25,6 +25,9 @@ std::string canonical_slug(std::string name);
 /// Detecta la calidad del stream a partir del nombre del canal.
 StreamQuality detect_stream_quality(const std::string& name);
 
+/// Detecta si el stream contiene sufijos o etiquetas de país/idioma extranjero no español.
+bool detect_is_foreign(const std::string& name);
+
 /// Estructura de candidato a stream para el selector automático.
 struct ChannelCandidate {
     std::string   name;
@@ -39,6 +42,8 @@ struct ChannelCandidate {
     long long     speed_down = 0;
     ChannelHealth health = ChannelHealth::UNKNOWN;
     bool          is_active_stream = false;
+    bool          is_disabled = false;
+    bool          is_foreign = false;
     double        score = 0.0;
 };
 
