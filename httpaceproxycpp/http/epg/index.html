@@ -946,6 +946,7 @@
                 });
             }
 
+            loadServerFavorites();
             loadEpgData();
             updateLiveClock();
             setInterval(updateLiveClock, 1000);
@@ -1129,6 +1130,8 @@
                     const data = await resp.json();
                     if (data.status === 'success' && Array.isArray(data.favorites)) {
                         localStorage.setItem('epg_favorites', JSON.stringify(data.favorites));
+                        const favBadge = document.getElementById('fav-count-badge');
+                        if (favBadge) favBadge.textContent = data.favorites.length;
                         renderEpg();
                     }
                 }

@@ -70,7 +70,12 @@ std::string PlaylistGenerator::export_m3u(const std::string& hostport,
                                           bool empty_header) const {
     std::vector<PlaylistItem> sorted = items_;
     std::stable_sort(sorted.begin(), sorted.end(), [](const PlaylistItem& a, const PlaylistItem& b) {
-        if (a.group != b.group) return a.group < b.group;
+        if (a.group != b.group) {
+            bool a_is_fav = (a.group == "⭐ Favoritos" || a.group == "Favoritos");
+            bool b_is_fav = (b.group == "⭐ Favoritos" || b.group == "Favoritos");
+            if (a_is_fav != b_is_fav) return a_is_fav;
+            return a.group < b.group;
+        }
         return a.name < b.name;
     });
     std::map<std::string, std::string> params = {

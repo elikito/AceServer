@@ -4,6 +4,32 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.25.12] - 2026-08-25
+
+### 🚀 Reparación de Statplugin, Grupo ⭐ Favoritos en `/aio` y Blindaje EPG
+
+#### Reparación Inmediata de `statplugin` y Diagnóstico de Red
+- **Endpoint de Plugins (`/statplugin?action=get_plugins` & `plugins.cpp`)**:
+  - Protección con bloques `try/catch` y recuperación automática para devolver siempre HTTP 200 OK con JSON estructurado, evitando errores HTTP 500 ante plugins vacíos o no inicializados.
+- **Diagnóstico y Control de Cloudflare WARP (`proxy.cpp` & `plugins.cpp`)**:
+  - Sanitización de IP pública: filtrado preventivo que descarta `127.0.0.1` o rangos privados en el diagnóstico público cuando no hay ruta externa.
+  - Reintento automático de conexión en `warp_connect` y `warp_toggle` antes de reportar el estado actualizado de la red.
+
+#### Inyección del Grupo "⭐ Favoritos" en la Lista Global `/aio`
+- **Generador de Lista AIO (`plugins.cpp` `AioPlugin` & `proxy.cpp` `/channels/aio.m3u`)**:
+  - Inyección en la primera posición de la lista global `/aio` de los canales marcados en Favoritos con el tag `group-title="⭐ Favoritos"`.
+  - Rutas virtuales automáticas persistentes: `http://<host>:<puerto>/auto/<slug>/stream.ts`.
+  - Omisión limpia del bloque cuando no existen favoritos configurados.
+
+#### Blindaje Definitivo de Favoritos y Eliminación de Listas Fantasma
+- **Persistencia Inmune y Respaldo**:
+  - Guardado sincronizado en `/app/http/listas/epg_favorites.json` y respaldo automático en `epg_favorites.json.bak`.
+  - Eliminación definitiva de inyecciones por defecto forzadas (como `teledeporte` u otros canales); si la lista de favoritos está vacía, `/channels/favoritos.m3u` devuelve un M3U limpio sin canales no seleccionados.
+- **Sincronización Bidireccional EPG**:
+  - Carga inmediata en el montaje de `/epg/index.html` contra `GET /epg?action=get_favorites` y actualización instantánea del contador de estrellas de favoritos.
+
+---
+
 ## [08.25.11] - 2026-08-25
 
 ### 🛡️ Validación Estricta de Fuentes Dinámicas y Acceso Rápido al Editor Interno

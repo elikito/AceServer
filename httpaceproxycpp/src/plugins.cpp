@@ -649,6 +649,34 @@ public:
     std::vector<std::string> handlers() const override { return {"aio"}; }
     bool handle(RequestContext& ctx) override {
         PlaylistGenerator generator(PlaylistGenerator::epg_header(kEpgUrl, 0, true));
+        std::string host = host_header(ctx);
+        if (host.empty()) host = config_.http_host + ":" + std::to_string(config_.http_port);
+        if (host.empty() || starts_with(host, "0.0.0.0")) host = "127.0.0.1:8888";
+
+        // 1. Inyectar en la PRIMERA POSICIÓN los canales marcados en Favoritos
+        auto favs = proxy_.get_epg_favorites();
+        if (!favs.empty()) {
+            for (const auto& fav_name : favs) {
+                std::string slug = canonical_slug(fav_name);
+                if (slug.empty()) continue;
+                std::string display_name = canonical_name(fav_name);
+                bool cap = true;
+                for (char& c : display_name) {
+                    if (std::isspace(static_cast<unsigned char>(c))) cap = true;
+                    else if (cap) { c = std::toupper(static_cast<unsigned char>(c)); cap = false; }
+                }
+                if (display_name.empty()) display_name = slug;
+
+                PlaylistItem fav_item;
+                fav_item.name = display_name;
+                fav_item.group = "⭐ Favoritos";
+                fav_item.tvgid = slug;
+                fav_item.url = "http://" + host + "/auto/" + slug + "/stream.ts";
+                generator.add_item(fav_item);
+            }
+        }
+
+        // 2. Canales de los plugins habilitados
         std::set<Plugin*> processed;
         auto handlers = proxy_.plugins().handlers();
         for (const auto& [handler, plugin] : handlers) {
@@ -663,7 +691,7 @@ public:
                 generator.add_item(item);
             }
         }
-        auto body = generator.export_m3u(host_header(ctx), "", ctx.query, false);
+        auto body = generator.export_m3u(host, "", ctx.query, false);
         send_bytes(ctx.connection, 200, "audio/mpegurl; charset=utf-8", body);
         return true;
     }
@@ -774,8 +802,19 @@ public:
         // Acciones legacy (compatibilidad total con versiones anteriores)
         // -----------------------------------------------------------------------
         if (action == "get_plugins") {
-            send_bytes(ctx.connection, 200, "application/json; charset=utf-8",
-                       proxy_.plugins_json().dump(2));
+            try {
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8",
+                           proxy_.plugins_json().dump(2));
+            } catch (const std::exception& e) {
+                Json::object res;
+                res["status"] = "success";
+                res["version"] = kAppVersion;
+                res["plugins"] = Json::array{};
+                res["total_plugins"] = 0.0;
+                res["error"] = e.what();
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            }
+            return true;
 
         } else if (action == "check_channel") {
             // Legacy: resolución vía AceClient TCP (mantener para compatibilidad)
@@ -855,8 +894,9 @@ public:
             }
 
             if (action == "warp_connect") {
-                auto ret = ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
-                (void)ret;
+                ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
             } else if (action == "warp_disconnect") {
                 auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
                 (void)ret;
@@ -867,13 +907,15 @@ public:
                     auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
                     (void)ret;
                 } else {
-                    auto ret = ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
-                    (void)ret;
+                    ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                    ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1500));
             auto data = proxy_.get_network_diagnostics();
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
 
         } else {
             // Servir el frontend HTML del statplugin.

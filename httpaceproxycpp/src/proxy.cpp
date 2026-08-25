@@ -425,6 +425,12 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         return;
     }
 
+    if (ctx.path == "/channels/aio.m3u" || ctx.path == "/channels/aio") {
+        if (auto aio = plugins_.by_handler("aio")) {
+            if (aio->handle(ctx)) return;
+        }
+    }
+
     if (ctx.path == "/channels/auto.m3u" || ctx.path == "/auto/playlist.m3u") {
         std::string m3u = generate_auto_playlist(raw_host);
         connection.send_response_headers(200, status_reason(200), {
@@ -512,7 +518,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         return;
     }
 
-    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || ((ctx.parts[1] == "statplugin" || ctx.parts[1] == "fuentes") && ctx.query.find("action=") != std::string::npos))) {
+    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || (ctx.parts[1] == "fuentes" && ctx.query.find("action=") != std::string::npos))) {
         auto action = query_get(ctx.query, "action");
         std::map<std::string, std::string> headers = {
             {"Access-Control-Allow-Origin", "*"},
@@ -2135,61 +2141,68 @@ std::string extract_acestream_content_id(const std::string& input_url) {
 Json Proxy::plugins_json() {
     Json::array plugin_array;
     for (const auto& plugin : plugins_.unique_plugins()) {
+        if (!plugin) continue;
         if (plugin->name() == "stat" || plugin->name() == "statplugin" || plugin->name() == "aio") continue;
         if (!is_plugin_enabled(plugin->name())) continue;
 
-        Json::array channels;
-        auto picons = plugin->picons();
-        auto items = plugin->playlist_items();
+        try {
+            Json::array channels;
+            auto picons = plugin->picons();
+            auto items = plugin->playlist_items();
 
-        for (const auto& item : items) {
-            std::string cid = extract_acestream_content_id(item.url);
-            if (cid.empty() && !item.name.empty()) {
-                auto ch_map = plugin->channels();
-                auto it = ch_map.find(item.name);
-                if (it != ch_map.end()) {
-                    cid = extract_acestream_content_id(it->second);
+            for (const auto& item : items) {
+                std::string cid = extract_acestream_content_id(item.url);
+                if (cid.empty() && !item.name.empty()) {
+                    auto ch_map = plugin->channels();
+                    auto it = ch_map.find(item.name);
+                    if (it != ch_map.end()) {
+                        cid = extract_acestream_content_id(it->second);
+                    }
                 }
-            }
-            if (cid.empty()) continue;
-
-            std::string logo = item.logo;
-            if (logo.empty() && picons.contains(item.name)) {
-                logo = picons[item.name];
-            }
-
-            channels.push_back(Json::object{
-                {"name", item.name},
-                {"content_id", cid},
-                {"logo", logo},
-                {"group", item.group},
-                {"status", "unknown"},
-                {"last_check", nullptr},
-                {"infohash", ""}
-            });
-        }
-
-        if (channels.empty()) {
-            for (const auto& [name, url] : plugin->channels()) {
-                std::string cid = extract_acestream_content_id(url);
                 if (cid.empty()) continue;
+
+                std::string logo = item.logo;
+                if (logo.empty() && picons.contains(item.name)) {
+                    logo = picons[item.name];
+                }
+
                 channels.push_back(Json::object{
-                    {"name", name},
+                    {"name", item.name},
                     {"content_id", cid},
-                    {"logo", picons.contains(name) ? picons[name] : ""},
+                    {"logo", logo},
+                    {"group", item.group},
                     {"status", "unknown"},
                     {"last_check", nullptr},
                     {"infohash", ""}
                 });
             }
-        }
 
-        if (!channels.empty()) {
-            plugin_array.push_back(Json::object{
-                {"name", plugin->name()},
-                {"total_channels", static_cast<double>(channels.size())},
-                {"channels", channels}
-            });
+            if (channels.empty()) {
+                for (const auto& [name, url] : plugin->channels()) {
+                    std::string cid = extract_acestream_content_id(url);
+                    if (cid.empty()) continue;
+                    channels.push_back(Json::object{
+                        {"name", name},
+                        {"content_id", cid},
+                        {"logo", picons.contains(name) ? picons[name] : ""},
+                        {"status", "unknown"},
+                        {"last_check", nullptr},
+                        {"infohash", ""}
+                    });
+                }
+            }
+
+            if (!channels.empty()) {
+                plugin_array.push_back(Json::object{
+                    {"name", plugin->name()},
+                    {"total_channels", static_cast<double>(channels.size())},
+                    {"channels", channels}
+                });
+            }
+        } catch (const std::exception& e) {
+            log_line("WARNING", "Error procesando canales de plugin " + plugin->name() + ": " + e.what());
+        } catch (...) {
+            log_line("WARNING", "Error desconocido procesando canales de plugin " + plugin->name());
         }
     }
     Json::object res;
@@ -2442,6 +2455,10 @@ Json Proxy::get_network_diagnostics() {
     } catch (...) {}
 
     // 4. Determinar Proveedor (ISP) y Ruta Segura
+    if (public_ip == "127.0.0.1" || public_ip == "localhost" || starts_with(public_ip, "172.") || starts_with(public_ip, "10.") || starts_with(public_ip, "192.168.")) {
+        public_ip = "Desconocida";
+    }
+
     if (warp_status == "active" || warp_status == "proxy") {
         isp = "Cloudflare WARP Network";
         safe_route = true;
@@ -2983,7 +3000,8 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         if (!slug.empty()) fav_slugs.insert(slug);
     }
     if (fav_slugs.empty()) {
-        fav_slugs.insert("teledeporte");
+        // Retornar M3U vacío limpio sin listas fantasma
+        return "#EXTM3U name=\"HTTPAceProxy Canales Favoritos\"\n";
     }
 
     std::map<std::string, std::vector<ChannelCandidate>> grouped;
@@ -3084,53 +3102,61 @@ void Proxy::load_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     epg_favorites_.clear();
     disabled_cids_.clear();
-    bool file_loaded = false;
-    try {
-        auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
-        if (std::filesystem::exists(favs_file)) {
-            auto content = read_file_binary(favs_file.string());
-            if (!content.empty()) {
-                auto j = Json::parse(content);
-                if (j.is_array()) {
-                    for (const auto& el : j.as_array()) {
+    auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
+    auto bak_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.bak";
+
+    auto parse_fav_content = [&](const std::string& content) -> bool {
+        if (content.empty()) return false;
+        try {
+            auto j = Json::parse(content);
+            if (j.is_array()) {
+                for (const auto& el : j.as_array()) {
+                    if (el.is_string() && !el.as_string().empty()) {
+                        epg_favorites_.push_back(el.as_string());
+                    }
+                }
+                return true;
+            } else if (j.is_object()) {
+                if (j.contains("favorites") && j["favorites"].is_array()) {
+                    for (const auto& el : j["favorites"].as_array()) {
                         if (el.is_string() && !el.as_string().empty()) {
                             epg_favorites_.push_back(el.as_string());
                         }
                     }
-                    file_loaded = true;
-                } else if (j.is_object()) {
-                    if (j.contains("favorites") && j["favorites"].is_array()) {
-                        for (const auto& el : j["favorites"].as_array()) {
-                            if (el.is_string() && !el.as_string().empty()) {
-                                epg_favorites_.push_back(el.as_string());
-                            }
-                        }
-                    }
-                    if (j.contains("disabled_cids") && j["disabled_cids"].is_array()) {
-                        for (const auto& el : j["disabled_cids"].as_array()) {
-                            if (el.is_string() && !el.as_string().empty()) {
-                                disabled_cids_.insert(el.as_string());
-                            }
-                        }
-                    }
-                    file_loaded = true;
                 }
+                if (j.contains("disabled_cids") && j["disabled_cids"].is_array()) {
+                    for (const auto& el : j["disabled_cids"].as_array()) {
+                        if (el.is_string() && !el.as_string().empty()) {
+                            disabled_cids_.insert(el.as_string());
+                        }
+                    }
+                }
+                return true;
             }
-        }
-    } catch (const std::exception& e) {
-        log_line("WARNING", "Error loading epg_favorites.json: " + std::string(e.what()));
-    }
+        } catch (...) {}
+        return false;
+    };
 
-    // NUNCA sobreescribir si el archivo ya existía y fue leído en disco.
-    if (!file_loaded && epg_favorites_.empty()) {
-        epg_favorites_ = {"teledeporte"};
+    bool loaded = false;
+    if (std::filesystem::exists(favs_file)) {
+        auto content = read_file_binary(favs_file.string());
+        loaded = parse_fav_content(content);
     }
+    if (!loaded && std::filesystem::exists(bak_file)) {
+        auto bak_content = read_file_binary(bak_file.string());
+        loaded = parse_fav_content(bak_content);
+        if (loaded) {
+            log_line("INFO", "Restaurado epg_favorites.json desde copia de seguridad epg_favorites.json.bak");
+        }
+    }
+    // NUNCA inyectar canales fantasma por defecto si la lista está vacía
 }
 
 void Proxy::save_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     try {
         auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
+        auto bak_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.bak";
         std::filesystem::create_directories(favs_file.parent_path());
 
         Json::array fav_arr;
@@ -3147,10 +3173,17 @@ void Proxy::save_epg_favorites() {
             {"disabled_cids", Json(dis_arr)}
         };
 
+        std::string json_str = root.dump(2);
         std::ofstream out(favs_file, std::ios::binary);
         if (out.is_open()) {
-            out << root.dump(2);
+            out << json_str;
             out.close();
+            // Crear / actualizar respaldo automático .bak
+            std::ofstream out_bak(bak_file, std::ios::binary);
+            if (out_bak.is_open()) {
+                out_bak << json_str;
+                out_bak.close();
+            }
         } else {
             log_line("ERROR", "Failed to open " + favs_file.string() + " for writing");
         }
