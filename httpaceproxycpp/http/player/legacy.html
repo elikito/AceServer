@@ -781,7 +781,16 @@
             container.innerHTML = '';
 
             if (channels.length === 0) {
-                container.innerHTML = '<div class="loading-screen">No se encontraron canales.</div>';
+                if (currentSourceLegacy === '/channels/favoritos.m3u') {
+                    container.innerHTML = '<div class="loading-screen" style="padding: 40px 20px;">' +
+                        '<div style="font-size: 36px; margin-bottom: 8px;">⭐</div>' +
+                        '<div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">No tienes canales en Favoritos</div>' +
+                        '<div style="font-size: 13px; color: #888; margin-bottom: 16px;">No tienes canales en Favoritos. Añádelos desde la Guía EPG.</div>' +
+                        '<a href="/epg/" style="display:inline-block; background:#00bcd4; color:#fff; padding:6px 14px; border-radius:4px; text-decoration:none; font-size:12px; font-weight:bold;">📅 Ir a Guía EPG</a>' +
+                        '</div>';
+                } else {
+                    container.innerHTML = '<div class="loading-screen">No se encontraron canales.</div>';
+                }
                 return;
             }
 

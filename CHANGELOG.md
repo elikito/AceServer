@@ -4,6 +4,26 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.26.03] - 2026-08-26
+
+### 🛡️ Erradicación Total de Canales Predeterminados y Persistencia Reactiva 1:1
+
+#### 1. Erradicación Total de Canales Predeterminados en el Reproductor (`player/index.html` / `player/legacy.html`)
+- **Limpieza de Estado Inicial y Cero Inyecciones Forzadas**:
+  - Si el backend devuelve un array vacío `[]` para favoritos (`GET /epg?action=get_favorites` o `/channels/favoritos.m3u`), la pestaña **⭐ Favoritos** queda completamente vacía.
+  - Se muestra el mensaje explícito: *"No tienes canales en Favoritos. Añádelos desde la Guía EPG"* con enlace directo a `/epg/`.
+  - Eliminados todos los canales por defecto residuales (`epg_favorites.json` inicializado en limpio con `{"favorites": [], "disabled_cids": []}`).
+  - Prohibida cualquier inyección de relleno (La 1, Teledeporte, Eurosport, Dazn 1, Dazn 2, etc.).
+
+#### 2. Sincronización Reactiva 1:1 entre EPG y Reproductor
+- Persistencia estricta al marcar o desmarcar canales en `/epg/index.html`.
+- El reproductor lee directamente de la fuente de verdad única sin duplicar tarjetas ni añadir variantes fantasma.
+
+#### 3. Persistencia de Fuentes y Plugins
+- Mapeo y almacenamiento garantizado de `plugins_state.json` y `epg_favorites.json` para conservar el estado de configuración y favoritos entre reinicios de contenedor.
+
+---
+
 ## [08.26.02] - 2026-08-26
 
 ### 🌟 Sincronización Estricta de Favoritos, Variantes de Calidad y Puntuación de Streams
