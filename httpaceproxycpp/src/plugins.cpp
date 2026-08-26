@@ -894,25 +894,21 @@ public:
             }
 
             if (action == "warp_connect") {
-                ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
+                ::system("warp-cli mode proxy && warp-cli proxy port 4001 && warp-cli connect >/dev/null 2>&1");
             } else if (action == "warp_disconnect") {
-                auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
+                auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
                 (void)ret;
             } else if (action == "warp_toggle") {
                 auto diag = proxy_.get_network_diagnostics();
                 std::string current_warp = diag.contains("warp") && diag["warp"].is_object() && diag["warp"].contains("status") ? diag["warp"]["status"].as_string() : "disconnected";
                 if (current_warp == "active" || current_warp == "proxy") {
-                    auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
+                    auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
                     (void)ret;
                 } else {
-                    ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    ::system("warp-cli --accept-tos connect >/dev/null 2>&1");
+                    ::system("warp-cli mode proxy && warp-cli proxy port 4001 && warp-cli connect >/dev/null 2>&1");
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             auto data = proxy_.get_network_diagnostics();
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
             return true;

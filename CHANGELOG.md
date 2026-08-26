@@ -4,6 +4,73 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.26.02] - 2026-08-26
+
+### 🌟 Sincronización Estricta de Favoritos, Variantes de Calidad y Puntuación de Streams
+
+#### 1. Sincronización Estricta de Favoritos (`player.js` / `favorites.cpp` / `proxy.cpp`)
+- **Eliminación Total de Canales Fantasma o Residuales**:
+  - La pestaña **⭐ Favoritos** en el reproductor web (`/player/index.html` y `/player/legacy.html`) renderiza únicamente los canales marcados como favoritos en el almacenamiento persistente (`epg_favorites.json` / `GET /epg?action=get_favorites`).
+  - Si en EPG hay un número exacto de favoritos (ej. 3 canales), el reproductor mostrará exclusivamente esos 3 canales, erradicando cualquier inyección residual o fallback forzado.
+
+#### 2. Corrección de Variantes de Calidad en Favoritos (Auto, 1080p, 720p)
+- **Selección Estricta por Resolución**:
+  - **Auto**: Selección del Content ID con mayor puntuación global dentro de todos los candidatos del canal.
+  - **1080p (FHD Auto)**: Selección estricta y exclusiva del mejor Content ID clasificado como `1080p`/`4K`. Si un canal no tiene fuente 1080p, no genera ni duplica hashes SD y retorna error 404 en la URL dedicada `/auto/<slug>-fhd`.
+  - **720p (HD Auto)**: Selección estricta del mejor Content ID clasificado como `720p`. Si no existe fuente 720p, no duplica SD.
+  - En la generación de listas M3U (`generate_favorites_playlist` y `generate_auto_playlist`), las entradas `1080p (FHD Auto)` y `720p (HD Auto)` solo se emiten si la resolución correspondiente está presente en el pool de candidatos.
+
+#### 3. Ajuste del Algoritmo de Puntuación (`stream_scorer.cpp`)
+- **Ponderación de Calidad vs Peers**:
+  - **Calidad 1080p / 4K**: Base mínima de +100 puntos (+120 para 4K) si tiene al menos 3 peers activos (+30 si tiene < 3 peers).
+  - **Calidad 720p**: Base de +60 puntos si tiene al menos 3 peers activos (+15 si tiene < 3 peers).
+  - **Calidad SD**: Aportación máxima de peers acotada a +30 puntos para prevenir que streams SD con muchos peers superen a emisiones 1080p/720p saludables y estables.
+
+---
+
+## [08.26.01] - 2026-08-26
+
+### ⚽ Normalización Avanzada de Slugs con Hashes y Reparación de Control WARP
+
+#### 1. Normalización de Nombres y Regex de Canales (`stream_scorer.cpp` / `proxy.cpp`)
+- **Soporte para Sufijos Hash y Flechas de Origen**:
+  - Implementada la función de limpieza y descarte de sufijos de procedencia / origen con flechas unicode y ascii (`→`, `➔`, `➜`, `➡`, `⇒`, `-->`, `->`, `==>`, `=>`).
+  - Reconocimiento y filtrado automático de identificadores hash alfanuméricos/hexadecimales de 4 caracteres (`[a-f0-9]{4}`) como `936c`, `2929`, `9f1a`, `9e38`, `ad6d`.
+  - Normalización unificada para patrones como:
+    - `M+ LALIGA 936c → ELCANO` ➔ `m-laliga`
+    - `M+ LALIGA FHD 2929 → NEW ERA VI` ➔ `m-laliga`
+    - `M+ LALIGA 9f1a → ELCANO` ➔ `m-laliga`
+    - `M+ LALIGA 9e38 → SPORT TV` ➔ `m-laliga`
+    - `M+ LALIGA 2 936c → ELCANO` ➔ `m-laliga-2`
+    - `M+ LALIGA 3 FHD 2929 → NEW ERA VI` ➔ `m-laliga-3`
+  - Inclusión garantizada de todas estas fuentes en el pool de candidatos de **M+ LaLiga** en `/epg/` y `/auto/m-laliga`.
+  - Prevención de falsos positivos en detección de canales extranjeros (`detect_is_foreign`) causados por sufijos de origen.
+
+#### 2. Reparación del Control de Cloudflare WARP (`plugins.cpp` / `proxy.cpp`)
+- **Adaptación a la Nueva Sintaxis de `warp-cli`**:
+  - En la acción `warp_connect`: ejecución de la secuencia `warp-cli mode proxy && warp-cli proxy port 4001 && warp-cli connect`.
+  - En la acción `warp_disconnect`: ejecución de `warp-cli disconnect`.
+  - En la acción `warp_toggle`: conmutación automática entre modo proxy y desconexión según el estado actual.
+  - Pausa de 1 segundo tras la invocación del comando de sistema antes de retornar el diagnóstico de red actualizado con el estado reportado por `warp-cli status` y la comprobación de puertos proxy (4001 / 40001).
+
+---
+
+## [08.25.13] - 2026-08-25
+
+### 🎯 Sincronización Estricta de Favoritos en Reproductor Web y Backend
+
+#### Sincronización Estricta en el Reproductor Web (`/player/`)
+- **Fuente de Verdad Única**:
+  - La pestaña **⭐ Favoritos** en el reproductor moderno (`/player/index.html`) y clásico (`/player/legacy.html`) carga dinámica y exclusivamente desde `/channels/favoritos.m3u` con el parámetro de refresco reactivo `?t=<timestamp>`, evitando cualquier caché HTTP o desincronización local.
+  - Si en el backend solo está marcado un conjunto específico de canales (ej. `DAZN LaLiga`), el reproductor reflejará exactamente esos canales sin mostrar canales fantasma ni listas mock.
+  - Presentación de pantalla de estado vacía estilizada cuando no existan canales favoritos, con botón de acceso directo a la Guía EPG.
+
+#### Consistencia en Generador Backend (`proxy.cpp`)
+- **Filtrado Estricto de Slugs en Favoritos**:
+  - En `Proxy::generate_favorites_playlist()` y `Proxy::generate_auto_playlist()`, validación estricta que filtra contra el conjunto exacto de `fav_slugs` persistido en `epg_favorites.json`.
+
+---
+
 ## [08.25.12] - 2026-08-25
 
 ### 🚀 Reparación de Statplugin, Grupo ⭐ Favoritos en `/aio` y Blindaje EPG

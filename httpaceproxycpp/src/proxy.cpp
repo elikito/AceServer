@@ -2380,21 +2380,53 @@ Json Proxy::get_network_diagnostics() {
     bool tailscale_connected = false;
     bool safe_route = false;
 
-    // 1. Detección de puerto SOCKS5/HTTP local de WARP (40001)
-    bool warp_local_detected = false;
+    // 0. Detección directa mediante warp-cli status si el comando está disponible
     try {
-        auto resp = http_client_.get_single("http://127.0.0.1:40001/", {}, 1, false);
-        if (resp.status > 0) warp_local_detected = true;
-    } catch (...) {
-        try {
-            auto resp2 = http_client_.get_single("http://host.docker.internal:40001/", {}, 1, false);
-            if (resp2.status > 0) warp_local_detected = true;
-        } catch (...) {}
-    }
+        FILE* fp = ::popen("warp-cli status 2>/dev/null", "r");
+        if (fp) {
+            char buf[256];
+            std::string status_output;
+            while (::fgets(buf, sizeof(buf), fp)) {
+                status_output += buf;
+            }
+            ::pclose(fp);
+            auto status_lower = lower(status_output);
+            if (status_lower.find("connected") != std::string::npos && status_lower.find("disconnected") == std::string::npos) {
+                if (status_lower.find("proxy") != std::string::npos) {
+                    warp_status = "proxy";
+                } else {
+                    warp_status = "active";
+                }
+                warp_raw = "warp_cli_connected";
+            } else if (status_lower.find("connecting") != std::string::npos) {
+                warp_status = "connecting";
+                warp_raw = "warp_cli_connecting";
+            }
+        }
+    } catch (...) {}
 
-    if (warp_local_detected) {
-        warp_status = "active";
-        warp_raw = "local_proxy_40001";
+    // 1. Detección de puerto SOCKS5/HTTP local de WARP (4001 / 40001)
+    bool warp_local_detected = (warp_status == "proxy" || warp_status == "active");
+    for (int port : {4001, 40001}) {
+        try {
+            auto resp = http_client_.get_single("http://127.0.0.1:" + std::to_string(port) + "/", {}, 1, false);
+            if (resp.status > 0) {
+                warp_local_detected = true;
+                warp_status = "proxy";
+                warp_raw = "local_proxy_" + std::to_string(port);
+                break;
+            }
+        } catch (...) {
+            try {
+                auto resp2 = http_client_.get_single("http://host.docker.internal:" + std::to_string(port) + "/", {}, 1, false);
+                if (resp2.status > 0) {
+                    warp_local_detected = true;
+                    warp_status = "proxy";
+                    warp_raw = "local_proxy_" + std::to_string(port);
+                    break;
+                }
+            } catch (...) {}
+        }
     }
 
     // 2. Consultar Cloudflare trace
@@ -2809,7 +2841,7 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 if (want_fhd_only && quality < StreamQuality::FHD_1080) {
                     continue;
                 }
-                if (want_hd_only && quality > StreamQuality::HD_720) {
+                if (want_hd_only && quality != StreamQuality::HD_720) {
                     continue;
                 }
 
@@ -2844,10 +2876,10 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 }
 
                 switch (c.quality) {
-                    case StreamQuality::UHD_4K:   c.quality_bonus = 40; break;
-                    case StreamQuality::FHD_1080: c.quality_bonus = 30; break;
-                    case StreamQuality::HD_720:   c.quality_bonus = 15; break;
-                    default:                      c.quality_bonus = 0; break;
+                    case StreamQuality::UHD_4K:   c.quality_bonus = 120; break;
+                    case StreamQuality::FHD_1080: c.quality_bonus = 100; break;
+                    case StreamQuality::HD_720:   c.quality_bonus = 60; break;
+                    default:                      c.quality_bonus = 30; break;
                 }
 
                 candidates.push_back(c);
@@ -2901,6 +2933,9 @@ std::optional<ChannelCandidate> Proxy::resolve_best_candidate(const std::string&
 }
 
 std::string Proxy::generate_auto_playlist(const std::string& hostport, const std::string& specific_slug) {
+    if (specific_slug == "favoritos") {
+        return generate_favorites_playlist(hostport);
+    }
     std::map<std::string, std::vector<ChannelCandidate>> grouped;
     std::map<std::string, PlaylistItem> exemplar;
 
@@ -2968,7 +3003,7 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
         for (const auto& c : list) {
             auto q = detect_stream_quality(c.name);
             if (q >= StreamQuality::FHD_1080) has_fhd = true;
-            else if (q == StreamQuality::HD_720 || q == StreamQuality::SD) has_hd = true;
+            else if (q == StreamQuality::HD_720) has_hd = true;
         }
 
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
@@ -2976,12 +3011,13 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
         out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
-        if (has_fhd && has_hd) {
+        if (has_fhd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
-
+        }
+        if (has_hd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
@@ -2997,7 +3033,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
     std::unordered_set<std::string> fav_slugs;
     for (const auto& f : fav_list) {
         auto slug = canonical_slug(f);
-        if (!slug.empty()) fav_slugs.insert(slug);
+        if (!slug.empty() && slug != "channel") fav_slugs.insert(slug);
     }
     if (fav_slugs.empty()) {
         // Retornar M3U vacío limpio sin listas fantasma
@@ -3030,12 +3066,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             std::string slug = canonical_slug(item.name);
             if (slug.empty() || slug == "channel") continue;
 
-            bool is_fav = (fav_slugs.find(slug) != fav_slugs.end());
-            if (!is_fav && !item.name.empty()) {
-                is_fav = (fav_slugs.find(canonical_slug(item.name)) != fav_slugs.end());
-            }
-
-            if (!is_fav) continue;
+            if (fav_slugs.find(slug) == fav_slugs.end()) continue;
 
             ChannelCandidate c;
             c.name = item.name;
@@ -3054,8 +3085,30 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
 
     std::ostringstream out;
     out << "#EXTM3U name=\"HTTPAceProxy Canales Favoritos\"\n";
+    std::unordered_set<std::string> emitted_slugs;
 
-    for (const auto& [slug, list] : grouped) {
+    for (const auto& fav_raw : fav_list) {
+        auto slug = canonical_slug(fav_raw);
+        if (slug.empty() || slug == "channel") continue;
+        if (emitted_slugs.find(slug) != emitted_slugs.end()) continue;
+        emitted_slugs.insert(slug);
+
+        auto it = grouped.find(slug);
+        if (it == grouped.end()) {
+            std::string display_name = canonical_name(fav_raw);
+            bool cap = true;
+            for (char& c : display_name) {
+                if (std::isspace(static_cast<unsigned char>(c))) cap = true;
+                else if (cap) { c = std::toupper(static_cast<unsigned char>(c)); cap = false; }
+            }
+            if (display_name.empty()) display_name = slug;
+
+            out << "#EXTINF:-1 tvg-id=\"" << slug << "\" tvg-name=\"" << display_name << "\" group-title=\"Favoritos\", " << display_name << " (Mejor Stream Auto)\n";
+            out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
+            continue;
+        }
+
+        const auto& list = it->second;
         const auto& item = exemplar[slug];
         std::string display_name = canonical_name(item.name);
         bool cap = true;
@@ -3074,7 +3127,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         for (const auto& c : list) {
             auto q = detect_stream_quality(c.name);
             if (q >= StreamQuality::FHD_1080) has_fhd = true;
-            else if (q == StreamQuality::HD_720 || q == StreamQuality::SD) has_hd = true;
+            else if (q == StreamQuality::HD_720) has_hd = true;
         }
 
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
@@ -3082,12 +3135,13 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
-        if (has_fhd && has_hd) {
+        if (has_fhd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
-
+        }
+        if (has_hd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";

@@ -564,9 +564,10 @@
         }
 
         function loadLegacyData(sourceUrl) {
-            currentSourceLegacy = sourceUrl || '/aio';
+            currentSourceLegacy = sourceUrl || '/channels/favoritos.m3u';
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', currentSourceLegacy, true);
+            var fetchUrl = currentSourceLegacy + (currentSourceLegacy.indexOf('?') !== -1 ? '&' : '?') + 't=' + (new Date().getTime());
+            xhr.open('GET', fetchUrl, true);
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {

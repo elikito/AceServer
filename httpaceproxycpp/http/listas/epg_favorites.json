@@ -1,10 +1,11 @@
 {
   "disabled_cids": [],
   "favorites": [
-    "teledeporte",
-    "la-1",
+    "dazn-laliga",
     "dazn-1",
     "dazn-2",
-    "eurosport-1"
+    "eurosport-1",
+    "la-1",
+    "teledeporte"
   ]
 }

@@ -74,18 +74,36 @@ void test_stream_scorer() {
     require(canonical_slug("Teledeporte 1080p **") == "teledeporte", "teledeporte slug");
     require(canonical_slug("La 1 HD") == "la-1", "la 1 slug");
 
-    ChannelCandidate c1{"Teledeporte 1080p *", "cid1", "unificada", "", "General", "tdp", StreamQuality::FHD_1080, 30, 10, 500000, ChannelHealth::ONLINE, false, false, false, 0.0};
-    ChannelCandidate c2{"Teledeporte 720p **", "cid2", "unificada", "", "General", "tdp", StreamQuality::HD_720, 15, 2, 50000, ChannelHealth::ONLINE, false, false, false, 0.0};
-    ChannelCandidate c3{"TELEDEPORTE FHD", "cid3", "elcano", "", "General", "tdp", StreamQuality::FHD_1080, 30, 0, 0, ChannelHealth::OFFLINE, false, false, false, 0.0};
+    // v08.26.01 - Tests para Sufijos Hash de 4 caracteres y Flechas de Origen
+    require(canonical_name("M+ LALIGA 936c → ELCANO") == "m laliga", "m+ laliga 936c elcano canonical");
+    require(canonical_slug("M+ LALIGA 936c → ELCANO") == "m-laliga", "m+ laliga 936c elcano slug");
+    require(canonical_name("M+ LALIGA FHD 2929 → NEW ERA VI") == "m laliga", "m+ laliga fhd 2929 new era canonical");
+    require(canonical_slug("M+ LALIGA FHD 2929 → NEW ERA VI") == "m-laliga", "m+ laliga fhd 2929 new era slug");
+    require(canonical_name("M+ LALIGA 9f1a → ELCANO") == "m laliga", "m+ laliga 9f1a elcano canonical");
+    require(canonical_slug("M+ LALIGA 9f1a → ELCANO") == "m-laliga", "m+ laliga 9f1a elcano slug");
+    require(canonical_name("M+ LALIGA 9e38 → SPORT TV") == "m laliga", "m+ laliga 9e38 sport tv canonical");
+    require(canonical_slug("M+ LALIGA 9e38 → SPORT TV") == "m-laliga", "m+ laliga 9e38 sport tv slug");
+    require(canonical_name("M+ LALIGA 2 936c → ELCANO") == "m laliga 2", "m+ laliga 2 936c canonical");
+    require(canonical_slug("M+ LALIGA 2 936c → ELCANO") == "m-laliga-2", "m+ laliga 2 936c slug");
+    require(canonical_slug("M+ LALIGA 3 FHD 2929 → NEW ERA VI") == "m-laliga-3", "m+ laliga 3 fhd slug");
+    require(canonical_slug("DAZN 1 FHD ad6d --> NEW ERA") == "dazn-1", "dazn 1 fhd ad6d slug");
 
-    std::vector<ChannelCandidate> list = {c2, c3, c1};
+    ChannelCandidate c1{"Teledeporte 1080p *", "cid1", "unificada", "", "General", "tdp", StreamQuality::FHD_1080, 100, 10, 500000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate c2{"Teledeporte 720p **", "cid2", "unificada", "", "General", "tdp", StreamQuality::HD_720, 60, 4, 50000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate c3{"TELEDEPORTE FHD", "cid3", "elcano", "", "General", "tdp", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::OFFLINE, false, false, false, 0.0};
+    ChannelCandidate c4{"Teledeporte SD", "cid4", "unificada", "", "General", "tdp", StreamQuality::SD, 30, 80, 50000, ChannelHealth::ONLINE, false, false, false, 0.0};
+
+    std::vector<ChannelCandidate> list = {c4, c2, c3, c1};
     StreamScorer::rank_candidates(list);
 
-    require(list[0].content_id == "cid1", "c1 should rank highest");
-    require(list[1].content_id == "cid2", "c2 should rank second");
-    require(list[2].content_id == "cid3", "c3 offline should rank lowest");
+    // c1 (1080p con 10 peers) debe superar a c2 (720p con 4 peers) y a c4 (SD con 80 peers)
+    require(list[0].content_id == "cid1", "c1 1080p should rank highest");
+    require(list[1].content_id == "cid2", "c2 720p should rank second");
+    require(list[2].content_id == "cid4", "c4 sd should rank third");
+    require(list[3].content_id == "cid3", "c3 offline should rank lowest");
     require(detect_is_foreign("Sport TV1 (PT)") == true, "foreign detected");
     require(detect_is_foreign("Teledeporte 1080p *") == false, "not foreign");
+    require(detect_is_foreign("M+ LALIGA 9e38 → SPORT TV") == false, "spanish channel with sport tv origin is not foreign");
 }
 
 } // namespace

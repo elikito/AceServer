@@ -43,6 +43,40 @@ const std::unordered_set<std::string>& get_filter_tokens() {
     return tokens;
 }
 
+// Elimina sufijos de procedencia/origen como "→ ELCANO", "--> NEW ERA", "-> SPORT TV", etc.
+std::string strip_origin_suffix(std::string text) {
+    static const std::vector<std::string> arrow_patterns = {
+        "\xe2\x86\x92", // → (U+2192)
+        "\xe2\x9e\x94", // ➔ (U+2794)
+        "\xe2\x9e\x9c", // ➜ (U+279C)
+        "\xe2\x9e\xa1", // ➡ (U+27A1)
+        "\xe2\x87\x92", // ⇒ (U+21D2)
+        "-->",
+        "->",
+        "==>",
+        "=>"
+    };
+
+    for (const auto& arrow : arrow_patterns) {
+        auto pos = text.find(arrow);
+        if (pos != std::string::npos) {
+            text = text.substr(0, pos);
+        }
+    }
+    return text;
+}
+
+// Reconoce hashes alfanuméricos/hexadecimales de 4 caracteres (ej. "936c", "2929", "9f1a", "9e38", "ad6d")
+bool is_hex_hash_token(const std::string& token) {
+    if (token.size() != 4) return false;
+    for (char c : token) {
+        if (!std::isxdigit(static_cast<unsigned char>(c))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 StreamQuality detect_stream_quality(const std::string& name) {
@@ -60,6 +94,7 @@ StreamQuality detect_stream_quality(const std::string& name) {
 }
 
 std::string canonical_name(std::string name) {
+    name = strip_origin_suffix(std::move(name));
     name = strip_accents_utf8(name);
     name = lower(name);
 
@@ -73,7 +108,7 @@ std::string canonical_name(std::string name) {
         }
     }
 
-    // Dividir en palabras y filtrar tokens de calidad / modificadores
+    // Dividir en palabras y filtrar tokens de calidad / modificadores / hashes de 4 caracteres
     const auto& filter = get_filter_tokens();
     std::istringstream stream(name);
     std::string word;
@@ -83,6 +118,7 @@ std::string canonical_name(std::string name) {
         word = trim(word);
         if (word.empty()) continue;
         if (filter.find(word) != filter.end()) continue;
+        if (is_hex_hash_token(word)) continue;
         valid_words.push_back(word);
     }
 
@@ -121,7 +157,8 @@ std::string canonical_slug(std::string name) {
 }
 
 bool detect_is_foreign(const std::string& name) {
-    auto low = lower(strip_accents_utf8(name));
+    auto clean = strip_origin_suffix(name);
+    auto low = lower(strip_accents_utf8(clean));
     static const std::vector<std::string> foreign_patterns = {
         "(de)", "(ru)", "(pl)", "(uk)", "(it)", "(fr)", "(pt)", "(tr)", "(ar)",
         "[de]", "[ru]", "[pl]", "[uk]", "[it]", "[fr]", "[pt]", "[tr]", "[ar]",
@@ -156,22 +193,32 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
         score += 100.0;
     }
 
-    // Bonus por calidad detectada
-    switch (candidate.quality) {
-        case StreamQuality::UHD_4K:   score += 40.0; break;
-        case StreamQuality::FHD_1080: score += 30.0; break;
-        case StreamQuality::HD_720:   score += 15.0; break;
-        default: break;
+    // Bonus por calidad detectada y ponderación contra peers (v08.26.02)
+    // - 1080p: Base mínima de +100 puntos si tiene al menos 3 peers activos (o +30 si < 3).
+    // - 720p: Base de +60 puntos si tiene al menos 3 peers activos (o +15 si < 3).
+    // - SD: Base máxima acotada (+30 puntos totales de calidad + peers) para evitar que supere a un 1080p/720p saludable.
+    if (candidate.quality == StreamQuality::UHD_4K) {
+        score += (candidate.peers >= 3) ? 120.0 : 40.0;
+        score += (candidate.peers * 10.0);
+    } else if (candidate.quality == StreamQuality::FHD_1080) {
+        score += (candidate.peers >= 3) ? 100.0 : 30.0;
+        score += (candidate.peers * 10.0);
+    } else if (candidate.quality == StreamQuality::HD_720) {
+        score += (candidate.peers >= 3) ? 60.0 : 15.0;
+        score += (candidate.peers * 10.0);
+    } else {
+        // Calidad SD
+        double sd_peer_contrib = candidate.peers * 5.0;
+        score += std::min(30.0, sd_peer_contrib);
     }
+
+    // Puntuación por velocidad de bajada
+    score += (static_cast<double>(candidate.speed_down) / 1024.0 * 0.5);
 
     // Penalización por país/idioma extranjero no español
     if (candidate.is_foreign) {
         score -= 50.0;
     }
-
-    // Puntuación por enjambre (peers y velocidad de bajada)
-    score += (candidate.peers * 10.0);
-    score += (static_cast<double>(candidate.speed_down) / 1024.0 * 0.5);
 
     // Bonus por estado confirmado
     if (candidate.health == ChannelHealth::ONLINE) {

@@ -1931,9 +1931,10 @@
         }
 
         function loadData(sourceUrl) {
-            currentSourceUrl = sourceUrl || '/aio';
-            const currentSourceObj = activeSourcesList.find(s => s.url === currentSourceUrl) || { sourceName: 'AIO', label: 'Todos los Canales (AIO)' };
-            fetch(currentSourceUrl)
+            currentSourceUrl = sourceUrl || '/channels/favoritos.m3u';
+            const currentSourceObj = activeSourcesList.find(s => s.url === currentSourceUrl) || { sourceName: 'Favoritos', label: '⭐ Favoritos' };
+            const fetchUrl = currentSourceUrl + (currentSourceUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+            fetch(fetchUrl)
                 .then(res => res.text())
                 .then(async m3uText => {
                     allChannels = parseM3U(m3uText, currentSourceObj);
@@ -2211,7 +2212,22 @@
 
             const groups = Object.keys(grouped).sort();
             if (groups.length === 0) {
-                container.innerHTML = '<div class="loading-screen">No se encontraron canales que coincidan con la búsqueda.</div>';
+                if (currentSourceUrl === '/channels/favoritos.m3u' && !isSearching) {
+                    container.innerHTML = `
+                        <div class="loading-screen" style="padding: 40px 20px;">
+                            <div style="font-size: 40px; margin-bottom: 12px;">⭐</div>
+                            <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">No tienes canales en Favoritos</div>
+                            <div style="font-size: 13px; color: var(--text-secondary); max-width: 420px; margin: 0 auto 16px auto;">
+                                Puedes marcar tus canales preferidos con la estrella ⭐ desde la <strong>Guía EPG</strong> para tenerlos disponibles aquí.
+                            </div>
+                            <a href="/epg/" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600;">
+                                📅 Ir a Guía EPG
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="loading-screen">No se encontraron canales que coincidan con la búsqueda.</div>';
+                }
                 return;
             }
 
