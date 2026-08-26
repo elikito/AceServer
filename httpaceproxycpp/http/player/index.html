@@ -2115,6 +2115,9 @@
                     const idMatch = line.match(/tvg-id="([^"]*)"/);
                     currentItem.tvgId = idMatch ? idMatch[1] : '';
 
+                    const aceIdAttrMatch = line.match(/(?:ace-id|acestream-id|cid|tvg-chno)="([^"]*)"/i);
+                    currentItem.aceId = (aceIdAttrMatch && aceIdAttrMatch[1] && aceIdAttrMatch[1].length >= 10) ? aceIdAttrMatch[1].trim() : '';
+
                     const sourceMatch = line.match(/(?:tvg-source|group-source|source)="([^"]*)"/i);
                     currentItem.source = sourceMatch ? sourceMatch[1] : '';
 
@@ -2122,7 +2125,10 @@
                     currentItem.name = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : 'Canal';
                 } else if (!line.startsWith('#') && line.length > 0 && currentItem) {
                     let streamUrl = line;
-                    let extractedId = extractAceId(line) || extractAceId(currentItem.tvgId) || extractAceId(currentItem.name) || globalChannelAceIdMap[currentItem.name] || globalChannelAceIdMap[normalizeKey(currentItem.name)] || globalChannelAceIdMap[currentItem.name.toLowerCase().trim()];
+                    let extractedId = currentItem.aceId || extractAceId(line) || extractAceId(currentItem.tvgId);
+                    if (!extractedId && !line.includes('/auto/')) {
+                        extractedId = extractAceId(currentItem.name) || globalChannelAceIdMap[currentItem.name] || globalChannelAceIdMap[normalizeKey(currentItem.name)] || globalChannelAceIdMap[currentItem.name.toLowerCase().trim()];
+                    }
 
                     if (line.startsWith('acestream://')) {
                         const pid = line.replace('acestream://', '').trim();
@@ -2143,9 +2149,9 @@
                     }
 
                     currentItem.url = streamUrl;
-                    currentItem.aceId = extractedId || extractAceId(streamUrl) || globalChannelAceIdMap[currentItem.name] || globalChannelAceIdMap[normalizeKey(currentItem.name)];
+                    currentItem.aceId = extractedId;
 
-                    if (currentItem.aceId) {
+                    if (currentItem.aceId && !line.includes('/auto/')) {
                         globalChannelAceIdMap[currentItem.name] = currentItem.aceId;
                         globalChannelAceIdMap[normalizeKey(currentItem.name)] = currentItem.aceId;
                         globalChannelAceIdMap[currentItem.name.toLowerCase().trim()] = currentItem.aceId;
@@ -2187,7 +2193,7 @@
 
             const grouped = {};
             allChannels.forEach((chan, idx) => {
-                const chanAceId = chan.aceId || globalChannelAceIdMap[chan.name] || globalChannelAceIdMap[normalizeKey(chan.name)] || globalChannelAceIdMap[chan.name.toLowerCase().trim()] || extractAceId(chan.url);
+                const chanAceId = chan.aceId || extractAceId(chan.url) || (!chan.url.includes('/auto/') ? (globalChannelAceIdMap[chan.name] || globalChannelAceIdMap[normalizeKey(chan.name)]) : '');
                 chan.aceId = chanAceId;
 
                 const nameMatch = chan.name.toLowerCase().includes(searchVal);
@@ -2253,7 +2259,7 @@
                     const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="system-ui" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">${item.chan.name.substring(0, 2).toUpperCase()}</text></svg>`;
                     const fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
 
-                    const aceId = item.chan.aceId || extractAceId(item.chan.url) || globalChannelAceIdMap[item.chan.name] || globalChannelAceIdMap[normalizeKey(item.chan.name)] || globalChannelAceIdMap[item.chan.name.toLowerCase().trim()];
+                    const aceId = item.chan.aceId || extractAceId(item.chan.url) || (!item.chan.url.includes('/auto/') ? (globalChannelAceIdMap[item.chan.name] || globalChannelAceIdMap[normalizeKey(item.chan.name)]) : '');
 
                     card.innerHTML = `
                         <div class="channel-info">
@@ -2279,11 +2285,15 @@
                             <button class="btn-copy" onclick="copyStreamUrl(getExactStreamUrl('${item.chan.url}'), this)" title="Copiar enlace directo de streaming">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             </button>
-                            <button class="btn-play" onclick="playChannelInWebPlayer(getExactStreamUrl('${item.chan.url}'), '${escapeJsString(item.chan.name)}'); event.preventDefault();" title="Reproducir en la web">
+                            <button class="btn-play" onclick="playChannelInWebPlayer(getExactStreamUrl('${item.chan.url}'), '${escapeJsString(item.chan.name)}', '${aceId || ''}'); event.preventDefault();" title="Reproducir en la web">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M8 5v14l11-7z"/></svg>
                             </button>
                         </div>
                     `;
+                    card.onclick = (e) => {
+                        if (e.target.closest('button') || e.target.closest('.channel-ace-id')) return;
+                        playChannelInWebPlayer(getExactStreamUrl(item.chan.url), item.chan.name, aceId || '');
+                    };
                     grid.appendChild(card);
                 });
             });

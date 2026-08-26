@@ -4,6 +4,23 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.26.04] - 2026-08-26
+
+### 🎯 Corrección Estricta de Variantes de Resolución y Asignación de Content IDs en Favoritos
+
+#### 1. Corrección Estricta de Variantes de Resolución en Favoritos (`proxy.cpp` / `player/index.html`)
+- **Diferenciación Real por Calidad y Resolución**:
+  - **Tarjeta "Mejor Stream Auto" (`/auto/<slug>`)**: Ordena los candidatos por puntuación de salud y selecciona estrictamente el de mayor puntaje global, inyectando su Content ID exacto en `ace-id="..."`.
+  - **Tarjeta "1080p (FHD Auto)" (`/auto/<slug>-fhd`)**: Filtra exclusivamente candidatos con `quality >= StreamQuality::FHD_1080` (1080p/4K). Si no existen fuentes 1080p, no se genera la tarjeta ni se hereda ningún hash SD.
+  - **Tarjeta "720p (HD Auto)" (`/auto/<slug>-hd`)**: Filtra exclusivamente candidatos con `quality == StreamQuality::HD_720` (720p), asignando su Content ID 720p correspondiente (ej. DAZN LaLiga asigna `eb49757...`/`385abcf...` en lugar de duplicar el hash 1080p).
+- **Identificadores en Tarjetas y Reproductor Web**:
+  - El badge `ID: xxxxx...` de cada tarjeta y el banner superior del reproductor muestran de forma exacta el Content ID asociado tras aplicar el filtro de calidad específico.
+
+#### 2. Sincronización de Fuentes EPG
+- Eliminación de hashes huérfanos o cacheados; las opciones y variantes derivan exclusivamente de las fuentes vivas indexadas para cada slug canónico.
+
+---
+
 ## [08.26.03] - 2026-08-26
 
 ### 🛡️ Erradicación Total de Canales Predeterminados y Persistencia Reactiva 1:1

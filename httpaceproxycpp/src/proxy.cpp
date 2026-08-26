@@ -3000,26 +3000,42 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
 
         bool has_fhd = false;
         bool has_hd = false;
-        for (const auto& c : list) {
-            auto q = detect_stream_quality(c.name);
-            if (q >= StreamQuality::FHD_1080) has_fhd = true;
-            else if (q == StreamQuality::HD_720) has_hd = true;
+        std::string best_auto_cid;
+        std::string best_fhd_cid;
+        std::string best_hd_cid;
+
+        auto auto_cand = resolve_best_candidate(slug);
+        if (auto_cand.has_value()) {
+            best_auto_cid = auto_cand->content_id;
+        }
+        auto fhd_cand = resolve_best_candidate(slug + "-fhd");
+        if (fhd_cand.has_value()) {
+            has_fhd = true;
+            best_fhd_cid = fhd_cand->content_id;
+        }
+        auto hd_cand = resolve_best_candidate(slug + "-hd");
+        if (hd_cand.has_value()) {
+            has_hd = true;
+            best_hd_cid = hd_cand->content_id;
         }
 
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+        if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
         out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
         if (has_fhd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            if (!best_fhd_cid.empty()) out << " ace-id=\"" << best_fhd_cid << "\" tvg-chno=\"" << best_fhd_cid << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
         }
         if (has_hd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            if (!best_hd_cid.empty()) out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "-hd/stream.ts\n";
         }
@@ -3103,7 +3119,15 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             }
             if (display_name.empty()) display_name = slug;
 
-            out << "#EXTINF:-1 tvg-id=\"" << slug << "\" tvg-name=\"" << display_name << "\" group-title=\"Favoritos\", " << display_name << " (Mejor Stream Auto)\n";
+            std::string best_auto_cid;
+            auto auto_cand = resolve_best_candidate(slug);
+            if (auto_cand.has_value()) {
+                best_auto_cid = auto_cand->content_id;
+            }
+
+            out << "#EXTINF:-1 tvg-id=\"" << slug << "\" tvg-name=\"" << display_name << "\"";
+            if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
+            out << " group-title=\"Favoritos\", " << display_name << " (Mejor Stream Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
             continue;
         }
@@ -3124,26 +3148,42 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
 
         bool has_fhd = false;
         bool has_hd = false;
-        for (const auto& c : list) {
-            auto q = detect_stream_quality(c.name);
-            if (q >= StreamQuality::FHD_1080) has_fhd = true;
-            else if (q == StreamQuality::HD_720) has_hd = true;
+        std::string best_auto_cid;
+        std::string best_fhd_cid;
+        std::string best_hd_cid;
+
+        auto auto_cand = resolve_best_candidate(slug);
+        if (auto_cand.has_value()) {
+            best_auto_cid = auto_cand->content_id;
+        }
+        auto fhd_cand = resolve_best_candidate(slug + "-fhd");
+        if (fhd_cand.has_value()) {
+            has_fhd = true;
+            best_fhd_cid = fhd_cand->content_id;
+        }
+        auto hd_cand = resolve_best_candidate(slug + "-hd");
+        if (hd_cand.has_value()) {
+            has_hd = true;
+            best_hd_cid = hd_cand->content_id;
         }
 
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+        if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
         out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
         if (has_fhd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            if (!best_fhd_cid.empty()) out << " ace-id=\"" << best_fhd_cid << "\" tvg-chno=\"" << best_fhd_cid << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
         }
         if (has_hd) {
             out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
+            if (!best_hd_cid.empty()) out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
             out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "-hd/stream.ts\n";
         }
