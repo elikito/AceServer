@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.06] - 2026-08-27
+
+### 🎛️ Rediseño Reactivo del Organizador de Canales Favoritos
+
+#### 1. Barra de Acciones y Ordenación Alfabética Instantánea (`epg/index.html`)
+- **Barra de Acciones en Favoritos**:
+  - Incorporados dos botones de acción rápida en la cabecera de la pestaña ⭐ Favoritos:
+    - **🔤 Ordenar (A-Z)**: Reordena automáticamente todas las tarjetas de favoritos en el DOM de 1 a N por nombre de canal en orden alfabético.
+    - **💾 Guardar Orden**: Botón destacado con estilo esmeralda que envía el array ordenado actual al endpoint `POST /epg?action=set_favorites_order` y notifica al usuario con feedback visual.
+
+#### 2. Reordenación Reactiva e Intercambio de Posiciones (1-based index)
+- **Drag & Drop en Tiempo Real**:
+  - Al arrastrar y soltar una tarjeta se reubica el nodo en el DOM en tiempo real y se recalculan automáticamente todos los números de dial (1, 2, 3... N) secuencialmente.
+- **Flechas de Desplazamiento ▲ / ▼**:
+  - Movimiento intuitivo hacia arriba o abajo intercambiando posiciones y recalculando diales en caliente.
+- **Edición Manual de Dial**:
+  - Cambio numérico directo que desplaza la tarjeta a la posición indicada e intercala el resto de canales sin duplicidades.
+- **Limpieza Visual CSS**:
+  - Ocultadas las flechas predeterminadas del navegador (`-webkit-inner-spin-button`, `-moz-appearance: textfield`) para mantener un diseño limpio y moderno con botones personalizados.
+
+---
+
 ## [08.27.05] - 2026-08-27
 
 ### ⭐ Reordenación Interactiva de Favoritos y Agrupación Limpia por Canal

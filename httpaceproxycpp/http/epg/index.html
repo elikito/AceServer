@@ -818,13 +818,24 @@
             cursor: grabbing;
         }
 
+        /* Ocultar flechas por defecto del navegador en inputs numéricos */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
         .dial-controls {
             display: inline-flex;
             align-items: center;
             gap: 4px;
             background: var(--stat-bg);
             border: 1px solid var(--border-color);
-            padding: 3px 8px;
+            padding: 3px 6px;
             border-radius: 8px;
             font-size: 11px;
             font-weight: 700;
@@ -833,22 +844,22 @@
         }
 
         .dial-input {
-            width: 44px;
+            width: 36px;
             background: var(--input-bg);
             border: 1px solid var(--border-color);
             color: #4CAF50;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 13px;
             text-align: center;
             border-radius: 4px;
-            padding: 2px 4px;
+            padding: 2px 2px;
             outline: none;
             transition: border-color 0.2s;
         }
 
         .dial-input:focus {
             border-color: #4CAF50;
-            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
         }
 
         .dial-btn {
@@ -865,9 +876,58 @@
             justify-content: center;
         }
 
-        .dial-btn:hover {
+        .dial-btn:hover:not(:disabled) {
             color: #ffffff;
             background: #4CAF50;
+        }
+
+        .dial-btn:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+
+        /* Barra de Acciones de Favoritos */
+        .fav-actions-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .fav-action-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .fav-action-btn:hover {
+            border-color: #4CAF50;
+            color: #ffffff;
+            background: rgba(76, 175, 80, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .fav-save-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            border-color: #4CAF50;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .fav-save-btn:hover {
+            background: linear-gradient(135deg, #45a049 0%, #2e7d32 100%);
+            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.45);
+            transform: translateY(-2px);
         }
 
         .channel-epg-header {
@@ -927,6 +987,14 @@
                 </svg>
                 Todos los Canales <span class="tab-badge" id="all-count-badge">0</span>
             </button>
+            <div id="fav-actions-bar" class="fav-actions-bar">
+                <button class="fav-action-btn" onclick="sortFavoritesAlphabetically()" title="Reordenar automáticamente los canales favoritos de A a Z">
+                    🔤 Ordenar (A-Z)
+                </button>
+                <button class="fav-action-btn fav-save-btn" onclick="saveCurrentFavoritesOrder()" title="Guardar orden de canales favoritos en el servidor">
+                    💾 Guardar Orden
+                </button>
+            </div>
         </div>
 
         <div class="controls-bar">
@@ -1203,12 +1271,17 @@
         }
 
         let currentMainTab = 'fav'; // Default active tab: Favoritos
+        let draggedCard = null;
 
         function setMainTab(tab) {
             currentMainTab = tab;
             document.querySelectorAll('.epg-tab-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`tab-btn-${tab}`);
             if (activeBtn) activeBtn.classList.add('active');
+            const actionsBar = document.getElementById('fav-actions-bar');
+            if (actionsBar) {
+                actionsBar.style.display = (tab === 'fav') ? 'flex' : 'none';
+            }
             renderEpg();
         }
 
@@ -1231,10 +1304,10 @@
 
         async function syncFavoritesWithServer(favs) {
             try {
-                await fetch('/epg?action=set_favorites', {
+                await fetch('/epg?action=set_favorites_order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ favorites: favs })
+                    body: JSON.stringify({ favorites: favs, favorites_order: favs })
                 });
             } catch (e) {
                 console.warn('Error al sincronizar favoritos con el servidor:', e);
@@ -1250,14 +1323,19 @@
         }
 
         function isFavoriteChannel(chanId) {
-            return getFavoriteChannels().includes(chanId);
+            const favs = getFavoriteChannels();
+            return favs.includes(chanId) || favs.some(f => toCanonicalSlug(f) === toCanonicalSlug(chanId));
         }
 
         function toggleFavoriteChannel(chanId, e) {
             if (e) e.stopPropagation();
             let favs = getFavoriteChannels();
-            if (favs.includes(chanId)) {
-                favs = favs.filter(id => id !== chanId);
+            let existingIdx = favs.indexOf(chanId);
+            if (existingIdx === -1) {
+                existingIdx = favs.findIndex(f => toCanonicalSlug(f) === toCanonicalSlug(chanId));
+            }
+            if (existingIdx !== -1) {
+                favs.splice(existingIdx, 1);
                 showToast('Canal quitado de Favoritos');
             } else {
                 favs.push(chanId);
@@ -1266,6 +1344,129 @@
             localStorage.setItem('epg_favorites', JSON.stringify(favs));
             syncFavoritesWithServer(favs);
             renderEpg();
+        }
+
+        /* Reordenación Reactiva en el DOM y Gestión de Diales */
+        function onFavDragStart(e, cardEl) {
+            draggedCard = cardEl;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', cardEl.dataset.channelId || '');
+            setTimeout(() => cardEl.classList.add('dragging'), 0);
+        }
+
+        function onFavDragOver(e, cardEl) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (!draggedCard || draggedCard === cardEl) return;
+
+            const rect = cardEl.getBoundingClientRect();
+            const isAfter = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+            const container = document.getElementById('epg-container');
+            container.insertBefore(draggedCard, isAfter ? cardEl.nextSibling : cardEl);
+            recalculateDialsFromDOM(false);
+        }
+
+        function onFavDragEnd(e, cardEl) {
+            if (draggedCard) draggedCard.classList.remove('dragging');
+            draggedCard = null;
+            document.querySelectorAll('.channel-epg-card').forEach(c => {
+                c.classList.remove('dragging', 'drag-over');
+            });
+            recalculateDialsFromDOM(true);
+        }
+
+        function moveCardUp(cardEl, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const prev = cardEl.previousElementSibling;
+            if (!prev || !prev.classList.contains('channel-epg-card')) return;
+            cardEl.parentNode.insertBefore(cardEl, prev);
+            recalculateDialsFromDOM(true);
+        }
+
+        function moveCardDown(cardEl, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const next = cardEl.nextElementSibling;
+            if (!next || !next.classList.contains('channel-epg-card')) return;
+            cardEl.parentNode.insertBefore(next, cardEl);
+            recalculateDialsFromDOM(true);
+        }
+
+        function changeCardDial(cardEl, newDialVal, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const container = document.getElementById('epg-container');
+            if (!container) return;
+            const cards = Array.from(container.querySelectorAll('.channel-epg-card'));
+            let targetDial = parseInt(newDialVal, 10);
+            if (isNaN(targetDial) || targetDial < 1) targetDial = 1;
+            if (targetDial > cards.length) targetDial = cards.length;
+            const targetIndex = targetDial - 1;
+            const currentIndex = cards.indexOf(cardEl);
+
+            if (currentIndex === -1 || currentIndex === targetIndex) {
+                recalculateDialsFromDOM(false);
+                return;
+            }
+
+            if (targetIndex >= cards.length - 1) {
+                container.appendChild(cardEl);
+            } else if (targetIndex > currentIndex) {
+                container.insertBefore(cardEl, cards[targetIndex].nextSibling);
+            } else {
+                container.insertBefore(cardEl, cards[targetIndex]);
+            }
+            recalculateDialsFromDOM(true);
+            showToast(`✓ Dial asignado: #${targetDial}`, 'success');
+        }
+
+        function recalculateDialsFromDOM(autoSave = true) {
+            const container = document.getElementById('epg-container');
+            if (!container) return;
+            const cards = Array.from(container.querySelectorAll('.channel-epg-card'));
+            const newFavs = [];
+            cards.forEach((card, idx) => {
+                const dial = idx + 1;
+                const input = card.querySelector('.dial-input');
+                if (input) input.value = dial;
+                const btnUp = card.querySelector('.dial-btn-up');
+                if (btnUp) btnUp.disabled = (idx === 0);
+                const btnDown = card.querySelector('.dial-btn-down');
+                if (btnDown) btnDown.disabled = (idx === cards.length - 1);
+                const chanId = card.dataset.channelId;
+                if (chanId) newFavs.push(chanId);
+            });
+
+            if (newFavs.length > 0 && currentMainTab === 'fav') {
+                localStorage.setItem('epg_favorites', JSON.stringify(newFavs));
+                const favBadge = document.getElementById('fav-count-badge');
+                if (favBadge) favBadge.textContent = newFavs.length;
+                if (autoSave) {
+                    syncFavoritesWithServer(newFavs);
+                }
+            }
+        }
+
+        function sortFavoritesAlphabetically() {
+            const container = document.getElementById('epg-container');
+            if (!container) return;
+            const cards = Array.from(container.querySelectorAll('.channel-epg-card'));
+            if (cards.length <= 1) return;
+
+            cards.sort((a, b) => {
+                const nameA = a.dataset.channelName || '';
+                const nameB = b.dataset.channelName || '';
+                return nameA.localeCompare(nameB, 'es', { sensitivity: 'base', numeric: true });
+            });
+
+            cards.forEach(card => container.appendChild(card));
+            recalculateDialsFromDOM(true);
+            showToast('🔤 Favoritos ordenados alfabéticamente (A-Z)', 'success');
+        }
+
+        function saveCurrentFavoritesOrder() {
+            recalculateDialsFromDOM(false);
+            const favs = getFavoriteChannels();
+            syncFavoritesWithServer(favs);
+            showToast('💾 Orden de favoritos guardado con éxito', 'success');
         }
 
         function showToast(msg, type = 'info') {
@@ -1452,6 +1653,11 @@
             if (favBadge) favBadge.textContent = totalFavCount;
             if (allBadge) allBadge.textContent = epgChannels.length;
 
+            const actionsBar = document.getElementById('fav-actions-bar');
+            if (actionsBar) {
+                actionsBar.style.display = (currentMainTab === 'fav') ? 'flex' : 'none';
+            }
+
             let channelsToRender = [];
             if (currentMainTab === 'fav') {
                 favList.forEach((favId, favOrderIdx) => {
@@ -1498,14 +1704,14 @@
 
                 const card = document.createElement('div');
                 card.className = 'channel-epg-card';
+                card.dataset.channelId = chan.id;
+                card.dataset.channelName = chan.name;
 
                 if (currentMainTab === 'fav') {
                     card.setAttribute('draggable', 'true');
-                    card.ondragstart = (e) => onFavDragStart(e, item.favIdx);
-                    card.ondragover = (e) => onFavDragOver(e);
-                    card.ondragleave = (e) => onFavDragLeave(e);
-                    card.ondrop = (e) => onFavDrop(e, item.favIdx);
-                    card.ondragend = (e) => onFavDragEnd(e);
+                    card.ondragstart = (e) => onFavDragStart(e, card);
+                    card.ondragover = (e) => onFavDragOver(e, card);
+                    card.ondragend = (e) => onFavDragEnd(e, card);
                 }
 
                 const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%232d2d34"/><text x="30" y="35" font-family="system-ui" font-size="18" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">${chan.name.substring(0, 2).toUpperCase()}</text></svg>`;
@@ -1552,9 +1758,9 @@
                             ${currentMainTab === 'fav' ? `
                                 <div class="drag-handle" title="Arrastra para mover este canal a otra posición">⠿</div>
                                 <div class="dial-controls" title="Dial / Posición numérica">
-                                    <button class="dial-btn" onclick="moveFavorite(${item.favIdx}, -1, event)" title="Subir posición" ${item.favIdx === 0 ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}>▲</button>
-                                    <input type="number" class="dial-input" value="${item.favIdx + 1}" min="1" max="${favList.length}" onchange="changeFavoriteDial('${escapeJs(chan.id)}', this.value, event)" onclick="event.stopPropagation();">
-                                    <button class="dial-btn" onclick="moveFavorite(${item.favIdx}, 1, event)" title="Bajar posición" ${item.favIdx === favList.length - 1 ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}>▼</button>
+                                    <button class="dial-btn dial-btn-up" onclick="moveCardUp(this.closest('.channel-epg-card'), event)" title="Subir posición" ${item.favIdx === 0 ? 'disabled' : ''}>▲</button>
+                                    <input type="number" class="dial-input" value="${item.favIdx + 1}" min="1" max="${favList.length}" onchange="changeCardDial(this.closest('.channel-epg-card'), this.value, event)" onclick="event.stopPropagation();">
+                                    <button class="dial-btn dial-btn-down" onclick="moveCardDown(this.closest('.channel-epg-card'), event)" title="Bajar posición" ${item.favIdx === favList.length - 1 ? 'disabled' : ''}>▼</button>
                                 </div>
                             ` : ''}
                             <img class="channel-logo" src="${chan.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">

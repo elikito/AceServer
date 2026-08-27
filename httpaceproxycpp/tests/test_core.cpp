@@ -263,6 +263,12 @@ void test_favorites_reordering_and_playlist_grouping() {
     require(favs[1] == "DAZN 1", "DAZN 1 is second");
     require(favs[2] == "M+ LALIGA", "M+ LALIGA is third");
 
+    // Test Alphabetical Sorting A-Z
+    std::sort(favs.begin(), favs.end());
+    require(favs[0] == "DAZN 1", "Alphabetical A-Z DAZN 1 first");
+    require(favs[1] == "M+ LALIGA", "Alphabetical A-Z M+ LALIGA second");
+    require(favs[2] == "Teledeporte", "Alphabetical A-Z Teledeporte third");
+
     // Test group-title formatting for channel
     std::string channel_name = "DAZN 1";
     std::string line = "#EXTINF:-1 tvg-id=\"dazn-1\" tvg-name=\"DAZN 1\" group-title=\"" + channel_name + "\", " + channel_name + " (Mejor Stream Auto)\n";
