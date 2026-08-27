@@ -124,6 +124,9 @@ public:
     std::size_t broadcast_count() const;
     std::size_t client_count() const;
     std::vector<std::shared_ptr<StreamClient>> all_clients() const;
+    void reap_inactive_sessions(std::int64_t max_idle_seconds = 20);
+    void start_reaper();
+    void stop_reaper();
     void stop_all();
 
 private:
@@ -131,6 +134,10 @@ private:
     HttpClient& http_client_;
     mutable std::mutex mutex_;
     std::map<std::string, std::shared_ptr<Broadcast>> broadcasts_;
+    std::atomic<bool> reaper_running_{false};
+    std::thread reaper_thread_;
+    std::condition_variable reaper_cv_;
+    std::mutex reaper_mutex_;
 };
 
 } // namespace httpace

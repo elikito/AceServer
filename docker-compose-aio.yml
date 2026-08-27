@@ -2,11 +2,13 @@ services:
   aceserve:
     image: jopsis/aceserve:latest
     container_name: aceserve-engine
+    restart: unless-stopped
+    init: true
+    command: ["--max-upload-rate", "500"]
     ports:
       - "6878:6878"    # AceStream HTTP port
       - "62062:62062"  # AceStream API/control port
       - "8621:8621"    # AceStream P2P port
-    restart: unless-stopped
     networks:
       - aceproxy-net
     healthcheck:

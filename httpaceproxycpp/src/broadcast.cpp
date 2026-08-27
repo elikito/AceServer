@@ -216,6 +216,12 @@ void Broadcast::stop() {
         try { ace_->stop_broadcast(); } catch (...) {}
         try { ace_->shutdown(); } catch (...) {}
     }
+    // Desconexión limpia inmediata: Enviar comando STOP al motor AceStream vía HTTP
+    try {
+        std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
+        http_client_.get(stop_url, {}, 2);
+    } catch (...) {}
+
     if (stream_thread_.joinable() && stream_thread_.get_id() != std::this_thread::get_id()) stream_thread_.join();
     if (keepalive_thread_.joinable() && keepalive_thread_.get_id() != std::this_thread::get_id()) keepalive_thread_.join();
 }
@@ -238,19 +244,23 @@ void Broadcast::stream_loop() {
     try {
         auto started = ace_->start_broadcast(start_params_);
         auto url = rewrite_url_host_port(url_decode(started.url), config_.ace_host, std::to_string(config_.ace_http_port));
-        log_line("INFO", "[" + infohash_.substr(0, 8) + "] stream URL " + url);
+        log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) + "] stream URL " + url);
         if (ends_with(parse_url(url).path, ".m3u8")) stream_hls_url(url);
         else stream_http_url(url);
     } catch (const std::exception& e) {
-        log_line("ERROR", "[" + infohash_.substr(0, 8) + "] stream failed: " + std::string(e.what()));
+        log_line("ERROR", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) + "] stream failed: " + std::string(e.what()));
     } catch (...) {
-        log_line("ERROR", "[" + infohash_.substr(0, 8) + "] stream failed with unknown error");
+        log_line("ERROR", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) + "] stream failed with unknown error");
     }
     running_ = false;
     if (ace_) {
         try { ace_->stop_broadcast(); } catch (...) {}
         try { ace_->shutdown(); } catch (...) {}
     }
+    try {
+        std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
+        http_client_.get(stop_url, {}, 2);
+    } catch (...) {}
     for (auto& client : clients()) client->queue->close();
 }
 
@@ -331,9 +341,88 @@ void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
 }
 
 BroadcastManager::BroadcastManager(Config config, HttpClient& http_client)
-    : config_(std::move(config)), http_client_(http_client) {}
+    : config_(std::move(config)), http_client_(http_client) {
+    start_reaper();
+}
 
-BroadcastManager::~BroadcastManager() { stop_all(); }
+BroadcastManager::~BroadcastManager() {
+    stop_reaper();
+    stop_all();
+}
+
+void BroadcastManager::start_reaper() {
+    bool expected = false;
+    if (reaper_running_.compare_exchange_strong(expected, true)) {
+        reaper_thread_ = std::thread([this]() {
+            while (reaper_running_) {
+                {
+                    std::unique_lock<std::mutex> lock(reaper_mutex_);
+                    reaper_cv_.wait_for(lock, std::chrono::seconds(30), [this] {
+                        return !reaper_running_;
+                    });
+                }
+                if (!reaper_running_) break;
+                try {
+                    reap_inactive_sessions(20);
+                } catch (...) {}
+            }
+        });
+    }
+}
+
+void BroadcastManager::stop_reaper() {
+    reaper_running_ = false;
+    reaper_cv_.notify_all();
+    if (reaper_thread_.joinable() && reaper_thread_.get_id() != std::this_thread::get_id()) {
+        reaper_thread_.join();
+    }
+}
+
+void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
+    auto now = unix_time();
+    std::vector<std::shared_ptr<Broadcast>> to_stop;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (auto it = broadcasts_.begin(); it != broadcasts_.end(); ) {
+            auto broadcast = it->second;
+            if (!broadcast) {
+                it = broadcasts_.erase(it);
+                continue;
+            }
+            auto cls = broadcast->clients();
+            bool has_active_reading_client = false;
+            for (const auto& cl : cls) {
+                if (cl) {
+                    auto idle_time = now - cl->last_activity.load();
+                    if (idle_time > max_idle_seconds) {
+                        log_line("INFO", "[" + broadcast->infohash().substr(0, std::min<std::size_t>(8, broadcast->infohash().size())) +
+                                         "] Reaper: cerrando cliente inactivo IP " + cl->client_ip + " (" + std::to_string(idle_time) + "s inactivo)");
+                        broadcast->remove_client(cl);
+                    } else {
+                        has_active_reading_client = true;
+                    }
+                }
+            }
+            if (!has_active_reading_client || broadcast->client_count() == 0) {
+                log_line("INFO", "[" + broadcast->infohash().substr(0, std::min<std::size_t>(8, broadcast->infohash().size())) +
+                                 "] Reaper: eliminando broadcast huerfano sin clientes activos");
+                to_stop.push_back(broadcast);
+                it = broadcasts_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    for (auto& b : to_stop) {
+        b->stop();
+    }
+    if (broadcast_count() == 0) {
+        try {
+            std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
+            http_client_.get(stop_url, {}, 2);
+        } catch (...) {}
+    }
+}
 
 std::shared_ptr<Broadcast> BroadcastManager::get_or_create(const std::string& infohash,
                                                            const std::map<std::string, std::string>& params) {

@@ -1934,8 +1934,8 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         broadcast->remove_client(client);
         broadcasts_.remove_if_empty(infohash);
 
-        // TELEMETRÍA: AL DETENER STREAM
-        add_bunker_log("[REPRODUCTOR] Streaming detenido -> ID: " + req_value);
+        // TELEMETRÍA: AL DETENER STREAM (TCP FIN / RST / CIERRE REPRODUCTOR)
+        add_bunker_log("[REAPER/DESCONEXIÓN] Cliente desconectado -> ID: " + req_value + ". Emitido STOP inmediato al motor.");
     } catch (const std::exception& e) {
         // TELEMETRÍA: SI OCURRE UN ERROR
         add_bunker_log("[ERROR REPRODUCTOR] Fallo al conectar con el motor " + selected_engine() + ": " + e.what());

@@ -4,6 +4,24 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.03] - 2026-08-27
+
+### 🧹 Reaper Automático de Sesiones Inactivas, Desconexión Limpia y Control de Subida
+
+#### 1. Reaper y Garbage Collector de Streams Fantasma (`broadcast.cpp` / `proxy.cpp`)
+- **Detección y Cierre Inmediato en TCP Reset/FIN**:
+  - Al desconectarse cualquier cliente o reproductor (VLC, Web Player, etc.), se emite de inmediato el comando `STOP` y `SHUTDOWN` por control socket Telnet y `GET /ace/stop` vía HTTP para detener de raíz el consumo de recursos.
+- **Watchdog Periódico de Sesiones Inactivas**:
+  - Implementado hilo reaper en segundo plano en `BroadcastManager` con auditoría periódica cada 30 segundos.
+  - Cierre forzado y liberación automática de cualquier cliente/stream sin lectura de datos durante más de **20 segundos**.
+  - Si el proxy queda sin clientes activos, se envía una señal de `STOP` global a los motores AceStream para silenciar la actividad P2P de fondo.
+
+#### 2. Contención de Tráfico P2P y Procesos Zombies (`docker-compose.yml`)
+- Añadida la directiva `init: true` en los servicios de los motores AceStream (`aceserve-modern`, `aceserve-compat-light`, `aceserve-compat-stable`) para gestión adecuada de señales `SIGTERM`/`SIGINT` y recolección de procesos zombi (PID 1 reaper).
+- Configurado el argumento `--max-upload-rate 500` en los contenedores de motor para contener la subida parásita y preservar el ancho de banda.
+
+---
+
 ## [08.27.02] - 2026-08-27
 
 ### 💾 Persistencia Aislada en `/config` y Parser Mejorado de Importación de Fuentes

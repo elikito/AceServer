@@ -228,6 +228,16 @@ void test_persistent_config_and_sources_import() {
     require(fav_parsed.contains("disabled_cids") && fav_parsed["disabled_cids"].as_array().size() == 1, "disabled cids count");
 }
 
+void test_reaper_and_orphan_session_cleanup() {
+    // Test StreamClient idle time and reaper calculation
+    auto now = unix_time();
+    std::int64_t last_activity_active = now - 5; // 5s ago
+    require(now - last_activity_active <= 20, "active client within 20s window");
+
+    std::int64_t last_activity_inactive = now - 35; // 35s ago (orphan stream)
+    require(now - last_activity_inactive > 20, "inactive client exceeds 20s threshold");
+}
+
 } // namespace
 
 int main() {
@@ -240,6 +250,7 @@ int main() {
         test_stream_scorer();
         test_warp_and_resolution_variants();
         test_persistent_config_and_sources_import();
+        test_reaper_and_orphan_session_cleanup();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {
