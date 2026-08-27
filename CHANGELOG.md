@@ -4,6 +4,22 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.04] - 2026-08-27
+
+### 🚀 Corrección Crítica de Entrypoints en Motores AceStream y Fallback de Red DNS
+
+#### 1. Corrección Crítica de `docker-compose.yml` (Contenedores AceStream)
+- **Eliminación de `command` personalizado**:
+  - Retirada la directiva `command: ["--max-upload-rate", "500"]` en los contenedores de motor (`aceserve-modern`, `aceserve-compat-light`, `aceserve-compat-stable`, `aceserve`) para no romper su `ENTRYPOINT` nativo (`/srv/ace/start-engine.sh` / scripts de inicio propios).
+- **Garantía de Red Bridge Común (`aceproxy-net`)**:
+  - Asegurada la conectividad e interconexión interna de todos los servicios en `aceproxy-net` con resolución DNS fluida.
+
+#### 2. Fallback de Conexión y Resolución DNS en el Proxy (`ace_client.cpp`)
+- Implementada lista ordenada de candidatos de fallback en `AceClient::connect_socket()`:
+  - Si la resolución DNS o conexión a `config_.ace_host` (ej. `aceserve-modern`) falla o tarda en estabilizarse, se prueba automáticamente contra `127.0.0.1`, `172.17.0.1` (gateway Docker) y los otros motores activos del pool (`aceserve-compat-stable`, `aceserve-compat-light`).
+
+---
+
 ## [08.27.03] - 2026-08-27
 
 ### 🧹 Reaper Automático de Sesiones Inactivas, Desconexión Limpia y Control de Subida

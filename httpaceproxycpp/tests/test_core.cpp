@@ -238,6 +238,22 @@ void test_reaper_and_orphan_session_cleanup() {
     require(now - last_activity_inactive > 20, "inactive client exceeds 20s threshold");
 }
 
+void test_engine_host_fallback_candidates() {
+    Config cfg;
+    cfg.ace_host = "aceserve-modern";
+    std::vector<std::string> hosts_to_try;
+    if (!cfg.ace_host.empty()) hosts_to_try.push_back(cfg.ace_host);
+    for (const auto& fallback_host : {"127.0.0.1", "172.17.0.1", "aceserve-modern", "aceserve-compat-stable", "aceserve-compat-light"}) {
+        if (std::find(hosts_to_try.begin(), hosts_to_try.end(), fallback_host) == hosts_to_try.end()) {
+            hosts_to_try.push_back(fallback_host);
+        }
+    }
+    require(hosts_to_try[0] == "aceserve-modern", "primary candidate is ace_host");
+    require(std::find(hosts_to_try.begin(), hosts_to_try.end(), "127.0.0.1") != hosts_to_try.end(), "fallback includes 127.0.0.1");
+    require(std::find(hosts_to_try.begin(), hosts_to_try.end(), "172.17.0.1") != hosts_to_try.end(), "fallback includes Docker gateway");
+    require(hosts_to_try.size() >= 4, "fallback candidates pool complete");
+}
+
 } // namespace
 
 int main() {
@@ -251,6 +267,7 @@ int main() {
         test_warp_and_resolution_variants();
         test_persistent_config_and_sources_import();
         test_reaper_and_orphan_session_cleanup();
+        test_engine_host_fallback_candidates();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

@@ -92,33 +92,56 @@ AceClient::~AceClient() {
 }
 
 void AceClient::connect_socket() {
-    fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (fd_ < 0) throw AceError("socket failed");
-    timeval timeout{};
-    timeout.tv_sec = config_.ace_connect_timeout;
-    setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-
-    addrinfo hints{};
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    addrinfo* result = nullptr;
-    auto port = std::to_string(config_.ace_api_port);
-    if (::getaddrinfo(config_.ace_host.c_str(), port.c_str(), &hints, &result) != 0) {
-        close_fd(fd_);
-        throw AceError("cannot resolve AceStream host " + config_.ace_host);
+    std::vector<std::string> hosts_to_try;
+    if (!config_.ace_host.empty()) hosts_to_try.push_back(config_.ace_host);
+    for (const auto& fallback_host : {"127.0.0.1", "172.17.0.1", "aceserve-modern", "aceserve-compat-stable", "aceserve-compat-light"}) {
+        if (std::find(hosts_to_try.begin(), hosts_to_try.end(), fallback_host) == hosts_to_try.end()) {
+            hosts_to_try.push_back(fallback_host);
+        }
     }
+
     bool connected = false;
-    for (auto* rp = result; rp; rp = rp->ai_next) {
-        if (::connect(fd_, rp->ai_addr, rp->ai_addrlen) == 0) {
-            connected = true;
+    std::string connected_host;
+    auto port = std::to_string(config_.ace_api_port);
+
+    for (const auto& target_host : hosts_to_try) {
+        close_fd(fd_);
+        fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (fd_ < 0) continue;
+
+        timeval timeout{};
+        timeout.tv_sec = config_.ace_connect_timeout > 0 ? std::min(config_.ace_connect_timeout, 4) : 2;
+        setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+        addrinfo hints{};
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        addrinfo* result = nullptr;
+
+        if (::getaddrinfo(target_host.c_str(), port.c_str(), &hints, &result) != 0) {
+            continue;
+        }
+
+        for (auto* rp = result; rp; rp = rp->ai_next) {
+            if (::connect(fd_, rp->ai_addr, rp->ai_addrlen) == 0) {
+                connected = true;
+                connected_host = target_host;
+                break;
+            }
+        }
+        freeaddrinfo(result);
+        if (connected) {
+            if (target_host != config_.ace_host) {
+                log_line("INFO", "[" + title_ + "] AceStream host fallback conectado a: " + target_host + " (config original: " + config_.ace_host + ")");
+            }
             break;
         }
     }
-    freeaddrinfo(result);
+
     if (!connected) {
         close_fd(fd_);
-        throw AceError("there are no alive AceStream Engines found");
+        throw AceError("cannot resolve or connect to AceStream host " + config_.ace_host + " (fallbacks comprobados: 127.0.0.1, 172.17.0.1, pool)");
     }
 }
 
