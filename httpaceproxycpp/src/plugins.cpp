@@ -989,7 +989,8 @@ public:
             return true;
         }
         try {
-            auto full = std::filesystem::path(config_.root_dir) / "http" / "listas" / relative;
+            auto cfg_path = config_.get_config_dir() / "listas" / relative;
+            auto full = std::filesystem::exists(cfg_path) ? cfg_path : (std::filesystem::path(config_.root_dir) / "http" / "listas" / relative);
             auto body = read_file_binary(full.string());
             send_bytes(ctx.connection, 200, mime_type_for_path(relative), body);
         } catch (...) {

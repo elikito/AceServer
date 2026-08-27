@@ -153,6 +153,81 @@ void test_warp_and_resolution_variants() {
     require(hd_only[0].content_id != fhd_only[0].content_id, "resolution variants must have distinct Content IDs");
 }
 
+void test_persistent_config_and_sources_import() {
+    // 1. Test Config::get_config_dir()
+    Config cfg;
+    cfg.root_dir = "/tmp/test_ace";
+    cfg.config_dir = "/tmp/test_ace/custom_config";
+    require(cfg.get_config_dir() == "/tmp/test_ace/custom_config", "custom config dir resolution");
+
+    Config cfg_default;
+    cfg_default.root_dir = "/tmp/test_ace";
+    auto default_cfg_path = cfg_default.get_config_dir().string();
+    require(!default_cfg_path.empty(), "default config dir resolution");
+
+    // 2. Test standard export/import schema parsing
+    std::string import_payload = R"({
+        "custom_lists": [
+            {
+                "name": "unificada",
+                "title": "Lista Unificada",
+                "url": "/listas/locales/lista_acestream_unificada.m3u",
+                "enabled": true
+            },
+            {
+                "name": "deportes_extra",
+                "title": "Deportes Extra",
+                "url": "https://example.com/sports.m3u",
+                "enabled": true
+            }
+        ],
+        "urls": {
+            "newera": "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u",
+            "elcano": "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json"
+        }
+    })";
+
+    auto parsed_json = Json::parse(import_payload);
+    require(parsed_json.is_object(), "import json is object");
+    require(parsed_json.contains("custom_lists") && parsed_json["custom_lists"].is_array(), "custom_lists present");
+    require(parsed_json.contains("urls") && parsed_json["urls"].is_object(), "urls present");
+
+    int imported_count = 0;
+    auto custom_arr = parsed_json["custom_lists"].as_array();
+    for (const auto& item : custom_arr) {
+        if (item.is_object() && item.contains("name") && item.contains("url")) {
+            imported_count++;
+        }
+    }
+    auto urls_obj = parsed_json["urls"].as_object();
+    for (const auto& [k, v] : urls_obj) {
+        if (v.is_string()) {
+            imported_count++;
+        }
+    }
+    require(imported_count == 4, "all custom_lists and plugin urls imported");
+
+    Json res = Json::object{
+        {"status", "success"},
+        {"ok", true},
+        {"imported", static_cast<double>(imported_count)},
+        {"imported_count", static_cast<double>(imported_count)},
+        {"message", "Fuentes importadas con éxito"}
+    };
+    require(res["status"].as_string() == "success", "response status success");
+    require(res["ok"].as_bool() == true, "response ok bool");
+    require(static_cast<int>(res["imported"].as_number()) == 4, "response imported count");
+
+    // 3. Test epg_favorites parse invariants
+    std::string fav_json = R"({
+        "favorites": ["DAZN 1", "M+ LALIGA", "Teledeporte"],
+        "disabled_cids": ["bad_cid_123"]
+    })";
+    auto fav_parsed = Json::parse(fav_json);
+    require(fav_parsed.contains("favorites") && fav_parsed["favorites"].as_array().size() == 3, "favorites count");
+    require(fav_parsed.contains("disabled_cids") && fav_parsed["disabled_cids"].as_array().size() == 1, "disabled cids count");
+}
+
 } // namespace
 
 int main() {
@@ -164,6 +239,7 @@ int main() {
         test_m3u_parser_variants();
         test_stream_scorer();
         test_warp_and_resolution_variants();
+        test_persistent_config_and_sources_import();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

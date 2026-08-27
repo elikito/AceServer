@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <set>
 #include <string>
@@ -7,7 +8,7 @@
 
 namespace httpace {
 
-inline constexpr const char* kAppVersion = "08.27.01";
+inline constexpr const char* kAppVersion = "08.27.02";
 
 struct Config {
     std::string ace_host = "127.0.0.1";
@@ -31,6 +32,7 @@ struct Config {
     std::string enabled_plugins = "newera,elcano,acepl,af1c1onados,aio,stat,statplugin";
     std::string aio_plugins = "all";
     std::string root_dir = ".";
+    std::string config_dir = "";
     std::map<std::string, std::string> acestream_type = {{"output_format", "http"}};
     std::string ace_key = "n51LvQoTlJzNGaFxseRK-uvnvX-sD4Vm5Axwmc4UcoD-jruxmKsuJaH0eVgE";
     int ace_age = 3;
@@ -40,6 +42,7 @@ struct Config {
     std::string stream_type_string() const;
     bool plugin_enabled(const std::string& name) const;
     bool aio_includes(const std::string& name) const;
+    std::filesystem::path get_config_dir() const;
 };
 
 Config load_config(int argc, char** argv);

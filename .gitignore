@@ -145,7 +145,15 @@ logs/
 /data
 /gluetun
 
-# User dynamic data files
+# User dynamic data files and config directory
+/config/
+config/
+/config/*
+config/*
+*.json.bak
 *favorites.json
 **/epg_favorites.json
 httpaceproxycpp/http/listas/epg_favorites.json
+httpaceproxycpp/http/plugins_state.json
+sources.json
+custom_lists.json

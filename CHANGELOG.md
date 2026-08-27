@@ -4,6 +4,35 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.02] - 2026-08-27
+
+### 💾 Persistencia Aislada en `/config` y Parser Mejorado de Importación de Fuentes
+
+#### 1. Directorio de Configuración Persistente Fuera de Git (`/config` / `/app/config/`)
+- **Migración y Aislamiento de Estado**:
+  - Implementada gestión dinámica de directorio de configuración mediante `Config::get_config_dir()` (`/app/config`, `/opt/HTTPAceProxy/config`, o `config/`).
+  - Almacenamiento persistente de datos de usuario:
+    - `epg_favorites.json` & `epg_favorites.json.bak`
+    - `plugins_state.json`
+    - `sources.json`
+    - `custom_lists.json`
+    - Listas locales (`/app/config/listas/locales/`)
+  - **Aislamiento en `.gitignore`**:
+    - Directorio `config/` y archivos `.json` de datos dinámicos ignorados por Git.
+    - Inicialización con plantillas por defecto sin sobreescribir datos existentes de usuario.
+  - **Volumen Docker**:
+    - Añadido montaje `/opt/HTTPAceProxy/config:/app/config` en `docker-compose.yml` y `httpaceproxycpp/docker-compose-httpaceproxycpp.yml`.
+
+#### 2. Parser Atómico y Robusto de Importación de Fuentes (`/sources?action=import` & `/config?action=import_sources`)
+- Soporte para schema JSON estándar exportado:
+  - `custom_lists`: lista de fuentes personalizadas con `name`, `title`, `url`, `enabled`.
+  - `urls`: mapa clave-valor de URLs de plugins principales (`newera`, `elcano`, `af1c1onados`, `acepl`, `epg`).
+  - Formatos JSON alternativos (arrays planos de listas personalizadas y objetos directos).
+- Activación e inserción atómica de listas y URLs de plugins.
+- Feedback visual estandarizado `{ "status": "success", "ok": true, "imported": N, "imported_count": N, "message": "..." }` evitando bloqueos de interfaz en el frontend.
+
+---
+
 ## [08.27.01] - 2026-08-27
 
 ### 🌐 Detección/Control de Cloudflare WARP y Compatibilidad de Red Multi-Entorno

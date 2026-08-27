@@ -74,14 +74,11 @@ services:
       - ACESTREAM_HTTP_PORT=6878
       - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
     volumes:
-      # Mapeo del frontend web e interfaz Bento
+      - /opt/HTTPAceProxy/config:/app/config
       - /opt/HTTPAceProxy/httpaceproxycpp/http:/app/http
-      # Socket de Docker para gestión de motores en vivo
       - /var/run/docker.sock:/var/run/docker.sock
-      # Mapeos de hora local del sistema
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      # Socket IPC, datos de registro y binario de Cloudflare WARP del host
       - /run/cloudflare-warp:/run/cloudflare-warp
       - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro

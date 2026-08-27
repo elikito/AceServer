@@ -518,7 +518,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         return;
     }
 
-    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || (ctx.parts[1] == "fuentes" && ctx.query.find("action=") != std::string::npos))) {
+    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || ctx.parts[1] == "sources" || (ctx.parts[1] == "fuentes" && ctx.query.find("action=") != std::string::npos))) {
         auto action = query_get(ctx.query, "action");
         std::map<std::string, std::string> headers = {
             {"Access-Control-Allow-Origin", "*"},
@@ -573,6 +573,12 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             std::ofstream out(file_path, std::ios::binary);
             out << content;
             out.close();
+
+            auto cfg_locales = config_.get_config_dir() / "listas" / "locales";
+            std::filesystem::create_directories(cfg_locales);
+            std::ofstream out_cfg(cfg_locales / filename, std::ios::binary);
+            out_cfg << content;
+            out_cfg.close();
 
             std::string relative_url = "/listas/locales/" + filename;
 
@@ -746,6 +752,15 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             std::ofstream out2(file_path_cap, std::ios::binary);
             out2 << m3u_out.str();
             out2.close();
+
+            auto cfg_locales = config_.get_config_dir() / "listas" / "locales";
+            std::filesystem::create_directories(cfg_locales);
+            std::ofstream out_cfg1(cfg_locales / "interna.m3u", std::ios::binary);
+            out_cfg1 << m3u_out.str();
+            out_cfg1.close();
+            std::ofstream out_cfg2(cfg_locales / "Interna.m3u", std::ios::binary);
+            out_cfg2 << m3u_out.str();
+            out_cfg2.close();
 
             std::string relative_url = "/listas/locales/interna.m3u";
 
@@ -1035,7 +1050,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 return;
             }
         }
-        else if (action == "import_sources") {
+        else if (action == "import_sources" || action == "import") {
             std::string content = request.body;
             if (content.empty()) {
                 content = url_decode(query_get(ctx.query, "content"));
@@ -1049,7 +1064,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             }
 
             int imported_count = 0;
-            std::set<std::string> known_predefined = {"newera", "elcano", "af1c1onados", "acepl"};
+            std::set<std::string> known_predefined = {"newera", "elcano", "af1c1onados", "acepl", "epg"};
 
             std::lock_guard<std::mutex> lock(plugins_state_mutex_);
             Json::object obj;
@@ -1068,10 +1083,11 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             }
 
             std::string trimmed_content = trim(content);
-            if (starts_with(trimmed_content, "{")) {
+            if (starts_with(trimmed_content, "{") || starts_with(trimmed_content, "[")) {
                 try {
                     auto j = Json::parse(trimmed_content);
                     if (j.is_object()) {
+                        // 1. Process "urls" object
                         if (j.contains("urls") && j["urls"].is_object()) {
                             auto imp_urls = j["urls"].as_object();
                             for (const auto& [k, v] : imp_urls) {
@@ -1082,17 +1098,20 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                                 }
                             }
                         }
+                        // 2. Process "custom_lists" array
                         if (j.contains("custom_lists") && j["custom_lists"].is_array()) {
                             auto imp_custom = j["custom_lists"].as_array();
                             for (const auto& item : imp_custom) {
                                 if (!item.is_object()) continue;
                                 auto c_obj = item.as_object();
-                                std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : "";
+                                std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : (c_obj.contains("id") ? c_obj.at("id").as_string() : "");
                                 std::string c_title = c_obj.contains("title") ? c_obj.at("title").as_string() : c_name;
-                                std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : "";
-                                bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool() : true;
+                                std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : (c_obj.contains("uri") ? c_obj.at("uri").as_string() : "");
+                                bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool(true) : true;
 
-                                if (c_name.empty() || c_url.empty() || !is_valid_source_url(c_url)) continue;
+                                if (c_name.empty()) c_name = "fuente_" + std::to_string(imported_count + 1);
+                                if (c_title.empty()) c_title = c_name;
+                                if (c_url.empty() || !is_valid_source_url(c_url)) continue;
 
                                 bool found = false;
                                 for (auto& existing : custom_arr) {
@@ -1117,6 +1136,52 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                                 imported_count++;
                                 add_custom_list_plugin(c_name, c_url);
                             }
+                        }
+                        // 3. Process top-level plugin keys if present
+                        for (const auto& [k, v] : j.as_object()) {
+                            if (k != "urls" && k != "custom_lists" && k != "version" && known_predefined.count(k) > 0) {
+                                if (v.is_string() && is_valid_source_url(v.as_string())) {
+                                    urls_obj[k] = v.as_string();
+                                    imported_count++;
+                                    set_plugin_url(k, v.as_string());
+                                }
+                            }
+                        }
+                    } else if (j.is_array()) {
+                        for (const auto& item : j.as_array()) {
+                            if (!item.is_object()) continue;
+                            auto c_obj = item.as_object();
+                            std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : (c_obj.contains("id") ? c_obj.at("id").as_string() : "");
+                            std::string c_title = c_obj.contains("title") ? c_obj.at("title").as_string() : c_name;
+                            std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : (c_obj.contains("uri") ? c_obj.at("uri").as_string() : "");
+                            bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool(true) : true;
+
+                            if (c_name.empty()) c_name = "fuente_" + std::to_string(imported_count + 1);
+                            if (c_title.empty()) c_title = c_name;
+                            if (c_url.empty() || !is_valid_source_url(c_url)) continue;
+
+                            bool found = false;
+                            for (auto& existing : custom_arr) {
+                                if (existing.is_object() && existing.as_object().contains("name") && existing.as_object().at("name").as_string() == c_name) {
+                                    Json::object ex_obj = existing.as_object();
+                                    ex_obj["title"] = c_title;
+                                    ex_obj["url"] = c_url;
+                                    ex_obj["enabled"] = c_enabled;
+                                    existing = ex_obj;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                custom_arr.push_back(Json::object{
+                                    {"name", c_name},
+                                    {"title", c_title},
+                                    {"url", c_url},
+                                    {"enabled", c_enabled}
+                                });
+                            }
+                            imported_count++;
+                            add_custom_list_plugin(c_name, c_url);
                         }
                     }
                 } catch (...) {
@@ -1219,8 +1284,10 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
 
             Json res = Json::object{
                 {"status", "success"},
-                {"message", "Fuentes importadas con éxito"},
-                {"imported_count", imported_count}
+                {"ok", true},
+                {"imported", static_cast<double>(imported_count)},
+                {"imported_count", static_cast<double>(imported_count)},
+                {"message", "Fuentes importadas con éxito (" + std::to_string(imported_count) + " procesadas)"}
             };
             auto body_str = res.dump(2);
             headers["Content-Type"] = "application/json; charset=utf-8";
@@ -1247,10 +1314,15 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     if (starts_with(decoded_url, "file://")) {
                         local_path = decoded_url.substr(7);
                     } else if (starts_with(decoded_url, "/")) {
-                        local_path = std::filesystem::path(config_.root_dir) / "http" / decoded_url.substr(1);
+                        auto cfg_path = config_.get_config_dir() / decoded_url.substr(1);
+                        if (std::filesystem::exists(cfg_path)) local_path = cfg_path;
+                        else local_path = std::filesystem::path(config_.root_dir) / "http" / decoded_url.substr(1);
                     } else {
                         auto pos = decoded_url.find("/listas/locales/");
-                        local_path = std::filesystem::path(config_.root_dir) / "http" / decoded_url.substr(pos + 1);
+                        auto sub = decoded_url.substr(pos + 1);
+                        auto cfg_path = config_.get_config_dir() / sub;
+                        if (std::filesystem::exists(cfg_path)) local_path = cfg_path;
+                        else local_path = std::filesystem::path(config_.root_dir) / "http" / sub;
                     }
                     if (std::filesystem::exists(local_path)) {
                         std::ifstream file_stream(local_path, std::ios::binary);
@@ -2709,8 +2781,10 @@ void Proxy::remove_custom_list_plugin(const std::string& name) {
 
 void Proxy::load_plugins_state() {
     std::lock_guard<std::mutex> lock(plugins_state_mutex_);
-    auto filepath = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
-    std::ifstream file(filepath.string());
+    auto cfg_path = config_.get_config_dir() / "plugins_state.json";
+    auto root_path = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
+    auto target = std::filesystem::exists(cfg_path) ? cfg_path : root_path;
+    std::ifstream file(target.string());
     if (!file.is_open()) return;
     std::stringstream buffer;
     buffer << file.rdbuf();
@@ -2728,17 +2802,40 @@ void Proxy::load_plugins_state() {
 
 void Proxy::save_plugins_state() {
     std::lock_guard<std::mutex> lock(plugins_state_mutex_);
-    auto filepath = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
-    std::ofstream file(filepath.string());
+    auto cfg_dir = config_.get_config_dir();
+    std::filesystem::create_directories(cfg_dir);
+    auto cfg_path = cfg_dir / "plugins_state.json";
+    auto root_path = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
+    if (plugins_state_json_.is_object()) {
+        auto obj = plugins_state_json_.as_object();
+        obj["version"] = kAppVersion;
+        plugins_state_json_ = obj;
+    }
+    std::string dumped = plugins_state_json_.dump(2);
+    std::ofstream file(cfg_path.string());
     if (file.is_open()) {
-        if (plugins_state_json_.is_object()) {
-            auto obj = plugins_state_json_.as_object();
-            obj["version"] = kAppVersion;
-            plugins_state_json_ = obj;
-        }
-        file << plugins_state_json_.dump(2);
+        file << dumped;
+        file.close();
     } else {
-        log_line("ERROR", "Failed to write plugins_state.json");
+        log_line("ERROR", "Failed to write " + cfg_path.string());
+    }
+    if (std::filesystem::exists(root_path.parent_path())) {
+        std::ofstream root_file(root_path.string());
+        if (root_file.is_open()) {
+            root_file << dumped;
+            root_file.close();
+        }
+    }
+    if (plugins_state_json_.is_object()) {
+        const auto& p_obj = plugins_state_json_.as_object();
+        if (p_obj.contains("urls")) {
+            std::ofstream s_file((cfg_dir / "sources.json").string());
+            if (s_file.is_open()) s_file << p_obj.at("urls").dump(2);
+        }
+        if (p_obj.contains("custom_lists")) {
+            std::ofstream c_file((cfg_dir / "custom_lists.json").string());
+            if (c_file.is_open()) c_file << p_obj.at("custom_lists").dump(2);
+        }
     }
 }
 
@@ -3210,8 +3307,11 @@ void Proxy::load_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     epg_favorites_.clear();
     disabled_cids_.clear();
-    auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
-    auto bak_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.bak";
+    auto cfg_dir = config_.get_config_dir();
+    auto favs_file = cfg_dir / "epg_favorites.json";
+    auto bak_file = cfg_dir / "epg_favorites.json.bak";
+    auto root_favs = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
+    auto root_bak = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.bak";
 
     auto parse_fav_content = [&](const std::string& content) -> bool {
         if (content.empty()) return false;
@@ -3257,15 +3357,26 @@ void Proxy::load_epg_favorites() {
             log_line("INFO", "Restaurado epg_favorites.json desde copia de seguridad epg_favorites.json.bak");
         }
     }
+    if (!loaded && std::filesystem::exists(root_favs)) {
+        auto content = read_file_binary(root_favs.string());
+        loaded = parse_fav_content(content);
+    }
+    if (!loaded && std::filesystem::exists(root_bak)) {
+        auto bak_content = read_file_binary(root_bak.string());
+        loaded = parse_fav_content(bak_content);
+    }
     // NUNCA inyectar canales fantasma por defecto si la lista está vacía
 }
 
 void Proxy::save_epg_favorites() {
     std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
     try {
-        auto favs_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
-        auto bak_file = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.bak";
-        std::filesystem::create_directories(favs_file.parent_path());
+        auto cfg_dir = config_.get_config_dir();
+        std::filesystem::create_directories(cfg_dir);
+        auto favs_file = cfg_dir / "epg_favorites.json";
+        auto bak_file = cfg_dir / "epg_favorites.json.bak";
+        auto root_favs = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json";
+        auto root_bak = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.bak";
 
         Json::array fav_arr;
         for (const auto& f : epg_favorites_) {
@@ -3294,6 +3405,20 @@ void Proxy::save_epg_favorites() {
             }
         } else {
             log_line("ERROR", "Failed to open " + favs_file.string() + " for writing");
+        }
+
+        // Sincronizar en root http/listas si existe el directorio
+        if (std::filesystem::exists(root_favs.parent_path())) {
+            std::ofstream out_r(root_favs, std::ios::binary);
+            if (out_r.is_open()) {
+                out_r << json_str;
+                out_r.close();
+            }
+            std::ofstream out_rbak(root_bak, std::ios::binary);
+            if (out_rbak.is_open()) {
+                out_rbak << json_str;
+                out_rbak.close();
+            }
         }
     } catch (const std::exception& e) {
         log_line("ERROR", "Error saving epg_favorites.json: " + std::string(e.what()));

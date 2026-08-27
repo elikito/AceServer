@@ -57,6 +57,24 @@ bool Config::aio_includes(const std::string& name) const {
     return false;
 }
 
+std::filesystem::path Config::get_config_dir() const {
+    if (!config_dir.empty()) {
+        return std::filesystem::path(config_dir);
+    }
+    const char* env_cfg = std::getenv("CONFIG_DIR");
+    if (env_cfg && *env_cfg) {
+        return std::filesystem::path(env_cfg);
+    }
+    if (std::filesystem::exists("/app/config")) {
+        return std::filesystem::path("/app/config");
+    }
+    auto host_opt = std::filesystem::path("/opt/HTTPAceProxy/config");
+    if (std::filesystem::exists(host_opt)) {
+        return host_opt;
+    }
+    return std::filesystem::path(root_dir) / "config";
+}
+
 Config load_config(int argc, char** argv) {
     Config cfg;
     cfg.ace_host = getenv_string("ACE_HOST", getenv_string("ACESTREAM_HOST", cfg.ace_host));
@@ -75,6 +93,7 @@ Config load_config(int argc, char** argv) {
     cfg.client_queue_size = getenv_int("CLIENT_QUEUE_SIZE", cfg.client_queue_size);
     cfg.client_write_timeout = getenv_int("CLIENT_WRITE_TIMEOUT", cfg.client_write_timeout);
     cfg.curl_stream_buffer = getenv_int("CURL_STREAM_BUFFER", cfg.curl_stream_buffer);
+    cfg.config_dir = getenv_string("CONFIG_DIR", cfg.config_dir);
 
     if (argc > 0 && argv && argv[0]) {
         std::filesystem::path exe(argv[0]);
