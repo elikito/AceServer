@@ -4,6 +4,29 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.05] - 2026-08-27
+
+### ⭐ Reordenación Interactiva de Favoritos y Agrupación Limpia por Canal
+
+#### 1. Reordenación Interactiva de Favoritos (`epg.js` / `epg/index.html` / `plugins.cpp` / `proxy.cpp`)
+- **Control de Orden en la Pestaña Favoritos de EPG**:
+  - Implementada reordenación de canales favoritos mediante **Drag & Drop** nativo y control numérico de dial editable con botones de ajuste rápido `▲` / `▼`.
+  - Persistencia instantánea del orden personalizado vía `POST /epg?action=set_favorites_order` hacia `/app/config/epg_favorites.json`.
+- **Generación de Lista M3U (`/channels/favoritos.m3u`)**:
+  - Respetado de forma estricta el orden de diales definido por el usuario al generar el playlist M3U.
+
+#### 2. Agrupación por Canal en el Reproductor (`player/index.html`)
+- **Organización de Secciones por Canal**:
+  - Cada canal favorito se renderiza como su propia categoría/grupo visual con su nombre y logo oficial.
+  - Opciones de calidad agrupadas limpiamente bajo cada canal:
+    - `[Canal] (Mejor Stream Auto)`
+    - `[Canal] 1080p (FHD Auto)` (si existen fuentes FHD)
+    - `[Canal] 720p (HD Auto)` (si existen fuentes HD)
+- **Secuencia y Orden en Reproductor**:
+  - El reproductor respeta la secuencia exacta de canales establecida en la EPG sin desordenar las categorías.
+
+---
+
 ## [08.27.04] - 2026-08-27
 
 ### 🚀 Corrección Crítica de Entrypoints en Motores AceStream y Fallback de Red DNS

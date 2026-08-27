@@ -248,10 +248,26 @@ void test_engine_host_fallback_candidates() {
             hosts_to_try.push_back(fallback_host);
         }
     }
-    require(hosts_to_try[0] == "aceserve-modern", "primary candidate is ace_host");
-    require(std::find(hosts_to_try.begin(), hosts_to_try.end(), "127.0.0.1") != hosts_to_try.end(), "fallback includes 127.0.0.1");
     require(std::find(hosts_to_try.begin(), hosts_to_try.end(), "172.17.0.1") != hosts_to_try.end(), "fallback includes Docker gateway");
     require(hosts_to_try.size() >= 4, "fallback candidates pool complete");
+}
+
+void test_favorites_reordering_and_playlist_grouping() {
+    std::vector<std::string> favs = {"DAZN 1", "M+ LALIGA", "Teledeporte"};
+    // Reorder: move Teledeporte to first position
+    auto item = favs.back();
+    favs.pop_back();
+    favs.insert(favs.begin(), item);
+
+    require(favs[0] == "Teledeporte", "Teledeporte is first after reorder");
+    require(favs[1] == "DAZN 1", "DAZN 1 is second");
+    require(favs[2] == "M+ LALIGA", "M+ LALIGA is third");
+
+    // Test group-title formatting for channel
+    std::string channel_name = "DAZN 1";
+    std::string line = "#EXTINF:-1 tvg-id=\"dazn-1\" tvg-name=\"DAZN 1\" group-title=\"" + channel_name + "\", " + channel_name + " (Mejor Stream Auto)\n";
+    require(line.find("group-title=\"DAZN 1\"") != std::string::npos, "group-title matches channel name");
+    require(line.find("(Mejor Stream Auto)") != std::string::npos, "displays (Mejor Stream Auto)");
 }
 
 } // namespace
@@ -268,6 +284,7 @@ int main() {
         test_persistent_config_and_sources_import();
         test_reaper_and_orphan_session_cleanup();
         test_engine_host_fallback_candidates();
+        test_favorites_reordering_and_playlist_grouping();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

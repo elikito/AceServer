@@ -1056,7 +1056,7 @@ public:
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;
-        } else if (action == "set_favorites") {
+        } else if (action == "set_favorites" || action == "set_favorites_order" || action == "reorder_favorites") {
             std::vector<std::string> favs;
             if (!ctx.request.body.empty()) {
                 try {
@@ -1064,6 +1064,12 @@ public:
                     if (j.is_object()) {
                         if (j.contains("favorites") && j["favorites"].is_array()) {
                             for (const auto& el : j["favorites"].as_array()) {
+                                if (el.is_string() && !el.as_string().empty()) {
+                                    favs.push_back(el.as_string());
+                                }
+                            }
+                        } else if (j.contains("favorites_order") && j["favorites_order"].is_array()) {
+                            for (const auto& el : j["favorites_order"].as_array()) {
                                 if (el.is_string() && !el.as_string().empty()) {
                                     favs.push_back(el.as_string());
                                 }
@@ -1080,6 +1086,7 @@ public:
             }
             if (favs.empty()) {
                 auto favs_query = query_get(ctx.query, "favorites");
+                if (favs_query.empty()) favs_query = query_get(ctx.query, "favorites_order");
                 for (auto f : split(favs_query, ',', false)) {
                     f = trim(f);
                     if (!f.empty()) favs.push_back(f);

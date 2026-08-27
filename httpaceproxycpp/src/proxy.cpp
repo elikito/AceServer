@@ -3133,7 +3133,7 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
         out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-        out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
+        out << " group-title=\"" << group << "\", " << display_name << " (Mejor Auto)\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
         if (has_fhd) {
@@ -3238,7 +3238,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
 
             out << "#EXTINF:-1 tvg-id=\"" << slug << "\" tvg-name=\"" << display_name << "\"";
             if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-            out << " group-title=\"Favoritos\", " << display_name << " (Mejor Stream Auto)\n";
+            out << " group-title=\"" << display_name << "\", " << display_name << " (Mejor Stream Auto)\n";
             out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
             continue;
         }
@@ -3253,7 +3253,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         }
         if (display_name.empty()) display_name = slug;
 
-        std::string group = item.group.empty() ? "Favoritos" : item.group;
+        std::string group = display_name;
         std::string logo = item.logo;
         std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
 

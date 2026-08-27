@@ -781,6 +781,95 @@
             transform: scale(1.15);
         }
 
+        /* Drag & Drop Reordering for Favorites */
+        .channel-epg-card.dragging {
+            opacity: 0.45;
+            transform: scale(0.98);
+            border: 2px dashed #4CAF50 !important;
+        }
+
+        .channel-epg-card.drag-over {
+            border-top: 3px solid #4CAF50 !important;
+            box-shadow: 0 -4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .drag-handle {
+            cursor: grab;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            padding: 6px 8px;
+            border-radius: 6px;
+            background: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+            margin-right: 8px;
+        }
+
+        .drag-handle:hover {
+            color: #4CAF50;
+            border-color: #4CAF50;
+            background-color: var(--border-color);
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .dial-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--stat-bg);
+            border: 1px solid var(--border-color);
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-right: 6px;
+        }
+
+        .dial-input {
+            width: 44px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: #4CAF50;
+            font-weight: 700;
+            font-size: 12px;
+            text-align: center;
+            border-radius: 4px;
+            padding: 2px 4px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .dial-input:focus {
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        .dial-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px 5px;
+            font-size: 11px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dial-btn:hover {
+            color: #ffffff;
+            background: #4CAF50;
+        }
+
         .channel-epg-header {
             display: flex;
             justify-content: space-between;
@@ -1357,22 +1446,34 @@
             const formatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
 
             const favList = getFavoriteChannels();
-            const totalFavCount = epgChannels.filter(c => favList.includes(c.id)).length;
+            const totalFavCount = favList.length;
             const favBadge = document.getElementById('fav-count-badge');
             const allBadge = document.getElementById('all-count-badge');
             if (favBadge) favBadge.textContent = totalFavCount;
             if (allBadge) allBadge.textContent = epgChannels.length;
 
+            let channelsToRender = [];
+            if (currentMainTab === 'fav') {
+                favList.forEach((favId, favOrderIdx) => {
+                    const chan = epgChannels.find(c => c.id === favId || toCanonicalSlug(c.name) === toCanonicalSlug(favId) || toCanonicalSlug(c.id) === toCanonicalSlug(favId));
+                    if (chan) {
+                        channelsToRender.push({ chan, favIdx: favOrderIdx, isFav: true });
+                    }
+                });
+            } else {
+                epgChannels.forEach((chan, idx) => {
+                    let favIdx = favList.indexOf(chan.id);
+                    if (favIdx === -1) favIdx = favList.findIndex(f => toCanonicalSlug(f) === toCanonicalSlug(chan.name) || toCanonicalSlug(f) === toCanonicalSlug(chan.id));
+                    channelsToRender.push({ chan, favIdx: favIdx !== -1 ? favIdx : idx, isFav: favIdx !== -1 });
+                });
+            }
+
             let renderedCount = 0;
 
-            epgChannels.forEach((chan, idx) => {
-                const isFav = favList.includes(chan.id);
-                if (currentMainTab === 'fav' && !isFav) {
-                    return; // Only show favorite channels when on Favoritos tab
-                }
-
+            channelsToRender.forEach((item) => {
+                const chan = item.chan;
+                const isFav = item.isFav;
                 const progs = epgProgrammes[chan.id] || [];
-                if (progs.length === 0) return;
 
                 // Filter programmes according to selected mode & search
                 let filteredProgs = [];
@@ -1393,11 +1494,19 @@
                     if (filteredProgs.length === 0 && !matchChannel) return;
                 }
 
-                if (filteredProgs.length === 0) return;
                 renderedCount++;
 
                 const card = document.createElement('div');
                 card.className = 'channel-epg-card';
+
+                if (currentMainTab === 'fav') {
+                    card.setAttribute('draggable', 'true');
+                    card.ondragstart = (e) => onFavDragStart(e, item.favIdx);
+                    card.ondragover = (e) => onFavDragOver(e);
+                    card.ondragleave = (e) => onFavDragLeave(e);
+                    card.ondrop = (e) => onFavDrop(e, item.favIdx);
+                    card.ondragend = (e) => onFavDragEnd(e);
+                }
 
                 const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%232d2d34"/><text x="30" y="35" font-family="system-ui" font-size="18" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">${chan.name.substring(0, 2).toUpperCase()}</text></svg>`;
                 const fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
@@ -1433,9 +1542,21 @@
                     `;
                 });
 
+                if (listHtml === '') {
+                    listHtml = `<div style="padding:12px; font-size:12px; color:var(--text-muted);">Sin información de programación disponible en este momento.</div>`;
+                }
+
                 card.innerHTML = `
                     <div class="channel-epg-header">
-                        <div class="channel-epg-identity">
+                        <div class="channel-epg-identity" style="display:flex; align-items:center;">
+                            ${currentMainTab === 'fav' ? `
+                                <div class="drag-handle" title="Arrastra para mover este canal a otra posición">⠿</div>
+                                <div class="dial-controls" title="Dial / Posición numérica">
+                                    <button class="dial-btn" onclick="moveFavorite(${item.favIdx}, -1, event)" title="Subir posición" ${item.favIdx === 0 ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}>▲</button>
+                                    <input type="number" class="dial-input" value="${item.favIdx + 1}" min="1" max="${favList.length}" onchange="changeFavoriteDial('${escapeJs(chan.id)}', this.value, event)" onclick="event.stopPropagation();">
+                                    <button class="dial-btn" onclick="moveFavorite(${item.favIdx}, 1, event)" title="Bajar posición" ${item.favIdx === favList.length - 1 ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}>▼</button>
+                                </div>
+                            ` : ''}
                             <img class="channel-logo" src="${chan.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
                             <div>
                                 <div class="channel-name">${chan.name}</div>
@@ -1483,8 +1604,8 @@
                 } else {
                     container.innerHTML = `
                         <div class="empty-state">
-                            <h3>No se encontraron resultados</h3>
-                            <p>Intenta cambiar los filtros de búsqueda o el modo de visualización.</p>
+                            <h3 style="font-size: 18px; margin-bottom: 8px;">No se encontraron canales</h3>
+                            <p style="color: var(--text-muted);">Prueba a buscar con otro término o borra el filtro de búsqueda.</p>
                         </div>
                     `;
                 }
