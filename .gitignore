@@ -157,3 +157,5 @@ httpaceproxycpp/http/listas/epg_favorites.json
 httpaceproxycpp/http/plugins_state.json
 sources.json
 custom_lists.json
+scratch/
+audit_screenshots/

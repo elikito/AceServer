@@ -1,5 +1,5 @@
 /* ==========================================================================
-   HTTPAceProxy — Unified Navigation Bar (v08.27.06)
+   HTTPAceProxy — Unified Navigation Bar (v08.27.07)
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -22,6 +22,20 @@
 .navbar,
 .navbar * {
     box-sizing: border-box;
+}
+
+/* Smart Footer Behavior on Low-Height / Landscape Viewports */
+@media (max-height: 520px) {
+    .footer-bar,
+    .global-footer,
+    #footer-bar {
+        position: relative !important;
+        margin-top: 28px !important;
+        bottom: auto !important;
+    }
+    body {
+        padding-bottom: 16px !important;
+    }
 }
 
 /* Main Navbar Bar */

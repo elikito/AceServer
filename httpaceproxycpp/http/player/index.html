@@ -998,6 +998,34 @@
                 width: 100%;
             }
         }
+
+        @media (max-width: 480px) {
+            .direct-play-container {
+                flex-direction: column !important;
+                width: 100% !important;
+                gap: 8px !important;
+            }
+
+            .direct-play-input-wrapper,
+            .direct-play-input,
+            .btn-direct-play {
+                width: 100% !important;
+            }
+        }
+
+        /* iPad Air 9.7" (Aspect Ratio 4:3) Layout Optimization */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .channel-cards-grid,
+            .channels-grid {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+                gap: 12px !important;
+            }
+
+            .player-wrapper-card video,
+            #clappr-player {
+                max-height: 48vh !important;
+            }
+        }
     </style>
 </head>
 
@@ -1024,7 +1052,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Reproductor IPTV</h2>
-                <p>Reproducción web Bento en directo y por Content ID — <span id="live-clock" style="font-weight: 600; color: #22c55e;">🕒 --:--:--</span></p>
+                <p>Reproducción web Bento en directo y por Content ID — <span id="live-clock" style="font-weight: 600; color: #22c55e;">--:--:--</span></p>
             </div>
             <!-- Entrada Directa de Content ID a Mano -->
             <div class="direct-play-container">
@@ -1037,7 +1065,8 @@
                         onkeydown="if(event.key==='Enter') playDirectContentId()">
                 </div>
                 <button type="button" class="btn-direct-play" onclick="playDirectContentId()">
-                    ▶ Reproducir ID
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="vertical-align:middle; margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Reproducir ID
                 </button>
             </div>
         </div>
@@ -1065,18 +1094,18 @@
                     <select id="player-audio-select" class="player-engine-select"
                         onchange="switchAudioTrack(this.value)" style="display:none;"
                         title="Seleccionar Pista de Audio">
-                        <option value="-1">🔊 Audio Automático</option>
+                        <option value="-1">Audio Automático</option>
                     </select>
                     <button id="btn-nerd-stats" class="btn-nerd-stats" onclick="toggleNerdStats()"
                         title="Ver Estadísticas Nerds del Streaming">
-                        📊 Stats for Nerds
+                        Stats for Nerds
                     </button>
                     <select id="player-engine-select" class="player-engine-select"
                         onchange="changePlayerEngine(this.value)" title="Seleccionar Motor AceStream">
-                        <option value="auto">⚡ Engine Auto</option>
-                        <option value="aceserve-modern">🚀 Modern (jopsis)</option>
-                        <option value="aceserve-compat-light">🍃 Compat Light (wafy80)</option>
-                        <option value="aceserve-compat-stable">🛡️ Compat Stable (blaiseio)</option>
+                        <option value="auto">Engine Auto</option>
+                        <option value="aceserve-modern">Modern (jopsis)</option>
+                        <option value="aceserve-compat-light">Compat Light (wafy80)</option>
+                        <option value="aceserve-compat-stable">Compat Stable (blaiseio)</option>
                     </select>
                     <button class="player-close-btn" onclick="stopWebPlayer()" title="Cerrar reproductor">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">

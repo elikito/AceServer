@@ -4,6 +4,35 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.07] - 2026-08-27
+
+### 📱 Refactorización Integral Mobile-First y Tablet 4:3 (iPad Air)
+
+#### 1. Eliminación de Emojis en Código Fuente Frontend
+- Sustituidos todos los emojis hardcodeados por iconos SVG vectoriales inline de alta definición y texto semántico accesible.
+
+#### 2. EPG y Organizador de Canales Favoritos (`epg/index.html`)
+- **Pestañas y Acciones Responsive (`<= 640px`)**:
+  - Pestañas con `flex-wrap: wrap` y sub-barra `.fav-actions-bar` adaptada al ancho completo en móvil con botones simétricos.
+- **Touch Targets Ergonómicos para Diales**:
+  - Diales y botones de posición adaptados a touch area de 44px con `touch-action: manipulation` para evitar zooms accidentales por doble tap.
+
+#### 3. Smart Footer para Pantallas Bajas (`navbar.css` / `footer.js`)
+- Añadida regla `@media (max-height: 520px)` que convierte el footer en posición relativa en vista horizontal (Samsung S24 Ultra landscape) para eliminar solapamientos.
+
+#### 4. Reproductor Bento y Reproductor Legacy (`player/index.html` / `player/legacy.html`)
+- **Formulario Directo CID en Móvil (`<= 480px`)**:
+  - Adaptado a distribución vertical al 100% de ancho sin truncamiento de texto.
+- **Grid Adaptativo iPad Air 9.7" (Aspect Ratio 4:3)**:
+  - Configurado `grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))` para 3 columnas en portrait y 4 columnas en landscape sin huecos muertos laterales.
+  - Limitación de altura del reproductor a `max-height: 48vh` en tablets.
+
+#### 5. Gestor de Fuentes y Diagnóstico (`fuentes/index.html` / `statplugin/index.html`)
+- Tablas con scroll horizontal táctil suave (`overflow-x: auto; -webkit-overflow-scrolling: touch`).
+- Cabecera de acciones en Fuentes adaptada a grid de 2 columnas en móviles.
+
+---
+
 ## [08.27.06] - 2026-08-27
 
 ### 🎛️ Rediseño Reactivo del Organizador de Canales Favoritos

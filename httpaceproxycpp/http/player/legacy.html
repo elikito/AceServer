@@ -325,6 +325,17 @@
             background-color: #3f3f46;
         }
 
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .channel-list {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+                gap: 12px !important;
+            }
+            .channel-item {
+                margin-bottom: 0 !important;
+            }
+        }
+
         .loading-screen {
             text-align: center;
             padding: 30px;
@@ -365,7 +376,7 @@
                 <h2>Reproductor IPTV (Ligero)</h2>
                 <p id="loading-status">Cargando canales para WebKit ES5...</p>
             </div>
-            <div id="live-clock-legacy" style="font-weight: bold; color: #4CAF50; font-size: 14px; padding: 4px 10px; background: #1a1a1e; border: 1px solid #2d2d34; border-radius: 6px;">🕒 --:--:--</div>
+            <div id="live-clock-legacy" style="font-weight: bold; color: #4CAF50; font-size: 14px; padding: 4px 10px; background: #1a1a1e; border: 1px solid #2d2d34; border-radius: 6px;">--:--:--</div>
         </div>
 
         <!-- Pestañas Horizontales de Fuentes -->
