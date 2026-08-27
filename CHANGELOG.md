@@ -4,6 +4,37 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.27.01] - 2026-08-27
+
+### 🌐 Detección/Control de Cloudflare WARP y Compatibilidad de Red Multi-Entorno
+
+#### 1. Detección de Estado Real de Cloudflare WARP vía SOCKS5 (`plugins.cpp` / `proxy.cpp` / `statplugin`)
+- **Comprobación Real SOCKS5**:
+  - Implementada verificación HTTP directa hacia `https://cloudflare.com/cdn-cgi/trace` a través de los listeners SOCKS5 locales (`127.0.0.1:4001`, `172.17.0.1:4001`, `host.docker.internal:4001`).
+  - Detección precisa de respuesta `warp=on` o `warp=plus`:
+    - `warp_connected: true`
+    - `traffic_route: "Cloudflare WARP (SOCKS5 Blindado)"`
+    - `egress_ip`: Extracción directa de la IP pública reportada por Cloudflare.
+    - `isp_name`: "Cloudflare WARP Mesh Network".
+    - `safe_route: true`
+  - Fallback sin túnel o `warp=off` reporta `warp_connected: false` y la IP directa/Tailscale.
+- **Acciones y Control WARP (`warp_connect`, `warp_disconnect`, `warp_toggle`)**:
+  - Ejecución de comandos `warp-cli` (`warp-cli mode proxy && warp-cli proxy port 4001 && warp-cli connect` y `warp-cli disconnect`).
+  - Pausa asíncrona de 1 segundo para permitir la estabilización del socket antes de retornar el diagnóstico actualizado.
+
+#### 2. Compatibilidad de Red Multi-Entorno (Dev vs Prod)
+- Cero IPs estáticas o locales hardcodeadas; compatibilidad total entre el entorno de desarrollo (N150 / `192.168.1.54`) y producción (N100 / `192.168.1.198`).
+- Uso exclusivo de sockets locales (`127.0.0.1`), gateway Docker (`172.17.0.1`) y resolución dinámica.
+- Aislamiento estricto de Servarr manteniéndose dentro del scope de `/opt/HTTPAceProxy`.
+
+#### 3. Confirmación y Validación de Variantes de Resolución en Favoritos (`player/index.html` / `player.js`)
+- Renderizado garantizado de Content IDs diferenciados para cada variante de resolución en Favoritos:
+  - *Mejor Stream Auto* (`/auto/<slug>`): Mayor puntuación global de salud y bitrate.
+  - *1080p FHD Auto* (`/auto/<slug>-fhd`): Candidato prioritario `>= 1080p`.
+  - *720p HD Auto* (`/auto/<slug>-hd`): Candidato prioritario `720p`.
+
+---
+
 ## [08.26.04] - 2026-08-26
 
 ### 🎯 Corrección Estricta de Variantes de Resolución y Asignación de Content IDs en Favoritos

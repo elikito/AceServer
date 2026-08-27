@@ -2372,111 +2372,118 @@ Json Proxy::get_channel_health_one(const std::string& content_id) {
 }
 
 Json Proxy::get_network_diagnostics() {
-    std::string public_ip = "Desconocida";
+    std::string egress_ip = "Desconocida";
     std::string warp_status = "disconnected"; // "active", "proxy", "disconnected"
     std::string warp_raw = "off";
+    bool warp_connected = false;
+    std::string traffic_route = "Ruta Directa (Sin Protección - ISP Local)";
+    std::string isp_name = "ISP Local";
     std::string loc = "ES";
-    std::string isp = "ISP Local";
     bool tailscale_connected = false;
     bool safe_route = false;
 
-    // 0. Detección directa mediante warp-cli status si el comando está disponible
-    try {
-        FILE* fp = ::popen("warp-cli status 2>/dev/null", "r");
-        if (fp) {
-            char buf[256];
-            std::string status_output;
-            while (::fgets(buf, sizeof(buf), fp)) {
-                status_output += buf;
-            }
-            ::pclose(fp);
-            auto status_lower = lower(status_output);
-            if (status_lower.find("connected") != std::string::npos && status_lower.find("disconnected") == std::string::npos) {
-                if (status_lower.find("proxy") != std::string::npos) {
-                    warp_status = "proxy";
-                } else {
-                    warp_status = "active";
-                }
-                warp_raw = "warp_cli_connected";
-            } else if (status_lower.find("connecting") != std::string::npos) {
-                warp_status = "connecting";
-                warp_raw = "warp_cli_connecting";
-            }
-        }
-    } catch (...) {}
-
-    // 1. Detección de puerto SOCKS5/HTTP local de WARP (4001 / 40001)
-    bool warp_local_detected = (warp_status == "proxy" || warp_status == "active");
-    for (int port : {4001, 40001}) {
+    // 1. Detección de Estado Real a través del listener SOCKS5 local (127.0.0.1:4001 o 172.17.0.1:4001)
+    for (const auto& socks_url : {"socks5h://127.0.0.1:4001", "socks5h://172.17.0.1:4001", "socks5h://host.docker.internal:4001"}) {
         try {
-            auto resp = http_client_.get_single("http://127.0.0.1:" + std::to_string(port) + "/", {}, 1, false);
-            if (resp.status > 0) {
-                warp_local_detected = true;
-                warp_status = "proxy";
-                warp_raw = "local_proxy_" + std::to_string(port);
-                break;
-            }
-        } catch (...) {
-            try {
-                auto resp2 = http_client_.get_single("http://host.docker.internal:" + std::to_string(port) + "/", {}, 1, false);
-                if (resp2.status > 0) {
-                    warp_local_detected = true;
+            auto resp = http_client_.get_single("https://cloudflare.com/cdn-cgi/trace", {}, 3, false, socks_url);
+            if (resp.status == 200 && !resp.body.empty()) {
+                std::istringstream stream(resp.body);
+                std::string line;
+                std::string parsed_warp = "off";
+                std::string parsed_ip;
+                std::string parsed_loc;
+                while (std::getline(stream, line)) {
+                    auto eq = line.find('=');
+                    if (eq != std::string::npos) {
+                        std::string key = trim(line.substr(0, eq));
+                        std::string val = trim(line.substr(eq + 1));
+                        if (key == "ip") parsed_ip = val;
+                        else if (key == "warp") parsed_warp = val;
+                        else if (key == "loc") parsed_loc = val;
+                    }
+                }
+                if (parsed_warp == "on" || parsed_warp == "plus") {
+                    warp_connected = true;
                     warp_status = "proxy";
-                    warp_raw = "local_proxy_" + std::to_string(port);
+                    warp_raw = parsed_warp;
+                    traffic_route = "Cloudflare WARP (SOCKS5 Blindado)";
+                    isp_name = "Cloudflare WARP Mesh Network";
+                    if (!parsed_ip.empty()) egress_ip = parsed_ip;
+                    if (!parsed_loc.empty()) loc = parsed_loc;
+                    safe_route = true;
+                    break;
+                }
+            }
+        } catch (...) {}
+    }
+
+    // 2. Si no se detectó por SOCKS5, comprobar conexión directa y/o modo túnel WARP
+    if (!warp_connected) {
+        for (const auto& direct_url : {"https://cloudflare.com/cdn-cgi/trace", "https://1.1.1.1/cdn-cgi/trace", "https://www.cloudflare.com/cdn-cgi/trace"}) {
+            try {
+                auto resp = http_client_.get_single(direct_url, {}, 3, false);
+                if (resp.status == 200 && !resp.body.empty()) {
+                    std::istringstream stream(resp.body);
+                    std::string line;
+                    while (std::getline(stream, line)) {
+                        auto eq = line.find('=');
+                        if (eq != std::string::npos) {
+                            std::string key = trim(line.substr(0, eq));
+                            std::string val = trim(line.substr(eq + 1));
+                            if (key == "ip") egress_ip = val;
+                            else if (key == "warp") {
+                                warp_raw = val;
+                                if (val == "on" || val == "plus") {
+                                    warp_connected = true;
+                                    warp_status = "active";
+                                    traffic_route = "Cloudflare WARP (SOCKS5 Blindado)";
+                                    isp_name = "Cloudflare WARP Mesh Network";
+                                    safe_route = true;
+                                } else if (val == "proxy") {
+                                    warp_connected = true;
+                                    warp_status = "proxy";
+                                    traffic_route = "Cloudflare WARP (SOCKS5 Blindado)";
+                                    isp_name = "Cloudflare WARP Mesh Network";
+                                    safe_route = true;
+                                }
+                            }
+                            else if (key == "loc") loc = val;
+                        }
+                    }
                     break;
                 }
             } catch (...) {}
         }
     }
 
-    // 2. Consultar Cloudflare trace
-    try {
-        auto resp = http_client_.get_single("https://1.1.1.1/cdn-cgi/trace", {}, 3, false);
-        if (resp.status == 200 && !resp.body.empty()) {
-            std::istringstream stream(resp.body);
-            std::string line;
-            while (std::getline(stream, line)) {
-                auto eq = line.find('=');
-                if (eq != std::string::npos) {
-                    std::string key = trim(line.substr(0, eq));
-                    std::string val = trim(line.substr(eq + 1));
-                    if (key == "ip") public_ip = val;
-                    else if (key == "warp") {
-                        warp_raw = val;
-                        if (val == "on" || val == "plus") warp_status = "active";
-                        else if (val == "proxy") warp_status = "proxy";
-                        else if (!warp_local_detected) warp_status = "disconnected";
-                    }
-                    else if (key == "loc") loc = val;
-                }
-            }
-        }
-    } catch (...) {
+    // 3. Detección adicional vía warp-cli status si está disponible
+    if (!warp_connected) {
         try {
-            auto resp2 = http_client_.get_single("https://www.cloudflare.com/cdn-cgi/trace", {}, 3, false);
-            if (resp2.status == 200 && !resp2.body.empty()) {
-                std::istringstream stream(resp2.body);
-                std::string line;
-                while (std::getline(stream, line)) {
-                    auto eq = line.find('=');
-                    if (eq != std::string::npos) {
-                        std::string key = trim(line.substr(0, eq));
-                        std::string val = trim(line.substr(eq + 1));
-                        if (key == "ip") public_ip = val;
-                        else if (key == "warp") {
-                            warp_raw = val;
-                            if (val == "on" || val == "plus") warp_status = "active";
-                            else if (val == "proxy") warp_status = "proxy";
-                            else if (!warp_local_detected) warp_status = "disconnected";
-                        }
-                        else if (key == "loc") loc = val;
-                    }
+            FILE* fp = ::popen("warp-cli status 2>/dev/null", "r");
+            if (fp) {
+                char buf[256];
+                std::string status_output;
+                while (::fgets(buf, sizeof(buf), fp)) {
+                    status_output += buf;
+                }
+                ::pclose(fp);
+                auto status_lower = lower(status_output);
+                if (status_lower.find("connected") != std::string::npos && status_lower.find("disconnected") == std::string::npos) {
+                    warp_connected = true;
+                    warp_status = (status_lower.find("proxy") != std::string::npos) ? "proxy" : "active";
+                    warp_raw = "warp_cli_connected";
+                    traffic_route = "Cloudflare WARP (SOCKS5 Blindado)";
+                    isp_name = "Cloudflare WARP Mesh Network";
+                    safe_route = true;
+                } else if (status_lower.find("connecting") != std::string::npos) {
+                    warp_status = "connecting";
+                    warp_raw = "warp_cli_connecting";
                 }
             }
         } catch (...) {}
     }
 
-    // 3. Detección de Tailscale (revisar si existe interfaz de red)
+    // 4. Detección de Tailscale (revisar si existe interfaz de red)
     try {
         if (std::filesystem::exists("/sys/class/net/tailscale0") ||
             std::filesystem::exists("/sys/class/net/tun0")) {
@@ -2486,30 +2493,37 @@ Json Proxy::get_network_diagnostics() {
         }
     } catch (...) {}
 
-    // 4. Determinar Proveedor (ISP) y Ruta Segura
-    if (public_ip == "127.0.0.1" || public_ip == "localhost" || starts_with(public_ip, "172.") || starts_with(public_ip, "10.") || starts_with(public_ip, "192.168.")) {
-        public_ip = "Desconocida";
+    // 5. Determinar Proveedor (ISP) y Ruta Segura
+    if (egress_ip == "127.0.0.1" || egress_ip == "localhost" || starts_with(egress_ip, "172.") || starts_with(egress_ip, "10.") || starts_with(egress_ip, "192.168.")) {
+        egress_ip = "Desconocida";
     }
 
-    if (warp_status == "active" || warp_status == "proxy") {
-        isp = "Cloudflare WARP Network";
-        safe_route = true;
-    } else if (tailscale_connected) {
-        isp = "Tailscale Encrypted Mesh";
-        safe_route = true;
-    } else {
-        isp = "Ruta Directa (Sin Protección - ISP Local)";
-        safe_route = false;
+    if (!warp_connected) {
+        warp_status = (warp_status == "connecting") ? "connecting" : "disconnected";
+        if (tailscale_connected) {
+            isp_name = "Tailscale Encrypted Mesh";
+            traffic_route = "Tailscale Encrypted Mesh";
+            safe_route = true;
+        } else {
+            isp_name = "Ruta Directa (Sin Protección - ISP Local)";
+            traffic_route = "Ruta Directa (Sin Protección - ISP Local)";
+            safe_route = false;
+        }
     }
 
     return Json::object{
         {"status", "success"},
-        {"ip", public_ip},
+        {"warp_connected", warp_connected},
+        {"traffic_route", traffic_route},
+        {"egress_ip", egress_ip},
+        {"isp_name", isp_name},
+        {"ip", egress_ip},
         {"loc", loc},
-        {"isp", isp},
+        {"isp", isp_name},
         {"warp", Json::object{
             {"status", warp_status},
-            {"raw", warp_raw}
+            {"raw", warp_raw},
+            {"connected", warp_connected}
         }},
         {"tailscale", Json::object{
             {"connected", tailscale_connected}

@@ -870,9 +870,9 @@ public:
             auto data = proxy_.get_channel_health_one(cid);
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
 
-        } else if (action == "network_diag") {
+        } else if (action == "network_diag" || action == "warp_status") {
             // Diagnóstico de nivel de protección de red (WARP, Tailscale, IP de salida, Ruta Segura).
-            // GET /statplugin?action=network_diag
+            // GET /statplugin?action=network_diag o /statplugin?action=warp_status
             auto data = proxy_.get_network_diagnostics();
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
 
@@ -900,8 +900,8 @@ public:
                 (void)ret;
             } else if (action == "warp_toggle") {
                 auto diag = proxy_.get_network_diagnostics();
-                std::string current_warp = diag.contains("warp") && diag["warp"].is_object() && diag["warp"].contains("status") ? diag["warp"]["status"].as_string() : "disconnected";
-                if (current_warp == "active" || current_warp == "proxy") {
+                bool is_conn = diag.contains("warp_connected") ? diag["warp_connected"].as_bool(false) : (diag.contains("warp") && diag["warp"].is_object() && (diag["warp"]["status"].as_string() == "active" || diag["warp"]["status"].as_string() == "proxy"));
+                if (is_conn) {
                     auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
                     (void)ret;
                 } else {

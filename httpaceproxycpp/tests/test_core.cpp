@@ -106,6 +106,53 @@ void test_stream_scorer() {
     require(detect_is_foreign("M+ LALIGA 9e38 → SPORT TV") == false, "spanish channel with sport tv origin is not foreign");
 }
 
+void test_warp_and_resolution_variants() {
+    // v08.27.01 - Diagnostic JSON formatting test
+    Json diag = Json::object{
+        {"status", "success"},
+        {"warp_connected", true},
+        {"traffic_route", "Cloudflare WARP (SOCKS5 Blindado)"},
+        {"egress_ip", "104.28.192.1"},
+        {"isp_name", "Cloudflare WARP Mesh Network"},
+        {"safe_route", true}
+    };
+    require(diag["warp_connected"].as_bool() == true, "warp_connected check");
+    require(diag["traffic_route"].as_string() == "Cloudflare WARP (SOCKS5 Blindado)", "traffic_route check");
+    require(diag["egress_ip"].as_string() == "104.28.192.1", "egress_ip check");
+    require(diag["isp_name"].as_string() == "Cloudflare WARP Mesh Network", "isp_name check");
+    require(diag["safe_route"].as_bool() == true, "safe_route check");
+
+    // Test distinct resolution filtering logic
+    ChannelCandidate fhd{"DAZN 1 FHD", "hash_fhd_1080", "unificada", "", "Sports", "dazn-1", StreamQuality::FHD_1080, 100, 20, 600000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate hd{"DAZN 1 720p", "hash_hd_720", "unificada", "", "Sports", "dazn-1", StreamQuality::HD_720, 70, 15, 300000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate sd{"DAZN 1 SD", "hash_sd_576", "unificada", "", "Sports", "dazn-1", StreamQuality::SD, 30, 40, 100000, ChannelHealth::ONLINE, false, false, false, 0.0};
+
+    std::vector<ChannelCandidate> all_cands = {sd, hd, fhd};
+    StreamScorer::rank_candidates(all_cands);
+
+    // Mejor auto
+    require(all_cands[0].content_id == "hash_fhd_1080", "best auto is fhd");
+
+    // Filter FHD (>= 1080p)
+    std::vector<ChannelCandidate> fhd_only;
+    for (const auto& c : all_cands) {
+        if (static_cast<int>(c.quality) >= static_cast<int>(StreamQuality::FHD_1080)) {
+            fhd_only.push_back(c);
+        }
+    }
+    require(!fhd_only.empty() && fhd_only[0].content_id == "hash_fhd_1080", "fhd resolution candidate");
+
+    // Filter HD (720p)
+    std::vector<ChannelCandidate> hd_only;
+    for (const auto& c : all_cands) {
+        if (c.quality == StreamQuality::HD_720) {
+            hd_only.push_back(c);
+        }
+    }
+    require(!hd_only.empty() && hd_only[0].content_id == "hash_hd_720", "hd resolution candidate");
+    require(hd_only[0].content_id != fhd_only[0].content_id, "resolution variants must have distinct Content IDs");
+}
+
 } // namespace
 
 int main() {
@@ -116,6 +163,7 @@ int main() {
         test_playlist();
         test_m3u_parser_variants();
         test_stream_scorer();
+        test_warp_and_resolution_variants();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

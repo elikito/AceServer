@@ -58,7 +58,8 @@ HttpClient::~HttpClient() = default;
 HttpClientResponse HttpClient::get_single(const std::string& url,
                                           const std::map<std::string, std::string>& headers,
                                           long timeout_seconds,
-                                          bool follow_redirects) const {
+                                          bool follow_redirects,
+                                          const std::string& proxy) const {
     CURL* curl = curl_easy_init();
     if (!curl) throw std::runtime_error("curl_easy_init failed");
 
@@ -71,6 +72,9 @@ HttpClientResponse HttpClient::get_single(const std::string& url,
     }
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    if (!proxy.empty()) {
+        curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str());
+    }
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, follow_redirects ? 1L : 0L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout_seconds);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, std::min(timeout_seconds, 15L));
