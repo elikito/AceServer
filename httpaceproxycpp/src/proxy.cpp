@@ -369,6 +369,7 @@ Proxy::Proxy(Config config)
 
     load_plugins_state();
     load_epg_favorites();
+    load_custom_logos();
     auto plugins = create_plugins(config_, http_client_, *this);
     for (auto& plugin : plugins) plugins_.add(plugin);
 }
@@ -2885,12 +2886,18 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
     bool want_fhd_only = false;
     bool want_hd_only = false;
 
-    if (ends_with(clean_query, "-fhd")) {
+    if (ends_with(clean_query, "-fhda")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 5);
+        want_fhd_only = true;
+    } else if (ends_with(clean_query, "-fhd")) {
         clean_query = clean_query.substr(0, clean_query.size() - 4);
         want_fhd_only = true;
     } else if (ends_with(clean_query, "-1080p")) {
         clean_query = clean_query.substr(0, clean_query.size() - 6);
         want_fhd_only = true;
+    } else if (ends_with(clean_query, "-720a")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 5);
+        want_hd_only = true;
     } else if (ends_with(clean_query, "-hd")) {
         clean_query = clean_query.substr(0, clean_query.size() - 3);
         want_hd_only = true;
@@ -2960,7 +2967,9 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 c.name = item.name;
                 c.content_id = cid;
                 c.plugin_name = playlist->name();
-                c.logo = item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo;
+                std::string custom_logo = get_custom_logo_for_channel(target_slug);
+                if (custom_logo.empty()) custom_logo = get_custom_logo_for_channel(item.name);
+                c.logo = !custom_logo.empty() ? custom_logo : (item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo);
                 c.group = item.group;
                 c.tvg_id = item.tvgid.empty() ? item.tvg : item.tvgid;
                 c.quality = quality;
@@ -2996,6 +3005,11 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 candidates.push_back(c);
             }
         }
+    }
+
+    // Si se solicitó FHDa pero no hay streams >= 1080p, retornar el mejor candidato global
+    if (want_fhd_only && candidates.empty()) {
+        return find_candidates_for_channel(clean_query);
     }
 
     return candidates;
@@ -3082,7 +3096,8 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
             c.content_id = *ace_url;
             c.plugin_name = playlist->name();
             c.group = item.group;
-            c.logo = item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo;
+            std::string custom_logo = get_custom_logo_for_channel(slug);
+            c.logo = !custom_logo.empty() ? custom_logo : (item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo);
             c.tvg_id = item.tvgid.empty() ? item.tvg : item.tvgid;
 
             grouped[slug].push_back(c);
@@ -3107,48 +3122,42 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
 
         std::string group = item.group.empty() ? "Auto Selección" : item.group;
         std::string logo = item.logo;
+        std::string custom_logo = get_custom_logo_for_channel(slug);
+        if (!custom_logo.empty()) logo = custom_logo;
         std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
 
-        bool has_fhd = false;
-        bool has_hd = false;
         std::string best_auto_cid;
-        std::string best_fhd_cid;
         std::string best_hd_cid;
+        bool has_real_hd = false;
 
-        auto auto_cand = resolve_best_candidate(slug);
+        auto auto_cand = resolve_best_candidate(slug + "-fhda");
+        if (!auto_cand.has_value()) {
+            auto_cand = resolve_best_candidate(slug);
+        }
         if (auto_cand.has_value()) {
             best_auto_cid = auto_cand->content_id;
         }
-        auto fhd_cand = resolve_best_candidate(slug + "-fhd");
-        if (fhd_cand.has_value()) {
-            has_fhd = true;
-            best_fhd_cid = fhd_cand->content_id;
-        }
-        auto hd_cand = resolve_best_candidate(slug + "-hd");
-        if (hd_cand.has_value()) {
-            has_hd = true;
+
+        auto hd_cand = resolve_best_candidate(slug + "-720a");
+        if (hd_cand.has_value() && !hd_cand->content_id.empty() && hd_cand->quality == StreamQuality::HD_720) {
+            has_real_hd = true;
             best_hd_cid = hd_cand->content_id;
         }
 
-        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
+        // 1. [Nombre Canal] FHDa
+        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " FHDa\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-        out << " group-title=\"" << group << "\", " << display_name << " (Mejor Auto)\n";
+        out << " group-title=\"" << group << "\", " << display_name << " FHDa\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
-        if (has_fhd) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
+        // 2. [Nombre Canal] 720a (solo si existe fuente HD real)
+        if (has_real_hd && !best_hd_cid.empty()) {
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720a\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            if (!best_fhd_cid.empty()) out << " ace-id=\"" << best_fhd_cid << "\" tvg-chno=\"" << best_fhd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
-            out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
-        }
-        if (has_hd) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
-            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            if (!best_hd_cid.empty()) out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
-            out << "http://" << hostport << "/auto/" << slug << "-hd/stream.ts\n";
+            out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
+            out << " group-title=\"" << group << "\", " << display_name << " 720a\n";
+            out << "http://" << hostport << "/auto/" << slug << "-720a/stream.ts\n";
         }
     }
 
@@ -3200,7 +3209,8 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             c.content_id = *ace_url;
             c.plugin_name = playlist->name();
             c.group = item.group;
-            c.logo = item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo;
+            std::string custom_logo = get_custom_logo_for_channel(slug);
+            c.logo = !custom_logo.empty() ? custom_logo : (item.logo.empty() && picons_map.contains(item.name) ? picons_map.at(item.name) : item.logo);
             c.tvg_id = item.tvgid.empty() ? item.tvg : item.tvgid;
 
             grouped[slug].push_back(c);
@@ -3220,83 +3230,67 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         if (emitted_slugs.find(slug) != emitted_slugs.end()) continue;
         emitted_slugs.insert(slug);
 
+        std::string display_name;
+        std::string group;
+        std::string logo;
+        std::string tvg_id = slug;
+
         auto it = grouped.find(slug);
-        if (it == grouped.end()) {
-            std::string display_name = canonical_name(fav_raw);
-            bool cap = true;
-            for (char& c : display_name) {
-                if (std::isspace(static_cast<unsigned char>(c))) cap = true;
-                else if (cap) { c = std::toupper(static_cast<unsigned char>(c)); cap = false; }
-            }
-            if (display_name.empty()) display_name = slug;
-
-            std::string best_auto_cid;
-            auto auto_cand = resolve_best_candidate(slug);
-            if (auto_cand.has_value()) {
-                best_auto_cid = auto_cand->content_id;
-            }
-
-            out << "#EXTINF:-1 tvg-id=\"" << slug << "\" tvg-name=\"" << display_name << "\"";
-            if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-            out << " group-title=\"" << display_name << "\", " << display_name << " (Mejor Stream Auto)\n";
-            out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
-            continue;
+        if (it != grouped.end()) {
+            const auto& item = exemplar[slug];
+            display_name = canonical_name(item.name);
+            group = display_name;
+            logo = item.logo;
+            if (!item.tvgid.empty()) tvg_id = item.tvgid;
+        } else {
+            display_name = canonical_name(fav_raw);
+            group = display_name;
         }
 
-        const auto& list = it->second;
-        const auto& item = exemplar[slug];
-        std::string display_name = canonical_name(item.name);
         bool cap = true;
         for (char& c : display_name) {
             if (std::isspace(static_cast<unsigned char>(c))) cap = true;
             else if (cap) { c = std::toupper(static_cast<unsigned char>(c)); cap = false; }
         }
         if (display_name.empty()) display_name = slug;
+        if (group.empty()) group = display_name;
 
-        std::string group = display_name;
-        std::string logo = item.logo;
-        std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
+        std::string custom_logo = get_custom_logo_for_channel(slug);
+        if (custom_logo.empty()) custom_logo = get_custom_logo_for_channel(fav_raw);
+        if (!custom_logo.empty()) logo = custom_logo;
 
-        bool has_fhd = false;
-        bool has_hd = false;
         std::string best_auto_cid;
-        std::string best_fhd_cid;
         std::string best_hd_cid;
+        bool has_real_hd = false;
 
-        auto auto_cand = resolve_best_candidate(slug);
+        auto auto_cand = resolve_best_candidate(slug + "-fhda");
+        if (!auto_cand.has_value()) {
+            auto_cand = resolve_best_candidate(slug);
+        }
         if (auto_cand.has_value()) {
             best_auto_cid = auto_cand->content_id;
         }
-        auto fhd_cand = resolve_best_candidate(slug + "-fhd");
-        if (fhd_cand.has_value()) {
-            has_fhd = true;
-            best_fhd_cid = fhd_cand->content_id;
-        }
-        auto hd_cand = resolve_best_candidate(slug + "-hd");
-        if (hd_cand.has_value()) {
-            has_hd = true;
+
+        auto hd_cand = resolve_best_candidate(slug + "-720a");
+        if (hd_cand.has_value() && !hd_cand->content_id.empty() && hd_cand->quality == StreamQuality::HD_720) {
+            has_real_hd = true;
             best_hd_cid = hd_cand->content_id;
         }
 
-        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
+        // 1. [Nombre Canal] FHDa — Mejor stream >= 1080p (o mejor candidato global)
+        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " FHDa\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-        out << " group-title=\"" << group << "\", " << display_name << " (Mejor Stream Auto)\n";
+        out << " group-title=\"" << group << "\", " << display_name << " FHDa\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
-        if (has_fhd) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
+        // 2. [Nombre Canal] 720a — Renderizar solo si existe fuente HD real
+        if (has_real_hd && !best_hd_cid.empty()) {
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720a\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            if (!best_fhd_cid.empty()) out << " ace-id=\"" << best_fhd_cid << "\" tvg-chno=\"" << best_fhd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 1080p (FHD Auto)\n";
-            out << "http://" << hostport << "/auto/" << slug << "-fhd/stream.ts\n";
-        }
-        if (has_hd) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
-            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            if (!best_hd_cid.empty()) out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 720p (HD Auto)\n";
-            out << "http://" << hostport << "/auto/" << slug << "-hd/stream.ts\n";
+            out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
+            out << " group-title=\"" << group << "\", " << display_name << " 720a\n";
+            out << "http://" << hostport << "/auto/" << slug << "-720a/stream.ts\n";
         }
     }
 
@@ -3460,6 +3454,197 @@ void Proxy::set_epg_favorites(const std::vector<std::string>& favs) {
         epg_favorites_ = favs;
     }
     save_epg_favorites();
+}
+
+// ---------------------------------------------------------------------------
+// v08.30.01 — Logos personalizados persistentes (custom_logos.json)
+// ---------------------------------------------------------------------------
+void Proxy::load_custom_logos() {
+    std::lock_guard<std::mutex> lock(custom_logos_mutex_);
+    custom_logos_.clear();
+    auto cfg_dir = config_.get_config_dir();
+    auto logos_file = cfg_dir / "custom_logos.json";
+    auto bak_file = cfg_dir / "custom_logos.json.bak";
+    auto root_logos = std::filesystem::path(config_.root_dir) / "http" / "listas" / "custom_logos.json";
+    auto root_bak = std::filesystem::path(config_.root_dir) / "http" / "listas" / "custom_logos.json.bak";
+
+    auto parse_logos = [&](const std::string& content) -> bool {
+        if (content.empty()) return false;
+        try {
+            auto j = Json::parse(content);
+            if (j.is_object()) {
+                auto obj = j.as_object();
+                if (obj.contains("logos") && obj["logos"].is_object()) {
+                    for (const auto& [k, v] : obj["logos"].as_object()) {
+                        if (v.is_string() && !v.as_string().empty()) {
+                            custom_logos_[canonical_slug(k)] = v.as_string();
+                        }
+                    }
+                } else {
+                    for (const auto& [k, v] : obj) {
+                        if (v.is_string() && !v.as_string().empty()) {
+                            custom_logos_[canonical_slug(k)] = v.as_string();
+                        }
+                    }
+                }
+                return true;
+            }
+        } catch (...) {}
+        return false;
+    };
+
+    bool loaded = false;
+    if (std::filesystem::exists(logos_file)) {
+        auto content = read_file_binary(logos_file.string());
+        loaded = parse_logos(content);
+    }
+    if (!loaded && std::filesystem::exists(bak_file)) {
+        auto content = read_file_binary(bak_file.string());
+        loaded = parse_logos(content);
+    }
+    if (!loaded && std::filesystem::exists(root_logos)) {
+        auto content = read_file_binary(root_logos.string());
+        loaded = parse_logos(content);
+    }
+    if (!loaded && std::filesystem::exists(root_bak)) {
+        auto content = read_file_binary(root_bak.string());
+        loaded = parse_logos(content);
+    }
+    if (loaded) {
+        log_line("INFO", "Cargados " + std::to_string(custom_logos_.size()) + " logos personalizados desde custom_logos.json");
+    }
+}
+
+void Proxy::save_custom_logos() {
+    std::lock_guard<std::mutex> lock(custom_logos_mutex_);
+    try {
+        auto cfg_dir = config_.get_config_dir();
+        std::filesystem::create_directories(cfg_dir);
+        auto logos_file = cfg_dir / "custom_logos.json";
+        auto bak_file = cfg_dir / "custom_logos.json.bak";
+        auto root_logos = std::filesystem::path(config_.root_dir) / "http" / "listas" / "custom_logos.json";
+        auto root_bak = std::filesystem::path(config_.root_dir) / "http" / "listas" / "custom_logos.json.bak";
+
+        Json::object logos_obj;
+        for (const auto& [k, v] : custom_logos_) {
+            logos_obj[k] = v;
+        }
+
+        Json root = Json::object{
+            {"status", "success"},
+            {"logos", Json(logos_obj)}
+        };
+
+        std::string json_str = root.dump(2);
+        std::ofstream out(logos_file, std::ios::binary);
+        if (out.is_open()) {
+            out << json_str;
+            out.close();
+            std::ofstream out_bak(bak_file, std::ios::binary);
+            if (out_bak.is_open()) {
+                out_bak << json_str;
+                out_bak.close();
+            }
+        }
+
+        if (std::filesystem::exists(root_logos.parent_path())) {
+            std::ofstream out_r(root_logos, std::ios::binary);
+            if (out_r.is_open()) {
+                out_r << json_str;
+                out_r.close();
+            }
+            std::ofstream out_rbak(root_bak, std::ios::binary);
+            if (out_rbak.is_open()) {
+                out_rbak << json_str;
+                out_rbak.close();
+            }
+        }
+    } catch (const std::exception& e) {
+        log_line("ERROR", "Error saving custom_logos.json: " + std::string(e.what()));
+    }
+}
+
+std::map<std::string, std::string> Proxy::get_custom_logos() const {
+    std::lock_guard<std::mutex> lock(custom_logos_mutex_);
+    return custom_logos_;
+}
+
+void Proxy::set_custom_logo(const std::string& channel_or_slug, const std::string& logo_url) {
+    if (channel_or_slug.empty()) return;
+    auto slug = canonical_slug(channel_or_slug);
+    if (slug.empty()) slug = channel_or_slug;
+    {
+        std::lock_guard<std::mutex> lock(custom_logos_mutex_);
+        if (logo_url.empty()) {
+            custom_logos_.erase(slug);
+        } else {
+            custom_logos_[slug] = logo_url;
+        }
+    }
+    save_custom_logos();
+}
+
+void Proxy::remove_custom_logo(const std::string& channel_or_slug) {
+    if (channel_or_slug.empty()) return;
+    auto slug = canonical_slug(channel_or_slug);
+    if (slug.empty()) slug = channel_or_slug;
+    {
+        std::lock_guard<std::mutex> lock(custom_logos_mutex_);
+        custom_logos_.erase(slug);
+    }
+    save_custom_logos();
+}
+
+std::string Proxy::get_custom_logo_for_channel(const std::string& channel_or_slug) const {
+    if (channel_or_slug.empty()) return "";
+    auto slug = canonical_slug(channel_or_slug);
+    std::lock_guard<std::mutex> lock(custom_logos_mutex_);
+    auto it = custom_logos_.find(slug);
+    if (it != custom_logos_.end()) return it->second;
+    it = custom_logos_.find(channel_or_slug);
+    if (it != custom_logos_.end()) return it->second;
+    return "";
+}
+
+std::vector<std::string> Proxy::get_all_logos_for_channel(const std::string& channel_or_slug) {
+    std::vector<std::string> results;
+    std::unordered_set<std::string> seen;
+    if (channel_or_slug.empty()) return results;
+
+    std::string slug = canonical_slug(channel_or_slug);
+    std::string cname = canonical_name(channel_or_slug);
+
+    // 1. Logo personalizado activo
+    auto custom = get_custom_logo_for_channel(slug);
+    if (!custom.empty() && seen.find(custom) == seen.end()) {
+        results.push_back(custom);
+        seen.insert(custom);
+    }
+
+    // 2. Buscar en todas las listas de plugins activos
+    for (const auto& plugin : plugins_.unique_plugins()) {
+        if (!plugin->is_enabled()) continue;
+        auto playlist = std::dynamic_pointer_cast<PlaylistPlugin>(plugin);
+        if (!playlist) continue;
+
+        auto picons_map = playlist->picons();
+        for (const auto& item : playlist->playlist_items()) {
+            std::string item_slug = canonical_slug(item.name);
+            std::string item_cname = canonical_name(item.name);
+            if (item_slug == slug || item_cname == cname) {
+                if (!item.logo.empty() && seen.find(item.logo) == seen.end()) {
+                    results.push_back(item.logo);
+                    seen.insert(item.logo);
+                }
+                auto cit = picons_map.find(item.name);
+                if (cit != picons_map.end() && !cit->second.empty() && seen.find(cit->second) == seen.end()) {
+                    results.push_back(cit->second);
+                    seen.insert(cit->second);
+                }
+            }
+        }
+    }
+    return results;
 }
 
 } // namespace httpace

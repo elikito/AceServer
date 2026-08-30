@@ -1127,6 +1127,88 @@ public:
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;
+        } else if (action == "get_custom_logos") {
+            auto logos = proxy_.get_custom_logos();
+            Json::object obj;
+            for (const auto& [k, v] : logos) {
+                obj[k] = v;
+            }
+            Json res = Json::object{
+                {"status", "success"},
+                {"logos", Json(obj)}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "set_custom_logo") {
+            std::string chan = query_get(ctx.query, "channel");
+            if (chan.empty()) chan = query_get(ctx.query, "slug");
+            std::string logo = query_get(ctx.query, "logo");
+            if ((chan.empty() || logo.empty()) && !ctx.request.body.empty()) {
+                try {
+                    auto j = Json::parse(ctx.request.body);
+                    if (j.is_object()) {
+                        if (j.contains("channel")) chan = j["channel"].as_string();
+                        if (j.contains("slug")) chan = j["slug"].as_string();
+                        if (j.contains("logo")) logo = j["logo"].as_string();
+                        if (j.contains("logos") && j["logos"].is_object()) {
+                            for (const auto& [k, v] : j["logos"].as_object()) {
+                                if (v.is_string()) proxy_.set_custom_logo(k, v.as_string());
+                            }
+                        }
+                    }
+                } catch (...) {}
+            }
+            if (!chan.empty()) {
+                proxy_.set_custom_logo(chan, logo);
+            }
+            auto logos = proxy_.get_custom_logos();
+            Json::object obj;
+            for (const auto& [k, v] : logos) {
+                obj[k] = v;
+            }
+            Json res = Json::object{
+                {"status", "success"},
+                {"channel", chan},
+                {"logo", logo},
+                {"logos", Json(obj)}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "remove_custom_logo") {
+            std::string chan = query_get(ctx.query, "channel");
+            if (chan.empty()) chan = query_get(ctx.query, "slug");
+            if (chan.empty() && !ctx.request.body.empty()) {
+                try {
+                    auto j = Json::parse(ctx.request.body);
+                    if (j.is_object() && j.contains("channel")) chan = j["channel"].as_string();
+                } catch (...) {}
+            }
+            if (!chan.empty()) {
+                proxy_.remove_custom_logo(chan);
+            }
+            Json res = Json::object{
+                {"status", "success"},
+                {"removed", chan}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "get_channel_logos") {
+            std::string chan = query_get(ctx.query, "channel");
+            if (chan.empty()) chan = query_get(ctx.query, "slug");
+            auto logos_list = proxy_.get_all_logos_for_channel(chan);
+            auto active_custom = proxy_.get_custom_logo_for_channel(chan);
+            Json::array arr;
+            for (const auto& l : logos_list) {
+                arr.push_back(l);
+            }
+            Json res = Json::object{
+                {"status", "success"},
+                {"channel", chan},
+                {"current_custom_logo", active_custom},
+                {"logos", Json(arr)}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
         }
 
         std::string relative = "index.html";

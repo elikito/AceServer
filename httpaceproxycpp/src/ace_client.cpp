@@ -1,6 +1,7 @@
 #include "httpaceproxycpp/ace_client.hpp"
 #include "httpaceproxycpp/util.hpp"
 
+#include <algorithm>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>

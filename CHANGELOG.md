@@ -4,6 +4,39 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.01] - 2026-08-30
+
+### 🚀 Optimización Integral de Variantes, EPG, Reproductor y Logos
+
+#### 1. Simplificación de Variantes (`proxy.cpp` / `proxy.hpp` / `/channels/favoritos.m3u`)
+- **Consolidación a 2 Variantes Máximas por Canal**:
+  - `[Nombre Canal] FHDa`: Mejor stream `>= 1080p` (o mejor stream global si no hay 1080p).
+  - `[Nombre Canal] 720a`: Mejor stream `720p` (se emite únicamente si existe una fuente real HD 720p).
+- **Generación en Playlist M3U (`/channels/favoritos.m3u`)**:
+  - Exportación con las dos variantes ordenadas según el dial establecido en la EPG, con inyección de logos personalizados.
+
+#### 2. Guía EPG y Exportación (`epg/index.html` / `epg.js`)
+- **Buscador Universal en Tiempo Real**:
+  - Filtra instantáneamente por nombre de canal, títulos de programas, descripciones y categorías en toda la guía.
+- **Botón Copiar URL M3U de Favoritos**:
+  - Incorporado botón `📋 Copiar URL M3U` en la barra de acciones de favoritos junto a *Guardar Orden* para copiar `http://<host>:8888/channels/favoritos.m3u`.
+- **Loader Descriptivo y Renderizado Optimizado**:
+  - Estado de carga informativo (*"Cargando favoritos y eventos de la guía..."*) con sincronización de estado.
+
+#### 3. Editor y Selector de Logos de Canales (`custom_logos.json` / `plugins.cpp` / `proxy.cpp`)
+- **Modal Interactivo de Personalización de Logos**:
+  - Clic en el logo del canal en la EPG abre el modal para elegir entre logos encontrados en listas M3U activas y XMLTV, introducir URL externa o subir un archivo local.
+- **Persistencia y Aplicación Inmediata**:
+  - Guardado en `/app/config/custom_logos.json` con backup `.bak` y propagación inmediata a `/epg/`, `/player/` y `/channels/favoritos.m3u`.
+
+#### 4. Reproductor Bento y Alternador de Vistas (`player/index.html`)
+- **Selector de Vista Cuadrícula / Filas**:
+  - Botones en cabecera para alternar entre *Vista Bento (Cuadrícula)* y *Vista Filas (Compacta estilo Legacy)* con persistencia en `localStorage`.
+- **Homogeneización y Logos Dinámicos**:
+  - Integración de logos personalizados y coherencia de favicon e iconos entre todas las secciones.
+
+---
+
 ## [08.27.07] - 2026-08-27
 
 ### 📱 Refactorización Integral Mobile-First y Tablet 4:3 (iPad Air)

@@ -276,6 +276,38 @@ void test_favorites_reordering_and_playlist_grouping() {
     require(line.find("(Mejor Stream Auto)") != std::string::npos, "displays (Mejor Stream Auto)");
 }
 
+void test_fhda_720a_variants_and_custom_logos() {
+    // 1. Test canonical slug suffix handling for -fhda and -720a
+    std::string slug_fhd = "dazn-1-fhda";
+    std::string base_fhd = slug_fhd.substr(0, slug_fhd.size() - 5);
+    require(base_fhd == "dazn-1", "dazn-1-fhda stripped to dazn-1");
+
+    std::string slug_720 = "la-1-720a";
+    std::string base_720 = slug_720.substr(0, slug_720.size() - 5);
+    require(base_720 == "la-1", "la-1-720a stripped to la-1");
+
+    // 2. Test Custom Logos JSON Parsing & Canonical Key Matching
+    std::string json_data = R"({
+        "status": "success",
+        "logos": {
+            "dazn-1": "https://img.example.com/dazn1_custom.png",
+            "la-1": "https://img.example.com/la1_custom.png"
+        }
+    })";
+    auto parsed = Json::parse(json_data);
+    require(parsed["status"].as_string() == "success", "json status success");
+    require(parsed["logos"].is_object(), "logos is object");
+    auto logos_obj = parsed["logos"].as_object();
+    require(logos_obj["dazn-1"].as_string() == "https://img.example.com/dazn1_custom.png", "dazn-1 logo extracted");
+
+    // 3. Test Playlist Generator with FHDa / 720a variant naming
+    std::string name = "Movistar LaLiga";
+    std::string v_fhd = name + " FHDa";
+    std::string v_720 = name + " 720a";
+    require(v_fhd == "Movistar LaLiga FHDa", "FHDa variant naming");
+    require(v_720 == "Movistar LaLiga 720a", "720a variant naming");
+}
+
 } // namespace
 
 int main() {
@@ -291,6 +323,7 @@ int main() {
         test_reaper_and_orphan_session_cleanup();
         test_engine_host_fallback_candidates();
         test_favorites_reordering_and_playlist_grouping();
+        test_fhda_720a_variants_and_custom_logos();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

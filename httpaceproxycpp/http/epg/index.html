@@ -557,6 +557,76 @@
             color: var(--text-color);
         }
 
+        /* Channel Logo Editor Interactive Styles */
+        .channel-logo-wrap {
+            position: relative;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            padding: 2px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .channel-logo-wrap:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 0 2px var(--brand-color);
+        }
+
+        .channel-logo-edit-badge {
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            background: var(--brand-color);
+            color: #fff;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .channel-logo-wrap:hover .channel-logo-edit-badge {
+            opacity: 1;
+        }
+
+        .logo-candidate-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--stat-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 72px;
+            height: 72px;
+        }
+
+        .logo-candidate-card:hover {
+            border-color: var(--brand-color);
+            transform: translateY(-2px);
+        }
+
+        .logo-candidate-card.selected {
+            border-color: var(--brand-color);
+            background: rgba(76, 175, 80, 0.15);
+            box-shadow: 0 0 0 2px var(--brand-color);
+        }
+
+        .logo-candidate-img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+        }
+
         /* Footer Bar */
         .footer-bar {
             position: fixed;
@@ -1022,6 +1092,10 @@
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Guardar Orden
                 </button>
+                <button class="fav-action-btn" onclick="copyFavoritesM3uUrl()" title="Copiar enlace directo M3U de canales favoritos">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    📋 Copiar URL M3U
+                </button>
             </div>
         </div>
 
@@ -1058,7 +1132,7 @@
         <div id="epg-container" class="epg-grid">
             <div class="loading-state">
                 <div class="loading-spinner"></div>
-                <p id="loading-status-text">Cargando datos de la Guía EPG...</p>
+                <p id="loading-status-text">Cargando favoritos y eventos de la guía...</p>
             </div>
         </div>
     </div>
@@ -1079,6 +1153,67 @@
             </div>
             <div class="modal-meta" id="modal-meta">
                 <span>Canal: <strong id="modal-channel">-</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Selector y Editor de Logos -->
+    <div class="modal-overlay" id="logo-modal" onclick="closeLogoModal(event)">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title">🎨 Selector de Logo de Canal</h3>
+                    <div style="font-size: 13px; color: var(--brand-color); font-weight: 700; margin-top: 4px;" id="logo-modal-channel-name">Canal</div>
+                </div>
+                <button class="modal-close" onclick="hideLogoModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Preview actual -->
+                <div style="display: flex; align-items: center; gap: 16px; background: var(--stat-bg); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px;">
+                    <img id="logo-preview-img" src="" alt="Preview" style="width: 56px; height: 56px; object-fit: contain; background: #2d2d34; border-radius: 8px; padding: 4px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-color);">Logo Seleccionado</div>
+                        <div id="logo-preview-url" style="font-size: 11px; color: var(--text-muted); word-break: break-all; font-family: monospace; margin-top: 2px;">-</div>
+                    </div>
+                </div>
+
+                <!-- Sección 1: Logos encontrados en listas M3U / XMLTV -->
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Logos encontrados en Listas y Guía EPG
+                    </div>
+                    <div id="logo-candidates-grid" style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 140px; overflow-y: auto; padding: 6px 2px;">
+                        <div style="font-size: 12px; color: var(--text-muted);">Buscando logos disponibles...</div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: URL Personalizada Externa -->
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Introducir URL Externa
+                    </div>
+                    <input type="text" id="logo-custom-url-input" class="search-box" style="width: 100%; height: 38px; border-radius: 6px; padding: 0 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); font-size: 13px;" placeholder="https://ejemplo.com/logo.png" oninput="onCustomLogoInput(this.value)">
+                </div>
+
+                <!-- Sección 3: Subir Imagen Local -->
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        O subir logo local desde tu equipo
+                    </div>
+                    <input type="file" id="logo-file-input" accept="image/*" style="font-size: 12px; color: var(--text-muted);" onchange="onLocalLogoFileSelected(event)">
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+                <button type="button" class="fav-action-btn" onclick="resetChannelLogo()" style="color: #ff5252;" title="Restablecer al logo predeterminado">
+                    🗑 Restablecer
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="fav-action-btn" onclick="hideLogoModal()">Cancelar</button>
+                    <button type="button" class="fav-action-btn fav-save-btn" onclick="saveSelectedChannelLogo()" style="background: var(--brand-color); color: #fff; font-weight: 700;">
+                        💾 Guardar Logo
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1136,6 +1271,7 @@
             }
 
             loadServerFavorites();
+            loadCustomLogos();
             loadEpgData();
             updateLiveClock();
             setInterval(updateLiveClock, 1000);
@@ -1154,7 +1290,7 @@
             container.innerHTML = `
                 <div class="loading-state">
                     <div class="loading-spinner"></div>
-                    <p id="loading-status-text">Obteniendo configuración y cargando fuentes EPG activas...</p>
+                    <p id="loading-status-text">Cargando favoritos y eventos de la guía...</p>
                 </div>
             `;
 
@@ -1166,6 +1302,7 @@
                     document.querySelectorAll('.app-version').forEach(el => el.textContent = cfg.version);
                 }
 
+                await loadCustomLogos();
                 await loadServerFavorites();
 
                 let sources = (cfg && cfg.epg_sources) ? cfg.epg_sources.filter(s => s.enabled) : [];
@@ -1518,6 +1655,200 @@
             }, 3000);
         }
 
+        function copyFavoritesM3uUrl() {
+            const host = window.location.host || '127.0.0.1:8888';
+            const url = `${window.location.protocol}//${host}/channels/favoritos.m3u`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast(`📋 URL M3U copiada al portapapeles: ${url}`, 'success');
+                }).catch(() => {
+                    showToast(`URL M3U: ${url}`, 'info');
+                });
+            } else {
+                const input = document.createElement('textarea');
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast(`📋 URL M3U copiada: ${url}`, 'success');
+            }
+        }
+
+        /* Custom Logos System (custom_logos.json) */
+        let customLogosMap = {};
+        let currentEditingChannel = null;
+        let currentChosenLogo = '';
+
+        async function loadCustomLogos() {
+            try {
+                const resp = await fetch('/epg?action=get_custom_logos');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.status === 'success' && data.logos) {
+                        customLogosMap = data.logos;
+                        localStorage.setItem('custom_logos', JSON.stringify(data.logos));
+                    }
+                }
+            } catch (e) {
+                try {
+                    customLogosMap = JSON.parse(localStorage.getItem('custom_logos')) || {};
+                } catch (_) {}
+            }
+        }
+
+        function getChannelEffectiveLogo(chan) {
+            const slug = toCanonicalSlug(chan.name);
+            const slugId = toCanonicalSlug(chan.id);
+            if (customLogosMap[slug]) return customLogosMap[slug];
+            if (customLogosMap[slugId]) return customLogosMap[slugId];
+            if (customLogosMap[chan.name]) return customLogosMap[chan.name];
+            if (customLogosMap[chan.id]) return customLogosMap[chan.id];
+            return chan.logo || '';
+        }
+
+        async function openLogoModal(chanId, chanName, defaultLogo, e) {
+            if (e) e.stopPropagation();
+            currentEditingChannel = { id: chanId, name: chanName, defaultLogo: defaultLogo };
+            const slug = toCanonicalSlug(chanName);
+            const currentCustom = customLogosMap[slug] || customLogosMap[toCanonicalSlug(chanId)] || '';
+            currentChosenLogo = currentCustom || defaultLogo || '';
+
+            document.getElementById('logo-modal-channel-name').textContent = chanName;
+            updateLogoPreview(currentChosenLogo);
+            document.getElementById('logo-custom-url-input').value = currentChosenLogo.startsWith('data:') ? '' : currentChosenLogo;
+            document.getElementById('logo-file-input').value = '';
+
+            const grid = document.getElementById('logo-candidates-grid');
+            grid.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Buscando logos disponibles...</div>';
+            document.getElementById('logo-modal').classList.add('show');
+
+            try {
+                const resp = await fetch(`/epg?action=get_channel_logos&channel=${encodeURIComponent(slug)}`);
+                const data = await resp.json();
+                const logosSet = new Set();
+                if (defaultLogo) logosSet.add(defaultLogo);
+                if (currentCustom) logosSet.add(currentCustom);
+                if (data && Array.isArray(data.logos)) {
+                    data.logos.forEach(l => { if (l) logosSet.add(l); });
+                }
+                epgChannels.forEach(c => {
+                    if (toCanonicalSlug(c.name) === slug && c.logo) logosSet.add(c.logo);
+                });
+
+                const logosArr = Array.from(logosSet);
+                if (logosArr.length === 0) {
+                    grid.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">No se encontraron logos en las listas M3U. Puedes introducir una URL externa o subir un archivo.</div>';
+                } else {
+                    grid.innerHTML = '';
+                    logosArr.forEach(logoUrl => {
+                        const card = document.createElement('div');
+                        card.className = `logo-candidate-card ${logoUrl === currentChosenLogo ? 'selected' : ''}`;
+                        card.innerHTML = `<img src="${logoUrl}" class="logo-candidate-img" alt="Logo" onerror="this.src='/stat/img/shesterenka.png'">`;
+                        card.onclick = () => {
+                            grid.querySelectorAll('.logo-candidate-card').forEach(c => c.classList.remove('selected'));
+                            card.classList.add('selected');
+                            currentChosenLogo = logoUrl;
+                            updateLogoPreview(logoUrl);
+                            document.getElementById('logo-custom-url-input').value = logoUrl;
+                        };
+                        grid.appendChild(card);
+                    });
+                }
+            } catch (err) {
+                grid.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Error consultando fuentes de logos.</div>';
+            }
+        }
+
+        function updateLogoPreview(url) {
+            const previewImg = document.getElementById('logo-preview-img');
+            const previewUrl = document.getElementById('logo-preview-url');
+            const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%232d2d34"/><text x="30" y="35" font-family="system-ui" font-size="18" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>`;
+            const fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
+
+            previewImg.src = url || fallbackLogo;
+            previewImg.onerror = () => { previewImg.src = fallbackLogo; };
+            previewUrl.textContent = url ? (url.startsWith('data:') ? 'Imagen local cargada (Base64)' : url) : 'Sin logo seleccionado';
+        }
+
+        function onCustomLogoInput(val) {
+            currentChosenLogo = val.trim();
+            updateLogoPreview(currentChosenLogo);
+            const grid = document.getElementById('logo-candidates-grid');
+            if (grid) {
+                grid.querySelectorAll('.logo-candidate-card').forEach(c => c.classList.remove('selected'));
+            }
+        }
+
+        function onLocalLogoFileSelected(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (loadEvt) => {
+                currentChosenLogo = loadEvt.target.result;
+                updateLogoPreview(currentChosenLogo);
+                document.getElementById('logo-custom-url-input').value = '';
+                const grid = document.getElementById('logo-candidates-grid');
+                if (grid) {
+                    grid.querySelectorAll('.logo-candidate-card').forEach(c => c.classList.remove('selected'));
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveSelectedChannelLogo() {
+            if (!currentEditingChannel) return;
+            const slug = toCanonicalSlug(currentEditingChannel.name);
+            try {
+                const resp = await fetch('/epg?action=set_custom_logo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channel: slug, logo: currentChosenLogo })
+                });
+                const res = await resp.json();
+                if (res.status === 'success') {
+                    customLogosMap[slug] = currentChosenLogo;
+                    localStorage.setItem('custom_logos', JSON.stringify(customLogosMap));
+                    showToast(`✓ Logo de ${currentEditingChannel.name} actualizado con éxito`, 'success');
+                    hideLogoModal();
+                    renderEpg();
+                } else {
+                    showToast('Error al guardar logo en el servidor', 'error');
+                }
+            } catch (err) {
+                customLogosMap[slug] = currentChosenLogo;
+                localStorage.setItem('custom_logos', JSON.stringify(customLogosMap));
+                showToast(`✓ Logo guardado en el navegador`, 'success');
+                hideLogoModal();
+                renderEpg();
+            }
+        }
+
+        async function resetChannelLogo() {
+            if (!currentEditingChannel) return;
+            const slug = toCanonicalSlug(currentEditingChannel.name);
+            try {
+                await fetch(`/epg?action=remove_custom_logo&channel=${encodeURIComponent(slug)}`, { method: 'POST' });
+            } catch (_) {}
+            delete customLogosMap[slug];
+            delete customLogosMap[toCanonicalSlug(currentEditingChannel.id)];
+            localStorage.setItem('custom_logos', JSON.stringify(customLogosMap));
+            showToast(`✓ Logo restablecido al original`, 'info');
+            hideLogoModal();
+            renderEpg();
+        }
+
+        function hideLogoModal() {
+            document.getElementById('logo-modal').classList.remove('show');
+            currentEditingChannel = null;
+        }
+
+        function closeLogoModal(e) {
+            if (e.target.id === 'logo-modal') {
+                hideLogoModal();
+            }
+        }
+
         function toCanonicalSlug(name) {
             if (!name) return 'channel';
             let n = name.toLowerCase()
@@ -1726,10 +2057,22 @@
                     filteredProgs = progs.slice(0, 10);
                 }
 
+                // Buscador Universal EPG: Filtra en tiempo real por nombre de canal, títulos, descripciones y categorías de toda la programación
                 if (searchVal) {
-                    const matchChannel = chan.name.toLowerCase().includes(searchVal);
-                    filteredProgs = filteredProgs.filter(p => matchChannel || p.title.toLowerCase().includes(searchVal) || p.desc.toLowerCase().includes(searchVal));
-                    if (filteredProgs.length === 0 && !matchChannel) return;
+                    const matchChannel = chan.name.toLowerCase().includes(searchVal) || (chan.id && chan.id.toLowerCase().includes(searchVal));
+                    const allProgsForChan = epgProgrammes[chan.id] || [];
+                    const hasAnyProgMatch = allProgsForChan.some(p => 
+                        (p.title && p.title.toLowerCase().includes(searchVal)) || 
+                        (p.desc && p.desc.toLowerCase().includes(searchVal)) || 
+                        (p.category && p.category.toLowerCase().includes(searchVal))
+                    );
+                    if (!matchChannel && !hasAnyProgMatch) return;
+
+                    filteredProgs = filteredProgs.filter(p => matchChannel || (p.title && p.title.toLowerCase().includes(searchVal)) || (p.desc && p.desc.toLowerCase().includes(searchVal)) || (p.category && p.category.toLowerCase().includes(searchVal)));
+                    if (filteredProgs.length === 0 && !matchChannel) {
+                        // Si el modo actual no incluía el programa coincidente, incluir los programas del canal que sí coinciden
+                        filteredProgs = allProgsForChan.filter(p => (p.title && p.title.toLowerCase().includes(searchVal)) || (p.desc && p.desc.toLowerCase().includes(searchVal)) || (p.category && p.category.toLowerCase().includes(searchVal))).slice(0, 5);
+                    }
                 }
 
                 renderedCount++;
@@ -1746,6 +2089,7 @@
                     card.ondragend = (e) => onFavDragEnd(e, card);
                 }
 
+                const effectiveLogo = getChannelEffectiveLogo(chan);
                 const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%232d2d34"/><text x="30" y="35" font-family="system-ui" font-size="18" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">${chan.name.substring(0, 2).toUpperCase()}</text></svg>`;
                 const fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
 
@@ -1801,7 +2145,12 @@
                                     </button>
                                 </div>
                             ` : ''}
-                            <img class="channel-logo" src="${chan.logo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
+                            <div class="channel-logo-wrap" onclick="openLogoModal('${escapeJs(chan.id)}', '${escapeJs(chan.name)}', '${escapeJs(chan.logo || '')}', event)" title="🎨 Clic para cambiar el logo de este canal">
+                                <img class="channel-logo" src="${effectiveLogo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
+                                <div class="channel-logo-edit-badge" title="Editar logo">
+                                    <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                </div>
+                            </div>
                             <div>
                                 <div class="channel-name">${chan.name}</div>
                                 <div style="font-size:12px; color:var(--text-muted);">${progs.length} programas</div>
