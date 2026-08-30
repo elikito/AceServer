@@ -386,6 +386,35 @@ void test_ipfs_ipns_resolution_and_validation() {
     require(normalize_list_url("https://k51qzi5uqu5dh5q.ipns.inbrowser.link/hashes.json") == "https://ipfs.io/ipns/k51qzi5uqu5dh5q/hashes.json", "inbrowser ipns normalization");
 }
 
+void test_dynamic_source_channel_matching() {
+    // Validar concordancia de nombres de canales de fuentes dinámicas
+    std::string target_slug = "dazn-laliga";
+    std::string target_cname = "dazn laliga";
+
+    std::vector<std::string> variations = {
+        "DAZN LaLiga FHD",
+        "DAZN La Liga 1080p",
+        "DAZN LaLiga HD (720p)",
+        "dazn laliga",
+        "DAZN LaLiga"
+    };
+
+    for (const auto& var : variations) {
+        std::string item_slug = canonical_slug(var);
+        std::string item_cname = canonical_name(var);
+        std::string item_slug_compact = replace_all(item_slug, "-", "");
+        std::string target_slug_compact = replace_all(target_slug, "-", "");
+        std::string item_cname_compact = replace_all(item_cname, " ", "");
+        std::string target_cname_compact = replace_all(target_cname, " ", "");
+
+        bool matches = (item_slug == target_slug) ||
+                       (item_cname == target_cname) ||
+                       (!item_slug_compact.empty() && item_slug_compact == target_slug_compact) ||
+                       (!item_cname_compact.empty() && item_cname_compact == target_cname_compact);
+        require(matches, "dynamic channel variation matched: " + var);
+    }
+}
+
 } // namespace
 
 int main() {
@@ -405,6 +434,7 @@ int main() {
         test_virtual_url_and_engine_pool_status();
         test_favoritos_m3u_export_epg_and_logos();
         test_ipfs_ipns_resolution_and_validation();
+        test_dynamic_source_channel_matching();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

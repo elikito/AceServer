@@ -2948,8 +2948,15 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
             std::string item_slug = canonical_slug(item.name);
             std::string item_cname = canonical_name(item.name);
 
-            // Matching estricto de límites de palabra / slug exacto
-            bool matches = (item_slug == target_slug) || (item_cname == target_cname);
+            std::string item_slug_compact = replace_all(item_slug, "-", "");
+            std::string target_slug_compact = replace_all(target_slug, "-", "");
+            std::string item_cname_compact = replace_all(item_cname, " ", "");
+            std::string target_cname_compact = replace_all(target_cname, " ", "");
+
+            bool matches = (item_slug == target_slug) ||
+                           (item_cname == target_cname) ||
+                           (!item_slug_compact.empty() && item_slug_compact == target_slug_compact) ||
+                           (!item_cname_compact.empty() && item_cname_compact == target_cname_compact);
 
             if (matches) {
                 if (seen_cids.find(cid) != seen_cids.end()) continue;

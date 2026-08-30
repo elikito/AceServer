@@ -47,6 +47,14 @@ int progress_cb(void* clientp, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
     return running->load() ? 0 : 1;
 }
 
+struct IpfsCacheEntry {
+    HttpClientResponse response;
+    std::chrono::steady_clock::time_point expires_at;
+};
+
+std::mutex g_ipfs_cache_mutex;
+std::unordered_map<std::string, IpfsCacheEntry> g_ipfs_cache;
+
 } // namespace
 
 HttpClient::HttpClient() {
@@ -132,6 +140,16 @@ HttpClientResponse HttpClient::get(const std::string& url,
             }
         }
         if (!path_part.empty()) {
+            // Check in-memory cache
+            {
+                std::lock_guard<std::mutex> lock(g_ipfs_cache_mutex);
+                auto now = std::chrono::steady_clock::now();
+                auto it = g_ipfs_cache.find(path_part);
+                if (it != g_ipfs_cache.end() && it->second.expires_at > now) {
+                    return it->second.response;
+                }
+            }
+
             std::string cid = path_part;
             std::string subpath;
             auto slash_pos = path_part.find('/');
@@ -142,10 +160,10 @@ HttpClientResponse HttpClient::get(const std::string& url,
             std::string ipfs_type = is_ipns ? "ipns" : "ipfs";
             std::vector<std::pair<std::string, long>> gateways;
 
-            // 1. Nodo Kubo local (prioridad alta, timeout 4s)
-            gateways.push_back({"http://ipfs-node:8080/" + ipfs_type + "/" + path_part, 4});
-            gateways.push_back({"http://127.0.0.1:8180/" + ipfs_type + "/" + path_part, 4});
-            gateways.push_back({"http://127.0.0.1:8080/" + ipfs_type + "/" + path_part, 4});
+            // 1. Nodo Kubo local (timeout 10s para permitir resolución DHT remota)
+            gateways.push_back({"http://ipfs-node:8080/" + ipfs_type + "/" + path_part, 10});
+            gateways.push_back({"http://127.0.0.1:8180/" + ipfs_type + "/" + path_part, 10});
+            gateways.push_back({"http://127.0.0.1:8080/" + ipfs_type + "/" + path_part, 10});
 
             // 2. Gateways públicos (fallback automático, timeout 10s)
             if (is_ipns) {
@@ -164,6 +182,10 @@ HttpClientResponse HttpClient::get(const std::string& url,
                 try {
                     auto resp = get_single(gw_url, headers, gw_timeout, true);
                     if (resp.status >= 200 && resp.status < 400 && !resp.body.empty()) {
+                        // Cache response: 60s for IPNS, 300s for IPFS
+                        std::lock_guard<std::mutex> lock(g_ipfs_cache_mutex);
+                        int ttl_sec = is_ipns ? 60 : 300;
+                        g_ipfs_cache[path_part] = {resp, std::chrono::steady_clock::now() + std::chrono::seconds(ttl_sec)};
                         return resp;
                     }
                 } catch (...) {}

@@ -4,6 +4,25 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.08] - 2026-08-30
+
+### ⚡ Indexación de Fuentes Dinámicas IPFS en EPG, Caché de Registros y Test Global de Salud
+
+#### 1. Fusión e Indexación de Fuentes Dinámicas IPFS (`proxy.cpp` / `plugins.cpp`)
+- Mapeo inteligente y compacto de slugs de canales (`dazn-laliga`, `dazn-la-liga`, `la-1`, etc.) garantizando que las listas IPNS/IPFS dinámicas (como `elcano_ipns_backuo` con sus 86 canales) se vinculen correctamente a sus canales EPG correspondientes.
+- Etiquetado explícito del origen de la fuente dinámica en la columna "Lista / Plugin" (`elcano_ipns_backuo`, `interna`, etc.).
+- Soporte en `CustomListPlugin` para URLs dinámicas IPNS con auto-resolución de `hashes.json` y fallback a `hashes_acestream.m3u`.
+
+#### 2. Optimización de Resolución DHT y Caché en Memoria (`http_client.cpp`)
+- Ampliado timeout de resolución DHT en el nodo Kubo local a **10 segundos** para permitir búsquedas en frío sin fallos.
+- Implementada caché en memoria de respuestas IPFS/IPNS con TTL diferenciado (60s para IPNS, 300s para IPFS inmutable) para respuestas inmediatas (< 1ms) en consultas recurrentes.
+
+#### 3. Auto-Verificación y Botón Global de Salud en EPG (`epg/index.html`)
+- **Auto-check inteligente**: Al abrir la pestaña/drawer de "Fuentes" de cualquier canal, si los candidatos figuran sin verificar, se dispara automáticamente la comprobación en segundo plano.
+- **Botón `⚡ Testear Salud de Favoritos`**: Añadido en la barra superior de `/epg/` para comprobar en paralelo (lotes concurrentes) el estado y peers de todos los canales favoritos con notificación de progreso y actualización en vivo.
+
+---
+
 ## [08.30.07] - 2026-08-30
 
 ### 🌐 Integración de Nodo IPFS/IPNS Local Seguro (Kubo) y Reescritura Inteligente

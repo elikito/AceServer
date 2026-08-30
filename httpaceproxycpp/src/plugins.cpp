@@ -1321,117 +1321,136 @@ protected:
         if (!is_enabled()) {
             return false;
         }
-        auto url = normalize_list_url(proxy_.get_plugin_url(name(), custom_url_));
-        try {
-            std::string content;
-            if (starts_with(url, "/") || starts_with(url, "file://")) {
-                std::filesystem::path local_path;
-                if (starts_with(url, "file://")) {
-                    local_path = url.substr(7);
-                } else {
-                    local_path = std::filesystem::path(config_.root_dir) / "http" / url.substr(1);
-                }
-                content = read_file_binary(local_path.string());
-            } else {
-                url = replace_all(url, " ", "%20");
-                auto response = http_client_.get(url, {{"User-Agent", kBrowserUserAgent}}, 60);
-                content = response.body;
-            }
-            PlaylistGenerator playlist(header_);
-            std::map<std::string, std::string> channels;
-            std::map<std::string, std::string> picons;
-            std::string trimmed_content = trim(content);
+        auto configured_url = proxy_.get_plugin_url(name(), custom_url_);
+        std::vector<std::string> raw_urls = split(configured_url, ',', false);
+        if (raw_urls.empty()) raw_urls.push_back(configured_url);
 
-            if (starts_with(trimmed_content, "{") || starts_with(trimmed_content, "[")) {
-                try {
-                    auto j = Json::parse(trimmed_content);
-                    std::function<void(const Json&, const std::string&)> process_json = [&](const Json& node, const std::string& current_grp) {
-                        if (node.is_object()) {
-                            std::string grp = node.contains("group") ? node["group"].as_string() : (node.contains("category") ? node["category"].as_string() : (node.contains("name") ? node["name"].as_string() : current_grp));
-                            if (grp.empty()) grp = "Otros";
+        PlaylistGenerator playlist(header_);
+        std::map<std::string, std::string> channels;
+        std::map<std::string, std::string> picons;
 
-                            if ((node.contains("hash") || node.contains("url") || node.contains("id")) && (node.contains("title") || node.contains("name"))) {
-                                auto st_name = node.contains("title") ? node["title"].as_string() : node["name"].as_string();
-                                auto raw_hash = node.contains("hash") ? node["hash"].as_string() : (node.contains("url") ? node["url"].as_string() : node["id"].as_string());
-                                auto logo = node.contains("logo") ? node["logo"].as_string() : (node.contains("image") ? node["image"].as_string() : "");
-                                auto tvg_id = node.contains("tvg_id") ? node["tvg_id"].as_string() : (node.contains("tvg-id") ? node["tvg-id"].as_string() : st_name);
-
-                                if (!st_name.empty() && !raw_hash.empty()) {
-                                    std::string st_url = (starts_with(raw_hash, "acestream://") || starts_with(raw_hash, "http://") || starts_with(raw_hash, "https://")) ? raw_hash : ("acestream://" + raw_hash);
-                                    PlaylistItem item{st_name, url_encode(st_name, ""), grp, st_name, tvg_id, logo};
-                                    channels[st_name] = st_url;
-                                    if (!logo.empty()) picons[st_name] = logo;
-                                    playlist.add_item(item);
-                                }
-                            }
-
-                            if (node.contains("hashes") && node["hashes"].is_array()) {
-                                for (const auto& h : node["hashes"].as_array()) {
-                                    process_json(h, grp);
-                                }
-                            }
-                            if (node.contains("stations") && node["stations"].is_array()) {
-                                for (const auto& station : node["stations"].as_array()) {
-                                    process_json(station, grp);
-                                }
-                            }
-                            if (node.contains("groups") && node["groups"].is_array()) {
-                                for (const auto& g : node["groups"].as_array()) {
-                                    process_json(g, grp);
-                                }
-                            }
-                            if (node.contains("channels") && node["channels"].is_array()) {
-                                for (const auto& ch : node["channels"].as_array()) {
-                                    process_json(ch, grp);
-                                }
-                            }
-                        } else if (node.is_array()) {
-                            for (const auto& el : node.as_array()) {
-                                process_json(el, current_grp);
-                            }
-                        }
-                    };
-                    process_json(j, "");
-                } catch (...) {}
+        for (auto raw_url : raw_urls) {
+            raw_url = trim(raw_url);
+            if (raw_url.empty()) continue;
+            auto url = normalize_list_url(raw_url);
+            if (url.find("/ipns/") != std::string::npos && (ends_with(url, "/") || (url.find(".m3u") == std::string::npos && url.find(".json") == std::string::npos && url.find(".txt") == std::string::npos))) {
+                if (ends_with(url, "/")) url += "hashes.json";
+                else url += "/hashes.json";
             }
 
-            if (channels.empty() && !starts_with(trimmed_content, "#EXTM3U") && !starts_with(trimmed_content, "#EXTINF")) {
-                auto lines = split(content, '\n', true);
-                std::string cur_grp = "Otros";
-                std::string pending_name;
-                for (auto& l : lines) {
-                    auto line = trim(l);
-                    if (line.empty() || starts_with(line, "#") || starts_with(line, "//") || starts_with(line, "===") || starts_with(line, "Total:") || starts_with(line, "Generado:") || starts_with(line, "Identificadores")) {
-                        if (starts_with(line, "===") && ends_with(line, "===") && line.length() > 6) {
-                            cur_grp = trim(line.substr(3, line.length() - 6));
-                        }
-                        continue;
-                    }
-                    if (starts_with(line, "acestream://") || starts_with(line, "infohash://") || std::regex_match(line, std::regex(R"([a-fA-F0-9]{40})"))) {
-                        std::string st_name = pending_name.empty() ? ("Canal " + std::to_string(channels.size() + 1)) : pending_name;
-                        std::string st_url = (starts_with(line, "acestream://") || starts_with(line, "infohash://")) ? line : ("acestream://" + line);
-                        PlaylistItem item{st_name, url_encode(st_name, ""), cur_grp, st_name, "", ""};
-                        channels[st_name] = st_url;
-                        playlist.add_item(item);
-                        pending_name.clear();
+            try {
+                std::string content;
+                if (starts_with(url, "/") || starts_with(url, "file://")) {
+                    std::filesystem::path local_path;
+                    if (starts_with(url, "file://")) {
+                        local_path = url.substr(7);
                     } else {
-                        pending_name = line;
+                        local_path = std::filesystem::path(config_.root_dir) / "http" / url.substr(1);
+                    }
+                    content = read_file_binary(local_path.string());
+                } else {
+                    url = replace_all(url, " ", "%20");
+                    auto response = http_client_.get(url, {{"User-Agent", kBrowserUserAgent}}, 60);
+                    if (response.body.empty() && url.find("/hashes.json") != std::string::npos) {
+                        // Fallback to hashes_acestream.m3u
+                        auto m3u_url = replace_all(url, "/hashes.json", "/hashes_acestream.m3u");
+                        response = http_client_.get(m3u_url, {{"User-Agent", kBrowserUserAgent}}, 60);
+                    }
+                    content = response.body;
+                }
+
+                std::string trimmed_content = trim(content);
+                if (starts_with(trimmed_content, "{") || starts_with(trimmed_content, "[")) {
+                    try {
+                        auto j = Json::parse(trimmed_content);
+                        std::function<void(const Json&, const std::string&)> process_json = [&](const Json& node, const std::string& current_grp) {
+                            if (node.is_object()) {
+                                std::string grp = node.contains("group") ? node["group"].as_string() : (node.contains("category") ? node["category"].as_string() : (node.contains("name") ? node["name"].as_string() : current_grp));
+                                if (grp.empty()) grp = "Otros";
+
+                                if ((node.contains("hash") || node.contains("url") || node.contains("id")) && (node.contains("title") || node.contains("name"))) {
+                                    auto st_name = node.contains("title") ? node["title"].as_string() : node["name"].as_string();
+                                    auto raw_hash = node.contains("hash") ? node["hash"].as_string() : (node.contains("url") ? node["url"].as_string() : node["id"].as_string());
+                                    auto logo = node.contains("logo") ? node["logo"].as_string() : (node.contains("image") ? node["image"].as_string() : "");
+                                    auto tvg_id = node.contains("tvg_id") ? node["tvg_id"].as_string() : (node.contains("tvg-id") ? node["tvg-id"].as_string() : st_name);
+
+                                    if (!st_name.empty() && !raw_hash.empty()) {
+                                        std::string st_url = (starts_with(raw_hash, "acestream://") || starts_with(raw_hash, "http://") || starts_with(raw_hash, "https://")) ? raw_hash : ("acestream://" + raw_hash);
+                                        PlaylistItem item{st_name, url_encode(st_name, ""), grp, st_name, tvg_id, logo};
+                                        channels[st_name] = st_url;
+                                        if (!logo.empty()) picons[st_name] = logo;
+                                        playlist.add_item(item);
+                                    }
+                                }
+
+                                if (node.contains("hashes") && node["hashes"].is_array()) {
+                                    for (const auto& h : node["hashes"].as_array()) {
+                                        process_json(h, grp);
+                                    }
+                                }
+                                if (node.contains("stations") && node["stations"].is_array()) {
+                                    for (const auto& station : node["stations"].as_array()) {
+                                        process_json(station, grp);
+                                    }
+                                }
+                                if (node.contains("groups") && node["groups"].is_array()) {
+                                    for (const auto& g : node["groups"].as_array()) {
+                                        process_json(g, grp);
+                                    }
+                                }
+                                if (node.contains("channels") && node["channels"].is_array()) {
+                                    for (const auto& ch : node["channels"].as_array()) {
+                                        process_json(ch, grp);
+                                    }
+                                }
+                            } else if (node.is_array()) {
+                                for (const auto& el : node.as_array()) {
+                                    process_json(el, current_grp);
+                                }
+                            }
+                        };
+                        process_json(j, "");
+                    } catch (...) {}
+                }
+
+                if (channels.empty() && !starts_with(trimmed_content, "#EXTM3U") && !starts_with(trimmed_content, "#EXTINF")) {
+                    auto lines = split(content, '\n', true);
+                    std::string cur_grp = "Otros";
+                    std::string pending_name;
+                    for (auto& l : lines) {
+                        auto line = trim(l);
+                        if (line.empty() || starts_with(line, "#") || starts_with(line, "//") || starts_with(line, "===") || starts_with(line, "Total:") || starts_with(line, "Generado:") || starts_with(line, "Identificadores")) {
+                            if (starts_with(line, "===") && ends_with(line, "===") && line.length() > 6) {
+                                cur_grp = trim(line.substr(3, line.length() - 6));
+                            }
+                            continue;
+                        }
+                        if (starts_with(line, "acestream://") || starts_with(line, "infohash://") || std::regex_match(line, std::regex(R"([a-fA-F0-9]{40})"))) {
+                            std::string st_name = pending_name.empty() ? ("Canal " + std::to_string(channels.size() + 1)) : pending_name;
+                            std::string st_url = (starts_with(line, "acestream://") || starts_with(line, "infohash://")) ? line : ("acestream://" + line);
+                            PlaylistItem item{st_name, url_encode(st_name, ""), cur_grp, st_name, "", ""};
+                            channels[st_name] = st_url;
+                            playlist.add_item(item);
+                            pending_name.clear();
+                        } else {
+                            pending_name = line;
+                        }
                     }
                 }
-            }
 
-            if (channels.empty()) {
-                for (auto& item : parse_m3u_acestream_items(content, channels, picons)) {
-                    playlist.add_item(item);
+                if (channels.empty()) {
+                    for (auto& item : parse_m3u_acestream_items(content, channels, picons)) {
+                        playlist.add_item(item);
+                    }
                 }
+            } catch (const std::exception& e) {
+                log_line("ERROR", "[" + name() + "] failed to download playlist " + url + ": " + e.what());
             }
-            set_playlist(std::move(playlist), std::move(channels), std::move(picons));
-            log_line("INFO", "[" + name() + "] dynamic playlist generated with " + std::to_string(channel_count()) + " channels");
-            return true;
-        } catch (const std::exception& e) {
-            log_line("ERROR", "[" + name() + "] failed to download playlist: " + e.what());
-            return false;
         }
+
+        set_playlist(std::move(playlist), std::move(channels), std::move(picons));
+        log_line("INFO", "[" + name() + "] dynamic playlist generated with " + std::to_string(channel_count()) + " channels");
+        return true;
     }
 private:
     std::string custom_url_;

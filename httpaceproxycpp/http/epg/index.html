@@ -1169,6 +1169,11 @@
                 </button>
             </div>
 
+            <button class="filter-btn" id="btn-test-health-favs" onclick="testHealthAllFavorites(this)" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25); white-space: nowrap;" title="Testear en tiempo real la salud y peers de todos los canales favoritos">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                <span>⚡ Testear Salud de Favoritos</span>
+            </button>
+
             <button class="btn-reload" onclick="loadEpgData(true)" title="Actualizar programación EPG">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                     <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
@@ -2018,6 +2023,62 @@
             }
         }
 
+        async function testHealthAllFavorites(btnEl) {
+            if (btnEl) {
+                btnEl.disabled = true;
+                btnEl.style.opacity = '0.75';
+                btnEl.innerHTML = `<span style="display:inline-block; animation:spin 1s linear infinite; margin-right:4px;">⚡</span> Testeando Favoritos...`;
+            }
+
+            const cards = Array.from(document.querySelectorAll('.channel-epg-card'));
+            const slugs = cards.map(c => toCanonicalSlug(c.dataset.channelName || '')).filter(Boolean);
+            const uniqueSlugs = Array.from(new Set(slugs));
+
+            if (uniqueSlugs.length === 0) {
+                showToast('No hay canales favoritos en la guía para testear', 'info');
+                if (btnEl) {
+                    btnEl.disabled = false;
+                    btnEl.style.opacity = '1';
+                    btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>⚡ Testear Salud de Favoritos</span>`;
+                }
+                return;
+            }
+
+            showToast(`⚡ Iniciando test de salud y peers para ${uniqueSlugs.length} canales favoritos...`, 'info');
+            let completed = 0;
+            const concurrency = 3;
+            for (let i = 0; i < uniqueSlugs.length; i += concurrency) {
+                const chunk = uniqueSlugs.slice(i, i + concurrency);
+                await Promise.all(chunk.map(async slug => {
+                    try {
+                        await fetch(`/statplugin?action=recheck_sources&slug=${encodeURIComponent(slug)}`, { method: 'POST' });
+                    } catch (e) {}
+                    completed++;
+                }));
+            }
+
+            showToast(`✓ Verificación de salud completada (${completed}/${uniqueSlugs.length} favoritos)`, 'success');
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.style.opacity = '1';
+                btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>⚡ Testear Salud de Favoritos</span>`;
+            }
+
+            // Actualizar drawers abiertos si los hay
+            document.querySelectorAll('.channel-epg-card').forEach(card => {
+                const drawer = card.querySelector('.candidates-drawer');
+                if (drawer) {
+                    const chanName = card.dataset.channelName || '';
+                    const chanId = card.dataset.channelId || '';
+                    const sourcesBtn = card.querySelector('button[title*="Fuentes"]');
+                    if (sourcesBtn) {
+                        drawer.remove();
+                        toggleCandidatesDrawer(chanName, chanId, sourcesBtn, null);
+                    }
+                }
+            });
+        }
+
         async function toggleCandidatesDrawer(chanName, chanId, btnEl, e) {
             if (e) e.stopPropagation();
             const slug = toCanonicalSlug(chanName);
@@ -2122,6 +2183,17 @@
                     </div>
                 `;
                 drawer.innerHTML = candHtml;
+
+                // Auto-disparar recheck en segundo plano si los candidatos no han sido verificados
+                const hasUnverified = data.candidates.some(c => !c.health || c.health === 'UNKNOWN' || c.health === 'unknown');
+                if (hasUnverified) {
+                    setTimeout(() => {
+                        const recheckBtn = drawer.querySelector('button[onclick*="recheckChannelSources"]');
+                        if (recheckBtn) {
+                            recheckChannelSources(slug, recheckBtn, null);
+                        }
+                    }, 50);
+                }
             } catch (err) {
                 drawer.innerHTML = `<div style="color:#ff5252; font-size:12px; padding:10px;">Error al obtener fuentes: ${err.message}</div>`;
             }
