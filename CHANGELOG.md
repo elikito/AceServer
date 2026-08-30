@@ -4,6 +4,18 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.06] - 2026-08-30
+
+### 🔧 Corrección de Compilación C++ en Re-comprobación de Fuentes
+
+#### 1. Serialización Explícita de `ChannelCandidate` (`proxy.cpp`)
+- Corregido error de compilación en `recheck_sources`: serialización directa de los campos de `ChannelCandidate` a `Json::object` evitando invocación inexistente de método miembro `to_json()`.
+
+#### 2. Extracción Cualificada de Content ID (`proxy.cpp`)
+- Sustituida la llamada no declarada `extract_content_id` por `extract_acestream_content_url` con sanitización de prefijos (`acestream://`, `infohash://`) y parámetros de query para el lote de verificación global de fuentes.
+
+---
+
 ## [08.30.05] - 2026-08-30
 
 ### 📺 Optimización de Exportación M3U de Favoritos con Cabecera EPG DobleM y Logos Absolutos

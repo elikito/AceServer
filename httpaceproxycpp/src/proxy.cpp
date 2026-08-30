@@ -3744,9 +3744,29 @@ Json Proxy::recheck_sources(const std::string& slug_or_channel) {
         }
 
         auto updated = find_candidates_for_channel(slug_or_channel);
+        StreamScorer::rank_candidates(updated);
         Json::array arr;
         for (const auto& c : updated) {
-            arr.push_back(c.to_json());
+            std::string quality_str = "SD";
+            if (c.quality == StreamQuality::UHD_4K) quality_str = "4K";
+            else if (c.quality == StreamQuality::FHD_1080) quality_str = "1080p";
+            else if (c.quality == StreamQuality::HD_720) quality_str = "720p";
+
+            arr.push_back(Json::object{
+                {"name", c.name},
+                {"content_id", c.content_id},
+                {"plugin", c.plugin_name},
+                {"quality", static_cast<double>(static_cast<int>(c.quality))},
+                {"quality_label", quality_str},
+                {"quality_bonus", static_cast<double>(c.quality_bonus)},
+                {"peers", static_cast<double>(c.peers)},
+                {"speed_down", static_cast<double>(c.speed_down)},
+                {"health", health_to_string(c.health)},
+                {"is_active", c.is_active_stream},
+                {"is_disabled", c.is_disabled},
+                {"is_foreign", c.is_foreign},
+                {"score", c.score}
+            });
         }
         return Json::object{
             {"status", "success"},
@@ -3762,8 +3782,16 @@ Json Proxy::recheck_sources(const std::string& slug_or_channel) {
             auto pl = std::dynamic_pointer_cast<PlaylistPlugin>(plugin);
             if (!pl) continue;
             for (const auto& item : pl->playlist_items()) {
-                auto cid = extract_content_id(item.url);
-                if (!cid.empty()) all_cids.push_back(cid);
+                auto ace_url = extract_acestream_content_url(item.url);
+                if (ace_url && !ace_url->empty()) {
+                    std::string cid = *ace_url;
+                    if (starts_with(cid, "acestream://")) cid = cid.substr(12);
+                    else if (starts_with(cid, "infohash://")) cid = cid.substr(11);
+                    auto qmark = cid.find('?');
+                    if (qmark != std::string::npos) cid = cid.substr(0, qmark);
+                    cid = trim(cid);
+                    if (cid.size() >= 40) all_cids.push_back(cid);
+                }
             }
         }
         verify_channels_batch(all_cids);
