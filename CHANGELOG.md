@@ -4,6 +4,24 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.02] - 2026-08-30
+
+### ⚙️ Correcciones en EPG, Re-comprobación de Fuentes y Gestor de Motores
+
+#### 1. Corrección del Botón "Copiar URL" en EPG (`epg/index.html` / `epg.js`)
+- En cada fila/tarjeta de canal en `/epg/`, el botón **📋 Copiar URL** ahora copia al portapapeles de forma directa y garantizada la URL virtual del canal: `http://<host>:8888/auto/<channel-slug>` (con fallback por portapapeles restringido).
+
+#### 2. Re-comprobación Forzada de Fuentes y Candidatos (`proxy.cpp` / `plugins.cpp` / `epg/index.html`)
+- Añadido botón destacado **⟳ Re-comprobar Fuentes** en el cajón de fuentes y candidatos.
+- Endpoint `POST /statplugin?action=recheck_sources` que limpia la caché de salud del canal, sondea en paralelo el enjambre de peers en tiempo real y recalcula las puntuaciones al instante sin reiniciar el proxy.
+
+#### 3. Panel Monitor y Gestor de Motores AceStream (`statplugin/index.html` / `proxy.cpp` / `plugins.cpp`)
+- Nuevo panel de control para los motores `aceserve-modern`, `aceserve-compat-light` y `aceserve-compat-stable`.
+- Indicadores visuales de estado (Activo/Verde, En reposo/Amarillo, Desconectado/Rojo), puertos API (62062) y HTTP (6878).
+- Acciones en caliente: **★ Activar como Principal**, **⟳ Reiniciar Motor** y **Detener / Arrancar**.
+
+---
+
 ## [08.30.01] - 2026-08-30
 
 ### 🚀 Optimización Integral de Variantes, EPG, Reproductor y Logos

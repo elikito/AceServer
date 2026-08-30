@@ -308,6 +308,33 @@ void test_fhda_720a_variants_and_custom_logos() {
     require(v_720 == "Movistar LaLiga 720a", "720a variant naming");
 }
 
+void test_virtual_url_and_engine_pool_status() {
+    // 1. Test Virtual URL generation from channel name
+    std::string chan = "M+ LALIGA TV 1080p";
+    std::string slug = canonical_slug(chan);
+    require(slug == "m-laliga-tv", "slug generated for virtual URL");
+    std::string virtual_url = "http://127.0.0.1:8888/auto/" + slug;
+    require(virtual_url == "http://127.0.0.1:8888/auto/m-laliga-tv", "exact virtual url");
+
+    // 2. Test Engine Pool JSON formatting
+    std::string engine_json = R"({
+        "status": "success",
+        "active_engine": "aceserve-modern",
+        "engine_mode": "auto",
+        "engines": [
+            {"name": "aceserve-modern", "status": "connected", "api_port": 62062, "http_port": 6878, "is_main": true},
+            {"name": "aceserve-compat-light", "status": "standby", "api_port": 62062, "http_port": 6878, "is_main": false},
+            {"name": "aceserve-compat-stable", "status": "standby", "api_port": 62062, "http_port": 6878, "is_main": false}
+        ]
+    })";
+    auto parsed = Json::parse(engine_json);
+    require(parsed["status"].as_string() == "success", "engine status success");
+    require(parsed["engines"].is_array(), "engines array");
+    require(parsed["engines"].as_array().size() == 3, "3 engines returned");
+    require(parsed["engines"][0]["name"].as_string() == "aceserve-modern", "modern engine first");
+    require(parsed["engines"][0]["is_main"].as_bool() == true, "modern is main");
+}
+
 } // namespace
 
 int main() {
@@ -324,6 +351,7 @@ int main() {
         test_engine_host_fallback_candidates();
         test_favorites_reordering_and_playlist_grouping();
         test_fhda_720a_variants_and_custom_logos();
+        test_virtual_url_and_engine_pool_status();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

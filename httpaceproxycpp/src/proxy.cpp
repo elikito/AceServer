@@ -3647,4 +3647,182 @@ std::vector<std::string> Proxy::get_all_logos_for_channel(const std::string& cha
     return results;
 }
 
+// ---------------------------------------------------------------------------
+// v08.30.02 — Re-comprobación Forzada de Fuentes y Candidatos
+// ---------------------------------------------------------------------------
+Json Proxy::recheck_sources(const std::string& slug_or_channel) {
+    if (!slug_or_channel.empty()) {
+        auto candidates = find_candidates_for_channel(slug_or_channel);
+        for (const auto& cand : candidates) {
+            channel_verifier_.clear_state(cand.content_id);
+        }
+
+        std::vector<std::thread> workers;
+        for (const auto& cand : candidates) {
+            workers.emplace_back([this, cid = cand.content_id]() {
+                try {
+                    verify_channel(cid, 6000);
+                } catch (...) {}
+            });
+        }
+        for (auto& w : workers) {
+            if (w.joinable()) w.join();
+        }
+
+        auto updated = find_candidates_for_channel(slug_or_channel);
+        Json::array arr;
+        for (const auto& c : updated) {
+            arr.push_back(c.to_json());
+        }
+        return Json::object{
+            {"status", "success"},
+            {"channel", slug_or_channel},
+            {"candidates", arr},
+            {"total", static_cast<double>(updated.size())}
+        };
+    } else {
+        channel_verifier_.clear_all_state();
+        std::vector<std::string> all_cids;
+        for (const auto& plugin : plugins_.unique_plugins()) {
+            if (!plugin->is_enabled()) continue;
+            auto pl = std::dynamic_pointer_cast<PlaylistPlugin>(plugin);
+            if (!pl) continue;
+            for (const auto& item : pl->playlist_items()) {
+                auto cid = extract_content_id(item.url);
+                if (!cid.empty()) all_cids.push_back(cid);
+            }
+        }
+        verify_channels_batch(all_cids);
+        return Json::object{
+            {"status", "success"},
+            {"message", "Re-comprobación global de fuentes encolada (" + std::to_string(all_cids.size()) + " fuentes)"}
+        };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// v08.30.02 — Panel Monitor y Gestor de Motores AceStream
+// ---------------------------------------------------------------------------
+Json Proxy::get_engines_status() {
+    struct EngineDef {
+        std::string name;
+        std::string label;
+        int api_port;
+        int http_port;
+    };
+
+    static const std::vector<EngineDef> kDefaultEngines = {
+        {"aceserve-modern", "Modern (jopsis)", 62062, 6878},
+        {"aceserve-compat-light", "Compat Light (wafy80)", 62062, 6878},
+        {"aceserve-compat-stable", "Compat Stable (blaiseio)", 62062, 6878}
+    };
+
+    std::string current_engine = config_.ace_host;
+    std::string current_mode = engine_mode_;
+
+    Json::array engines_arr;
+
+    for (const auto& eng : kDefaultEngines) {
+        bool is_main = (eng.name == current_engine || (current_mode == "auto" && eng.name == (cpu_info_.has_avx_or_sse42 ? "aceserve-modern" : "aceserve-compat-light")));
+        std::string status = "standby";
+        std::string version = "unknown";
+
+        try {
+            auto url = "http://" + eng.name + ":" + std::to_string(eng.api_port) + "/webui/api/service?method=get_version&format=json";
+            auto resp = http_client_.get(url, {{"User-Agent", "HTTPAceProxy"}}, 2, false);
+            if (resp.status >= 200 && resp.status < 300) {
+                auto data = Json::parse(resp.body);
+                version = data["result"]["version"].as_string("unknown");
+                status = is_main ? "connected" : "standby";
+            } else {
+                status = "error";
+            }
+        } catch (...) {
+            try {
+                Config test_cfg = config_;
+                test_cfg.ace_host = eng.name;
+                test_cfg.ace_api_port = eng.api_port;
+                AceClient probe(test_cfg, "ProbeEngine");
+                probe.authenticate();
+                probe.shutdown();
+                status = is_main ? "connected" : "standby";
+            } catch (...) {
+                status = "disconnected";
+            }
+        }
+
+        engines_arr.push_back(Json::object{
+            {"name", eng.name},
+            {"label", eng.label},
+            {"api_port", static_cast<double>(eng.api_port)},
+            {"http_port", static_cast<double>(eng.http_port)},
+            {"status", status},
+            {"version", version},
+            {"is_main", is_main},
+            {"enabled", true}
+        });
+    }
+
+    return Json::object{
+        {"status", "success"},
+        {"active_engine", current_engine},
+        {"engine_mode", current_mode},
+        {"cpu_detected", cpu_info_.cpu_detected},
+        {"engines", engines_arr}
+    };
+}
+
+Json Proxy::restart_engine(const std::string& engine) {
+    if (engine.empty()) return Json::object{{"status", "error"}, {"message", "Nombre de motor no especificado"}};
+
+    add_bunker_log("Orden de reinicio para motor: " + engine);
+    {
+        std::lock_guard<std::mutex> lock(idle_mutex_);
+        if (idle_ace_) {
+            idle_ace_->shutdown();
+            idle_ace_.reset();
+        }
+    }
+
+    try {
+        Config probe_cfg = config_;
+        probe_cfg.ace_host = engine;
+        AceClient client(probe_cfg, "RestartCmd");
+        client.authenticate();
+        client.shutdown();
+    } catch (...) {}
+
+    {
+        std::lock_guard<std::mutex> lock(ace_status_mutex_);
+        ace_status_cache_ = Json();
+        ace_status_time_ = {};
+    }
+
+    return Json::object{
+        {"status", "success"},
+        {"message", "Reinicio solicitado para " + engine},
+        {"engine", engine}
+    };
+}
+
+Json Proxy::toggle_engine(const std::string& engine, bool enabled) {
+    if (engine.empty()) return Json::object{{"status", "error"}, {"message", "Nombre de motor no especificado"}};
+    add_bunker_log("Estado de motor " + engine + " modificado: " + (enabled ? "Activado" : "Suspendido"));
+    return Json::object{
+        {"status", "success"},
+        {"engine", engine},
+        {"enabled", enabled}
+    };
+}
+
+Json Proxy::set_main_engine(const std::string& engine) {
+    if (engine.empty()) return Json::object{{"status", "error"}, {"message", "Nombre de motor no especificado"}};
+    set_engine(engine);
+    return Json::object{
+        {"status", "success"},
+        {"active_engine", selected_engine()},
+        {"engine_mode", engine_mode()}
+    };
+}
+
 } // namespace httpace

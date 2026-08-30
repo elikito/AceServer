@@ -534,6 +534,149 @@
         }
 
         /* ------------------------------------------------------------------ */
+        /* ENGINES PANEL                                                      */
+        /* ------------------------------------------------------------------ */
+        .engines-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .engines-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .engines-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .engines-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .engine-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all .2s ease;
+        }
+
+        .engine-card.active-engine {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+        }
+
+        .engine-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .engine-name {
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .engine-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .engine-status-badge.connected {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .engine-status-badge.standby {
+            background: rgba(234, 179, 8, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+
+        .engine-status-badge.disconnected, .engine-status-badge.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .engine-meta {
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .engine-meta code {
+            font-size: 11px;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+
+        .engine-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+
+        .engine-btn {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 9px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            transition: all .15s ease;
+        }
+
+        .engine-btn:hover {
+            border-color: var(--brand);
+            color: var(--brand);
+        }
+
+        .engine-btn.btn-main {
+            background: var(--brand);
+            color: #fff;
+            border: none;
+        }
+        .engine-btn.btn-main:hover {
+            opacity: 0.9;
+        }
+
+        /* ------------------------------------------------------------------ */
         /* PLUGIN ACCORDION                                                     */
         /* ------------------------------------------------------------------ */
         .plugin-block {
@@ -1187,7 +1330,7 @@
             <div class="header-title">
                 <h2>Panel de Diagnóstico de Canales</h2>
                 <p>Verifica la reproducibilidad real de los Content IDs mediante el Worker Pool de 4 fases — v<span
-                        class="app-version">08.30.01</span></p>
+                        class="app-version">08.30.02</span></p>
             </div>
         </div>
 
@@ -1243,6 +1386,25 @@
                         <span id="net-isp-val" class="net-isp">—</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- AceStream Engine Manager Section -->
+        <div class="engines-card" id="engines-manager-card">
+            <div class="engines-header">
+                <div class="engines-title">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="color:var(--brand);"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <span>Panel Monitor y Gestor de Motores AceStream</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="loadEnginesStatus(true)" title="Actualizar estado de los motores">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle; margin-right:3px;"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                        Refrescar Motores
+                    </button>
+                </div>
+            </div>
+            <div class="engines-grid" id="engines-grid-container">
+                <div style="font-size:12px; color:var(--muted); padding:10px;">Consultando estado de los motores AceStream...</div>
             </div>
         </div>
 
@@ -1349,7 +1511,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">08.30.01</span>
+            <span class="val version-badge app-version">08.30.02</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -1376,6 +1538,7 @@
             applyTheme();
             bindThemeToggle();
             loadPlugins();
+            loadEnginesStatus();
         });
 
         // =========================================================================
@@ -1404,6 +1567,120 @@
                 : '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
         }
 
+        // =========================================================================
+        // ACESTREAM ENGINE MANAGER
+        // =========================================================================
+        async function loadEnginesStatus(isManualClick) {
+            const container = document.getElementById('engines-grid-container');
+            try {
+                const res = await fetch('/statplugin?action=get_engines_status');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.status === 'success' && Array.isArray(data.engines)) {
+                    container.innerHTML = '';
+                    data.engines.forEach(eng => {
+                        const isConn = eng.status === 'connected';
+                        const isStandby = eng.status === 'standby';
+                        const statusClass = isConn ? 'connected' : (isStandby ? 'standby' : 'disconnected');
+                        const statusLabel = isConn ? '🟢 Activo / Conectado' : (isStandby ? '🟡 En Reposo' : '🔴 Desconectado');
+
+                        const card = document.createElement('div');
+                        card.className = `engine-card ${eng.is_main ? 'active-engine' : ''}`;
+                        card.innerHTML = `
+                            <div class="engine-card-top">
+                                <div class="engine-name">
+                                    <span>${eng.label || eng.name}</span>
+                                    ${eng.is_main ? '<span style="font-size:10px; background:var(--brand); color:#fff; padding:1px 6px; border-radius:10px; font-weight:700;">PRINCIPAL</span>' : ''}
+                                </div>
+                                <div class="engine-status-badge ${statusClass}">
+                                    <span>${statusLabel}</span>
+                                </div>
+                            </div>
+                            <div class="engine-meta">
+                                <div>Host: <code>${eng.name}</code> | Versión: <code>${eng.version || 'unknown'}</code></div>
+                                <div>Puertos: API <code>${eng.api_port}</code> / HTTP <code>${eng.http_port}</code></div>
+                            </div>
+                            <div class="engine-actions">
+                                ${!eng.is_main ? `
+                                    <button class="engine-btn btn-main" onclick="setMainEngine('${eng.name}')" title="Establecer como motor principal en caliente">
+                                        ★ Activar Principal
+                                    </button>
+                                ` : `
+                                    <button class="engine-btn" style="background:rgba(34,197,94,0.15); color:#4ade80; border-color:rgba(34,197,94,0.3);" disabled>
+                                        ✓ Motor en Uso
+                                    </button>
+                                `}
+                                <button class="engine-btn" onclick="restartEngine('${eng.name}', this)" title="Enviar orden de reinicio al motor">
+                                    ⟳ Reiniciar Motor
+                                </button>
+                                <button class="engine-btn" onclick="toggleEngine('${eng.name}', ${eng.enabled ? 'false' : 'true'})" title="Suspender o arrancar este motor">
+                                    ${eng.enabled ? '⏹ Detener' : '▶ Arrancar'}
+                                </button>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                    if (isManualClick && typeof showToast === 'function') {
+                        showToast('✓ Estado de motores actualizado', 'success');
+                    }
+                }
+            } catch (e) {
+                console.warn('Error loading engines status:', e);
+                if (container) {
+                    container.innerHTML = `<div style="font-size:12px; color:var(--muted); padding:10px;">No se pudo consultar el estado de los motores (${e.message}).</div>`;
+                }
+            }
+        }
+
+        async function setMainEngine(engineName) {
+            if (typeof showToast === 'function') showToast(`Conmutando a motor ${engineName}...`, 'info');
+            try {
+                const resp = await fetch(`/statplugin?action=set_main_engine&engine=${encodeURIComponent(engineName)}`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    if (typeof showToast === 'function') showToast(`✓ Motor activo cambiado a ${engineName}`, 'success');
+                    loadEnginesStatus(false);
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('Error al cambiar motor: ' + e.message, 'error');
+            }
+        }
+
+        async function restartEngine(engineName, btnEl) {
+            if (btnEl) {
+                btnEl.disabled = true;
+                btnEl.textContent = '⏳ Reiniciando...';
+            }
+            if (typeof showToast === 'function') showToast(`Reiniciando motor ${engineName}...`, 'info');
+            try {
+                const resp = await fetch(`/statplugin?action=restart_engine&engine=${encodeURIComponent(engineName)}`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    if (typeof showToast === 'function') showToast(`✓ Reinicio solicitado para ${engineName}`, 'success');
+                    setTimeout(() => loadEnginesStatus(false), 2000);
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('Error al reiniciar motor: ' + e.message, 'error');
+                if (btnEl) {
+                    btnEl.disabled = false;
+                    btnEl.textContent = '⟳ Reiniciar Motor';
+                }
+            }
+        }
+
+        async function toggleEngine(engineName, shouldEnable) {
+            if (typeof showToast === 'function') showToast(`${shouldEnable ? 'Arrancando' : 'Deteniendo'} motor ${engineName}...`, 'info');
+            try {
+                const resp = await fetch(`/statplugin?action=toggle_engine&engine=${encodeURIComponent(engineName)}&enabled=${shouldEnable}`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    if (typeof showToast === 'function') showToast(`✓ Estado de motor ${engineName} actualizado`, 'success');
+                    loadEnginesStatus(false);
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('Error: ' + e.message, 'error');
+            }
+        }
 
         // =========================================================================
         // NETWORK PROTECTION DIAGNOSTICS

@@ -765,6 +765,40 @@ public:
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
             return true;
         }
+        if (action == "recheck_sources") {
+            auto slug = query_get(ctx.query, "slug");
+            if (slug.empty()) slug = query_get(ctx.query, "channel");
+            auto data = proxy_.recheck_sources(slug);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+        }
+        if (action == "get_engines_status" || action == "engines_status") {
+            auto data = proxy_.get_engines_status();
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+        }
+        if (action == "restart_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            auto data = proxy_.restart_engine(engine);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+        }
+        if (action == "toggle_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            bool enabled = query_get(ctx.query, "enabled", "true") == "true";
+            auto data = proxy_.toggle_engine(engine, enabled);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+        }
+        if (action == "set_main_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            auto data = proxy_.set_main_engine(engine);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+        }
         std::string relative = "index.html";
         if (ctx.path != "/stat") {
             relative = ctx.path.substr(std::string("/stat/").size());
@@ -910,6 +944,43 @@ public:
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             auto data = proxy_.get_network_diagnostics();
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+
+        // -----------------------------------------------------------------------
+        // v08.30.02 — Re-comprobación forzada y Panel Gestor de Motores AceStream
+        // -----------------------------------------------------------------------
+        } else if (action == "recheck_sources") {
+            auto slug = query_get(ctx.query, "slug");
+            if (slug.empty()) slug = query_get(ctx.query, "channel");
+            auto data = proxy_.recheck_sources(slug);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+
+        } else if (action == "get_engines_status" || action == "engines_status") {
+            auto data = proxy_.get_engines_status();
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+
+        } else if (action == "restart_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            auto data = proxy_.restart_engine(engine);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+
+        } else if (action == "toggle_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            bool enabled = query_get(ctx.query, "enabled", "true") == "true";
+            auto data = proxy_.toggle_engine(engine, enabled);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+
+        } else if (action == "set_main_engine") {
+            auto engine = query_get(ctx.query, "engine");
+            if (engine.empty()) engine = query_get(ctx.query, "name");
+            auto data = proxy_.set_main_engine(engine);
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
             return true;
 

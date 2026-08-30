@@ -1863,18 +1863,64 @@
             if (e) e.stopPropagation();
             const slug = toCanonicalSlug(chanName);
             const host = window.location.host || '127.0.0.1:8888';
-            const url = `http://${host}/auto/${slug}/stream.ts`;
-            navigator.clipboard.writeText(url).then(() => {
-                showToast(`📋 URL Virtual copiada: /auto/${slug}/stream.ts`, 'success');
-            }).catch(() => {
-                showToast(`URL: ${url}`);
-            });
+            const proto = window.location.protocol || 'http:';
+            const url = `${proto}//${host}/auto/${slug}`;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast(`📋 URL Virtual copiada: ${url}`, 'success');
+                }).catch(() => {
+                    fallbackCopyUrl(url);
+                });
+            } else {
+                fallbackCopyUrl(url);
+            }
+        }
+
+        function fallbackCopyUrl(url) {
+            const input = document.createElement('textarea');
+            input.value = url;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            showToast(`📋 URL Virtual copiada: ${url}`, 'success');
         }
 
         function playChannelInPlayer(chanName, chanId, e) {
             if (e) e.stopPropagation();
             const slug = toCanonicalSlug(chanName);
             window.open(`/player/index.html?url=/auto/${slug}/stream.ts`, '_blank');
+        }
+
+        async function recheckChannelSources(slug, btnEl, e) {
+            if (e) e.stopPropagation();
+            if (btnEl) {
+                btnEl.disabled = true;
+                btnEl.innerHTML = `⟳ Testeando...`;
+            }
+            try {
+                const resp = await fetch(`/statplugin?action=recheck_sources&slug=${encodeURIComponent(slug)}`, {
+                    method: 'POST'
+                });
+                const res = await resp.json();
+                showToast('✓ Fuentes re-comprobadas y peers actualizados', 'success');
+                const card = btnEl.closest('.channel-epg-card');
+                if (card) {
+                    const chanName = card.dataset.channelName || slug;
+                    const chanId = card.dataset.channelId || slug;
+                    const drawer = card.querySelector('.candidates-drawer');
+                    if (drawer) drawer.remove();
+                    const sourcesBtn = card.querySelector('button[title*="Fuentes"]') || btnEl;
+                    toggleCandidatesDrawer(chanName, chanId, sourcesBtn, null);
+                }
+            } catch (err) {
+                showToast('Error al re-comprobar: ' + err.message, 'error');
+                if (btnEl) {
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = `⟳ Re-comprobar Fuentes`;
+                }
+            }
         }
 
         async function toggleCandidatesDrawer(chanName, chanId, btnEl, e) {
@@ -1918,11 +1964,16 @@
                 }
 
                 let candHtml = `
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
                         <div style="font-size:13px; font-weight:700; color:var(--brand-color);">
                             ⚙ Fuentes y Candidatos (${data.candidates.length})
                         </div>
-                        <div style="font-size:11px; color:var(--text-muted);">URL Virtual: <code style="color:#4CAF50;">/auto/${slug}</code></div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button class="action-btn-sm" onclick="recheckChannelSources('${escapeJs(slug)}', this, event)" style="background:var(--brand-color); color:#fff; font-weight:700; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Re-comprobar en tiempo real el estado y peers de todas las fuentes">
+                                ⟳ Re-comprobar Fuentes
+                            </button>
+                            <div style="font-size:11px; color:var(--text-muted);">URL Virtual: <code style="color:#4CAF50;">/auto/${slug}</code></div>
+                        </div>
                     </div>
                     <div class="candidates-table-wrap">
                         <table class="candidates-table">

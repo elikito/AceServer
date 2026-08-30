@@ -86,6 +86,13 @@ public:
     void load_custom_logos();
     void save_custom_logos();
 
+    // v08.30.02 — Re-comprobación forzada y Panel Gestor de Motores AceStream
+    Json recheck_sources(const std::string& slug_or_channel = "");
+    Json get_engines_status();
+    Json restart_engine(const std::string& engine);
+    Json toggle_engine(const std::string& engine, bool enabled);
+    Json set_main_engine(const std::string& engine);
+
     bool is_plugin_enabled(const std::string& name) const;
     void set_plugin_enabled(const std::string& name, bool enabled);
     std::string get_plugin_url(const std::string& name, const std::string& fallback) const;
