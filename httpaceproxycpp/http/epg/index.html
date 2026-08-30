@@ -312,6 +312,53 @@
         .health-offline { background-color: #ef4444; color: #ffffff; }
         .health-unknown { background-color: var(--border-color); color: var(--text-muted); }
 
+        /* Free Text Selection across EPG cards */
+        .channel-epg-card,
+        .channel-epg-header,
+        .programmes-list,
+        .programme-item,
+        .programme-title,
+        .programme-desc,
+        .programme-time {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            touch-action: none;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .cid-copy-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+            word-break: break-all;
+            transition: all .15s ease;
+        }
+        .cid-copy-badge:hover {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+        .cid-copy-badge.copied-highlight {
+            background: #22c55e !important;
+            color: #ffffff !important;
+        }
+
         .quality-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -1516,6 +1563,17 @@
         }
 
         /* Reordenación Reactiva en el DOM y Gestión de Diales */
+        function onHandleDragStart(e, cardEl) {
+            draggedCard = cardEl;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', cardEl.dataset.channelId || '');
+            setTimeout(() => cardEl.classList.add('dragging'), 0);
+        }
+
+        function onHandleDragEnd(e, cardEl) {
+            onFavDragEnd(e, cardEl);
+        }
+
         function onFavDragStart(e, cardEl) {
             draggedCard = cardEl;
             e.dataTransfer.effectAllowed = 'move';
@@ -1542,6 +1600,43 @@
                 c.classList.remove('dragging', 'drag-over');
             });
             recalculateDialsFromDOM(true);
+        }
+
+        function formatHealthBadge(rawHealth) {
+            const h = (rawHealth || 'UNKNOWN').toUpperCase();
+            if (h === 'ONLINE' || h === 'ACTIVO') {
+                return { cls: 'health-online', text: 'ACTIVO' };
+            } else if (h === 'LOW_PEERS' || h === 'POCOS PEERS' || h === 'ENJAMBRE LENTO') {
+                return { cls: 'health-low', text: 'ENJAMBRE LENTO' };
+            } else if (h === 'OFFLINE' || h === 'CAÍDO' || h === 'CAIDO') {
+                return { cls: 'health-offline', text: 'CAÍDO' };
+            } else if (h === 'BLOCKED' || h === 'BLOQUEADO') {
+                return { cls: 'health-offline', text: 'BLOQUEADO' };
+            } else if (h === 'CHECKING' || h === 'TESTING' || h === 'PENDING' || h === 'VERIFICANDO') {
+                return { cls: 'health-low', text: 'VERIFICANDO' };
+            } else {
+                return { cls: 'health-unknown', text: 'SIN VERIFICAR' };
+            }
+        }
+
+        function copyFullContentId(cid, el, e) {
+            if (e) e.stopPropagation();
+            if (!cid) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(cid).then(() => {
+                    showToast(`📋 ID copiado al portapapeles: ${cid}`, 'success');
+                }).catch(() => {
+                    fallbackCopyUrl(cid);
+                    showToast(`📋 ID copiado al portapapeles: ${cid}`, 'success');
+                });
+            } else {
+                fallbackCopyUrl(cid);
+                showToast(`📋 ID copiado al portapapeles: ${cid}`, 'success');
+            }
+            if (el) {
+                el.classList.add('copied-highlight');
+                setTimeout(() => el.classList.remove('copied-highlight'), 1200);
+            }
         }
 
         function moveCardUp(cardEl, e) {
@@ -1993,18 +2088,19 @@
 
                 data.candidates.forEach(c => {
                     const isDis = c.is_disabled === true;
-                    let healthClass = 'health-unknown';
-                    let healthText = c.health || 'UNKNOWN';
-                    if (c.health === 'online') { healthClass = 'health-online'; healthText = 'ONLINE'; }
-                    else if (c.health === 'low_peers') { healthClass = 'health-low'; healthText = 'LOW PEERS'; }
-                    else if (c.health === 'offline' || c.health === 'blocked' || c.health === 'error') { healthClass = 'health-offline'; healthText = c.health.toUpperCase(); }
+                    const badge = formatHealthBadge(c.health);
 
                     candHtml += `
                         <tr class="${isDis ? 'candidate-disabled' : ''}">
-                            <td><span class="health-pill ${healthClass}">${healthText}</span></td>
-                            <td style="font-weight:600; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.name}">
-                                ${c.name}
-                                <div style="font-size:10px; font-family:monospace; color:var(--text-muted);">${c.content_id.substring(0, 16)}...</div>
+                            <td><span class="health-pill ${badge.cls}">${badge.text}</span></td>
+                            <td style="font-weight:600; max-width:320px;" title="${c.name}">
+                                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name}</div>
+                                <div style="margin-top:3px;">
+                                    <code class="cid-copy-badge" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID completo (40 caracteres)">
+                                        <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                        ${c.content_id}
+                                    </code>
+                                </div>
                             </td>
                             <td><span class="quality-badge quality-${(c.quality_label || 'SD').toLowerCase()}">${c.quality_label || 'SD'}</span></td>
                             <td style="font-family:monospace; font-weight:700;">${c.peers || 0}</td>
@@ -2134,10 +2230,7 @@
                 card.dataset.channelName = chan.name;
 
                 if (currentMainTab === 'fav') {
-                    card.setAttribute('draggable', 'true');
-                    card.ondragstart = (e) => onFavDragStart(e, card);
                     card.ondragover = (e) => onFavDragOver(e, card);
-                    card.ondragend = (e) => onFavDragEnd(e, card);
                 }
 
                 const effectiveLogo = getChannelEffectiveLogo(chan);
@@ -2183,7 +2276,7 @@
                     <div class="channel-epg-header">
                         <div class="channel-epg-identity" style="display:flex; align-items:center;">
                             ${currentMainTab === 'fav' ? `
-                                <div class="drag-handle" title="Arrastra para mover este canal a otra posición">
+                                <div class="drag-handle" draggable="true" ondragstart="onHandleDragStart(event, this.closest('.channel-epg-card'))" ondragend="onHandleDragEnd(event, this.closest('.channel-epg-card'))" title="Arrastra para mover este canal a otra posición">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="5" r="1.5"></circle><circle cx="15" cy="5" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="19" r="1.5"></circle><circle cx="15" cy="19" r="1.5"></circle></svg>
                                 </div>
                                 <div class="dial-controls" title="Dial / Posición numérica">

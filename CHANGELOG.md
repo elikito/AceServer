@@ -4,6 +4,33 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.03] - 2026-08-30
+
+### 🎨 Mejoras de Interfaz, Conmutador de Tema Global, Drag & Drop y Traducción
+
+#### 1. Conmutador de Tema Claro / Oscuro Unificado (`navbar.js` / `navbar.css`)
+- Conmutador interactivo con icono Sol/Luna restaurado en toda la navegación superior.
+- Alternancia reactiva de `data-theme="light"` / `data-theme="dark"` en `document.documentElement` y `body.light-theme`.
+- Persistencia sincronizada en `localStorage.getItem('aceproxy-theme')`.
+- Variables CSS de tema claro unificadas (`#f8fafc` fondo, `#ffffff` tarjetas, `#e2e8f0` bordes, `#0f172a` texto).
+
+#### 2. Delimitación de Drag & Drop y Selección Libre de Texto (`epg/index.html`)
+- Eliminado `draggable="true"` global de las tarjetas de canal EPG para permitir selección y copia libre de texto (títulos, descripciones, horarios).
+- Arrastre restringido exclusivamente al icono con puntitos (`.drag-handle` / `⠿`).
+
+#### 3. Visualización Completa de IDs y Traducción de Estados (`epg/index.html` / `player/index.html` / `statplugin/index.html`)
+- Visualización del Content ID completo de 40 caracteres en formato monoespaciado con botón interactivo de copiado.
+- Notificación toast visual al copiar cualquier ID: `📋 ID copiado al portapapeles: <hash>`.
+- Traducción integral de estados al español:
+  - `ONLINE` ➔ **`ACTIVO`**
+  - `OFFLINE` ➔ **`CAÍDO`**
+  - `BLOCKED` ➔ **`BLOQUEADO`**
+  - `LOW_PEERS` ➔ **`ENJAMBRE LENTO`**
+  - `UNKNOWN` ➔ **`SIN VERIFICAR`**
+  - `CHECKING` / `PENDING` ➔ **`VERIFICANDO`**
+
+---
+
 ## [08.30.02] - 2026-08-30
 
 ### ⚙️ Correcciones en EPG, Re-comprobación de Fuentes y Gestor de Motores
