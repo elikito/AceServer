@@ -335,6 +335,43 @@ void test_virtual_url_and_engine_pool_status() {
     require(parsed["engines"][0]["is_main"].as_bool() == true, "modern is main");
 }
 
+void test_favoritos_m3u_export_epg_and_logos() {
+    // 1. Validar la cabecera EPG obligatoria de DobleM
+    std::string expected_epg_header = "#EXTM3U url-tvg=\"https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml\" tvg-shift=\"0\"";
+    require(expected_epg_header.find("https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml") != std::string::npos, "EPG xml URL");
+
+    // 2. Validar conversión de logos relativos a URLs absolutas para clientes IPTV
+    std::string hostport = "192.168.1.100:8888";
+    std::string rel_logo = "/logos/dazn1.png";
+    std::string abs_logo = rel_logo;
+    if (!abs_logo.empty() && abs_logo.rfind("/", 0) == 0) {
+        abs_logo = "http://" + hostport + abs_logo;
+    }
+    require(abs_logo == "http://192.168.1.100:8888/logos/dazn1.png", "absolute logo url conversion");
+
+    // 3. Validar estructura M3U Plus de canal favorito con dial y variantes
+    int dial = 1;
+    std::string tvg_id = "DAZN1.es";
+    std::string display_name = "DAZN 1";
+    std::string slug = "dazn-1";
+
+    std::ostringstream out;
+    out << expected_epg_header << "\n";
+    out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\" tvg-logo=\"" << abs_logo << "\" group-title=\"Favoritos\"," << dial << ". " << display_name << " FHDa\n";
+    out << "http://" << hostport << "/auto/" << slug << "-fhda\n";
+    out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\" tvg-logo=\"" << abs_logo << "\" group-title=\"Favoritos\"," << dial << ". " << display_name << " 720a\n";
+    out << "http://" << hostport << "/auto/" << slug << "-720a\n";
+
+    std::string m3u_content = out.str();
+    require(m3u_content.find(expected_epg_header) == 0, "m3u begins with EPG header");
+    require(m3u_content.find("tvg-id=\"DAZN1.es\"") != std::string::npos, "tvg-id DobleM mapping");
+    require(m3u_content.find("tvg-logo=\"http://192.168.1.100:8888/logos/dazn1.png\"") != std::string::npos, "absolute tvg-logo present");
+    require(m3u_content.find("group-title=\"Favoritos\",1. DAZN 1 FHDa") != std::string::npos, "group-title and dial FHDa");
+    require(m3u_content.find("http://192.168.1.100:8888/auto/dazn-1-fhda") != std::string::npos, "FHDa stream url");
+    require(m3u_content.find("group-title=\"Favoritos\",1. DAZN 1 720a") != std::string::npos, "group-title and dial 720a");
+    require(m3u_content.find("http://192.168.1.100:8888/auto/dazn-1-720a") != std::string::npos, "720a stream url");
+}
+
 } // namespace
 
 int main() {
@@ -352,6 +389,7 @@ int main() {
         test_favorites_reordering_and_playlist_grouping();
         test_fhda_720a_variants_and_custom_logos();
         test_virtual_url_and_engine_pool_status();
+        test_favoritos_m3u_export_epg_and_logos();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

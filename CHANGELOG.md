@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.05] - 2026-08-30
+
+### 📺 Optimización de Exportación M3U de Favoritos con Cabecera EPG DobleM y Logos Absolutos
+
+#### 1. Inyección de Cabecera EPG Global Obligatoria (`proxy.cpp`)
+- Inyección garantizada en la primera línea de `/channels/favoritos.m3u`:
+  `#EXTM3U url-tvg="https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml" tvg-shift="0"`
+  proporcionando compatibilidad inmediata con clientes IPTV externos (TiviMate, OTT Navigator, VLC, Kodi, etc.).
+
+#### 2. Metadatos M3U Plus, Mapeo `tvg-id` y URLs Absolutas de Logos (`proxy.cpp`)
+- Formato estricto para cada canal de favoritos con numeración secuencial de dial:
+  `#EXTINF:-1 tvg-id="{canonical_tvg_id}" tvg-name="{canonical_name}" tvg-logo="{logo_url}" group-title="Favoritos",{dial}. {canonical_name} FHDa`
+- Prioridad jerárquica de `tvg-logo` (logo personalizado en `custom_logos.json` > logo XMLTV / fuente original).
+- Conversión automática de rutas relativas (`/logos/...`) a URLs absolutas (`http://{host}:8888/logos/...`) para descarga remota en reproductores externos.
+- Mapeo canónico normalizado de `tvg-id` para canales españoles compatibles con la guía de dobleM (`La1.es`, `DAZN1.es`, `DAZNLaLiga.es`, `MVamos.es`, `MLaLigaTV.es`, etc.).
+
+#### 3. Generación Selectiva de Variantes (`proxy.cpp`)
+- Si un canal dispone de fuente HD real (720p), se generan ambas variantes: `{dial}. {canonical_name} FHDa` (`/auto/{slug}-fhda`) y `{dial}. {canonical_name} 720a` (`/auto/{slug}-720a`).
+- Si solo dispone de stream SD/FHD sin 720p real, se genera únicamente la entrada `{dial}. {canonical_name} FHDa` apuntando a `/auto/{slug}`.
+
+---
+
 ## [08.30.03] - 2026-08-30
 
 ### 🎨 Mejoras de Interfaz, Conmutador de Tema Global, Drag & Drop y Traducción

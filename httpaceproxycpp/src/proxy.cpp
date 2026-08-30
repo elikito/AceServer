@@ -3164,6 +3164,70 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
     return out.str();
 }
 
+static std::string get_doblem_tvg_id(const std::string& slug_or_name, const std::string& fallback_tvgid) {
+    if (!fallback_tvgid.empty() && fallback_tvgid.find(".es") != std::string::npos) {
+        return fallback_tvgid;
+    }
+    std::string s = canonical_slug(slug_or_name);
+    static const std::unordered_map<std::string, std::string> kDobleMMap = {
+        {"la1", "La1.es"},
+        {"la2", "La2.es"},
+        {"antena3", "Antena3.es"},
+        {"cuatro", "Cuatro.es"},
+        {"telecinco", "Telecinco.es"},
+        {"lasexta", "LaSexta.es"},
+        {"dazn1", "DAZN1.es"},
+        {"dazn2", "DAZN2.es"},
+        {"dazn3", "DAZN3.es"},
+        {"dazn4", "DAZN4.es"},
+        {"daznlaliga", "DAZNLaLiga.es"},
+        {"daznlaliga2", "DAZNLaLiga2.es"},
+        {"mvamos", "MVamos.es"},
+        {"vamos", "MVamos.es"},
+        {"mlaligatv", "MLaLigaTV.es"},
+        {"laligatv", "MLaLigaTV.es"},
+        {"mligadecampeones", "MLigadeCampeones.es"},
+        {"ligadecampeones", "MLigadeCampeones.es"},
+        {"mdeportes", "MDeportes.es"},
+        {"deportes", "MDeportes.es"},
+        {"mdeportes2", "MDeportes2.es"},
+        {"mdeportes3", "MDeportes3.es"},
+        {"mdeportes4", "MDeportes4.es"},
+        {"mdeportes5", "MDeportes5.es"},
+        {"mdeportes6", "MDeportes6.es"},
+        {"mdeportes7", "MDeportes7.es"},
+        {"mdeportes8", "MDeportes8.es"},
+        {"mplus", "MPlus.es"},
+        {"mpluscine", "MPlusCine.es"},
+        {"mplusseries", "MPlusSeries.es"},
+        {"mplusaccion", "MPlusAccion.es"},
+        {"mpluscomedia", "MPlusComedia.es"},
+        {"mplusdrama", "MPlusDrama.es"},
+        {"mplusestrenos", "MPlusEstrenos.es"},
+        {"mplusfest", "MPlusFest.es"},
+        {"mplusdocumentales", "MPlusDocumentales.es"},
+        {"mplusclasicos", "MPlusClasicos.es"},
+        {"golplay", "GolPlay.es"},
+        {"gol", "GolPlay.es"},
+        {"teledeporte", "Teledeporte.es"},
+        {"tdp", "Teledeporte.es"},
+        {"eurosport1", "Eurosport1.es"},
+        {"eurosport2", "Eurosport2.es"},
+        {"cazaypesca", "CazayPesca.es"},
+        {"iberalia", "Iberalia.es"},
+        {"toros", "Toros.es"}
+    };
+
+    auto it = kDobleMMap.find(s);
+    if (it != kDobleMMap.end()) {
+        return it->second;
+    }
+    if (!fallback_tvgid.empty()) {
+        return fallback_tvgid;
+    }
+    return !s.empty() ? s : slug_or_name;
+}
+
 std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
     auto fav_list = get_epg_favorites();
     std::unordered_set<std::string> fav_slugs;
@@ -3172,8 +3236,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         if (!slug.empty() && slug != "channel") fav_slugs.insert(slug);
     }
     if (fav_slugs.empty()) {
-        // Retornar M3U vacío limpio sin listas fantasma
-        return "#EXTM3U name=\"HTTPAceProxy Canales Favoritos\"\n";
+        return "#EXTM3U url-tvg=\"https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml\" tvg-shift=\"0\"\n";
     }
 
     std::map<std::string, std::vector<ChannelCandidate>> grouped;
@@ -3221,30 +3284,29 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
     }
 
     std::ostringstream out;
-    out << "#EXTM3U name=\"HTTPAceProxy Canales Favoritos\"\n";
+    out << "#EXTM3U url-tvg=\"https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml\" tvg-shift=\"0\"\n";
     std::unordered_set<std::string> emitted_slugs;
+    int dial = 0;
 
     for (const auto& fav_raw : fav_list) {
         auto slug = canonical_slug(fav_raw);
         if (slug.empty() || slug == "channel") continue;
         if (emitted_slugs.find(slug) != emitted_slugs.end()) continue;
         emitted_slugs.insert(slug);
+        dial++;
 
         std::string display_name;
-        std::string group;
         std::string logo;
-        std::string tvg_id = slug;
+        std::string raw_tvg_id;
 
         auto it = grouped.find(slug);
         if (it != grouped.end()) {
             const auto& item = exemplar[slug];
             display_name = canonical_name(item.name);
-            group = display_name;
             logo = item.logo;
-            if (!item.tvgid.empty()) tvg_id = item.tvgid;
+            raw_tvg_id = !item.tvgid.empty() ? item.tvgid : item.tvg;
         } else {
             display_name = canonical_name(fav_raw);
-            group = display_name;
         }
 
         bool cap = true;
@@ -3253,11 +3315,18 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             else if (cap) { c = std::toupper(static_cast<unsigned char>(c)); cap = false; }
         }
         if (display_name.empty()) display_name = slug;
-        if (group.empty()) group = display_name;
 
         std::string custom_logo = get_custom_logo_for_channel(slug);
         if (custom_logo.empty()) custom_logo = get_custom_logo_for_channel(fav_raw);
         if (!custom_logo.empty()) logo = custom_logo;
+
+        // Prioridad del Logo (tvg-logo):
+        // Si es relativo (/logos/...), convertir a URL absoluta http://{hostport}{logo_path}
+        if (!logo.empty() && logo.rfind("/", 0) == 0) {
+            logo = "http://" + hostport + logo;
+        }
+
+        std::string tvg_id = get_doblem_tvg_id(slug, raw_tvg_id);
 
         std::string best_auto_cid;
         std::string best_hd_cid;
@@ -3269,6 +3338,9 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         }
         if (auto_cand.has_value()) {
             best_auto_cid = auto_cand->content_id;
+            if (raw_tvg_id.empty() && !auto_cand->tvg_id.empty()) {
+                tvg_id = get_doblem_tvg_id(slug, auto_cand->tvg_id);
+            }
         }
 
         auto hd_cand = resolve_best_candidate(slug + "-720a");
@@ -3277,20 +3349,22 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             best_hd_cid = hd_cand->content_id;
         }
 
-        // 1. [Nombre Canal] FHDa — Mejor stream >= 1080p (o mejor candidato global)
-        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " FHDa\"";
+        // 1. [Nombre Canal] FHDa
+        out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-        if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-        out << " group-title=\"" << group << "\", " << display_name << " FHDa\n";
-        out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
+        out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " FHDa\n";
+        if (has_real_hd) {
+            out << "http://" << hostport << "/auto/" << slug << "-fhda\n";
+        } else {
+            out << "http://" << hostport << "/auto/" << slug << "\n";
+        }
 
         // 2. [Nombre Canal] 720a — Renderizar solo si existe fuente HD real
         if (has_real_hd && !best_hd_cid.empty()) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720a\"";
+            out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 720a\n";
-            out << "http://" << hostport << "/auto/" << slug << "-720a/stream.ts\n";
+            out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " 720a\n";
+            out << "http://" << hostport << "/auto/" << slug << "-720a\n";
         }
     }
 
@@ -3457,7 +3531,7 @@ void Proxy::set_epg_favorites(const std::vector<std::string>& favs) {
 }
 
 // ---------------------------------------------------------------------------
-// v08.30.01 — Logos personalizados persistentes (custom_logos.json)
+// Logos personalizados persistentes (custom_logos.json)
 // ---------------------------------------------------------------------------
 void Proxy::load_custom_logos() {
     std::lock_guard<std::mutex> lock(custom_logos_mutex_);
