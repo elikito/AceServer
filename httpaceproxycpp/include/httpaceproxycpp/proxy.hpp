@@ -77,7 +77,7 @@ public:
     bool is_candidate_disabled(const std::string& content_id) const;
     std::vector<std::string> get_disabled_candidates() const;
 
-    // v08.30.01 — Logos personalizados persistentes (custom_logos.json)
+    // Logos personalizados persistentes (custom_logos.json)
     std::map<std::string, std::string> get_custom_logos() const;
     void set_custom_logo(const std::string& channel_or_slug, const std::string& logo_url);
     void remove_custom_logo(const std::string& channel_or_slug);
@@ -151,7 +151,7 @@ private:
     std::vector<std::string> epg_favorites_;
     std::unordered_set<std::string> disabled_cids_;
 
-    // v08.30.01 — Logos personalizados persistidos
+    // Logos personalizados persistidos
     mutable std::mutex custom_logos_mutex_;
     std::map<std::string, std::string> custom_logos_;
 };

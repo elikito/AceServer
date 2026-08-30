@@ -4,6 +4,26 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [08.30.07] - 2026-08-30
+
+### 🌐 Integración de Nodo IPFS/IPNS Local Seguro (Kubo) y Reescritura Inteligente
+
+#### 1. Servicio `ipfs-node` en `docker-compose.yml`
+- Integrado contenedor `ipfs/kubo:latest` conectado a la red interna `aceproxy-net`.
+- Configurado perfil de bajo consumo `IPFS_PROFILE=server,lowpower` para evitar saturación de memoria y conexiones.
+- Mapeo de puertos seguro:
+  - Gateway HTTP: `"127.0.0.1:8180:8080"` (puerto interno `http://ipfs-node:8080` accesible por el proxy).
+  - API RPC: `"127.0.0.1:5010:5001"`.
+  - Swarm P2P: `"4010:4010/tcp"` (Solo TCP para preservar las tablas NAT del router).
+- Volúmenes persistentes en `./config/ipfs_data` y `./config/ipfs_staging`.
+
+#### 2. Resolución y Reescritura Automática IPFS (`http_client.cpp` / `util.cpp`)
+- Reescritura automática de URLs IPFS / IPNS al gateway local (`http://ipfs-node:8080/` o `http://127.0.0.1:8180/`) con timeout ágil de 4 segundos.
+- Fallback automático a múltiples gateways públicos (`https://ipfs.io/`, `https://dweb.link/`, `https://cloudflare-ipfs.com/`, `https://gateway.pinata.cloud/`).
+- Validación permisiva de esquemas `ipfs://`, `ipns://`, `http://127.0.0.1:8080/`, `http://127.0.0.1:8180/` y `http://ipfs-node:8080/` en el gestor de fuentes (`fuentes/index.html`).
+
+---
+
 ## [08.30.06] - 2026-08-30
 
 ### 🔧 Corrección de Compilación C++ en Re-comprobación de Fuentes

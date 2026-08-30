@@ -1051,7 +1051,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
             const hasChannelDelim = (trimmed.includes(' - ') || (trimmed.includes(',') && !trimmed.startsWith('http://') && !trimmed.startsWith('https://')));
 
             // Detección de canales o hashes pegados en el campo de URL
-            if (isMultiline || isPlainHash || hasAcestream || (containsHash && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/') && !trimmed.startsWith('file://')) || hasChannelDelim) {
+            if (isMultiline || isPlainHash || hasAcestream || (containsHash && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/') && !trimmed.startsWith('file://') && !trimmed.startsWith('ipfs://') && !trimmed.startsWith('ipns://')) || hasChannelDelim) {
                 return {
                     valid: false,
                     isChannelFormat: true,
@@ -1061,6 +1061,8 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
 
             const isValidPrefix = trimmed.startsWith('http://') ||
                                   trimmed.startsWith('https://') ||
+                                  trimmed.startsWith('ipfs://') ||
+                                  trimmed.startsWith('ipns://') ||
                                   trimmed.startsWith('/listas/locales/') ||
                                   trimmed.startsWith('/') ||
                                   trimmed.startsWith('file://');
@@ -1069,7 +1071,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                 return {
                     valid: false,
                     isChannelFormat: false,
-                    message: "La URL de la fuente debe comenzar por http://, https:// o ruta local (/listas/locales/)."
+                    message: "La URL de la fuente debe comenzar por http://, https://, ipfs://, ipns:// o ruta local (/listas/locales/)."
                 };
             }
 
@@ -1099,6 +1101,12 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
             if (!url) return '';
             url = url.trim();
             if (url.startsWith('/') || url.startsWith('file://')) return url;
+            if (url.startsWith('ipfs://')) {
+                return 'https://ipfs.io/ipfs/' + url.substring(7);
+            }
+            if (url.startsWith('ipns://')) {
+                return 'https://ipfs.io/ipns/' + url.substring(7);
+            }
             const match = url.match(/^https?:\/\/([a-zA-Z0-9]+)\.(ipns|ipfs)\.inbrowser\.link(\/.*)?$/i);
             if (match) {
                 const hash = match[1];

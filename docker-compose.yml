@@ -1,4 +1,27 @@
 services:
+  # NODO IPFS LOCAL (Kubo): Distribución descentralizada P2P de listas y fuentes
+  ipfs-node:
+    image: ipfs/kubo:latest
+    container_name: ipfs-node
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    environment:
+      - TZ=Europe/Madrid
+      - IPFS_PROFILE=server,lowpower
+    ports:
+      - "127.0.0.1:8180:8080"
+      - "127.0.0.1:5010:5001"
+      - "4010:4010/tcp"
+    volumes:
+      - ./config/ipfs_data:/data/ipfs
+      - ./config/ipfs_staging:/export
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - aceproxy-net
+
   # MOTOR MODERN: Para hardware moderno (N150, N100) con soporte AVX / SSE4.2
   aceserve-modern:
     image: jopsis/aceserve:latest
@@ -84,6 +107,7 @@ services:
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
     depends_on:
       - aceserve-modern
+      - ipfs-node
     networks:
       - aceproxy-net
 

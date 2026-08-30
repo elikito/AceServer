@@ -426,6 +426,12 @@ std::string rewrite_url_host_port(std::string_view url, std::string_view host, s
 
 std::string normalize_list_url(const std::string& input_url) {
     std::string url = trim(input_url);
+    if (starts_with(url, "ipfs://")) {
+        return "https://ipfs.io/ipfs/" + url.substr(7);
+    }
+    if (starts_with(url, "ipns://")) {
+        return "https://ipfs.io/ipns/" + url.substr(7);
+    }
     static const std::regex inbrowser_regex(R"(https?://([a-zA-Z0-9]+)\.(ipns|ipfs)\.inbrowser\.link(/.*)?)", std::regex::icase);
     std::smatch match;
     if (std::regex_match(url, match, inbrowser_regex)) {
@@ -442,6 +448,7 @@ bool is_valid_source_url(std::string_view raw_url) {
     if (url.empty()) return false;
     if (url.find('\n') != std::string_view::npos || url.find('\r') != std::string_view::npos) return false;
     if (starts_with(url, "http://") || starts_with(url, "https://") ||
+        starts_with(url, "ipfs://") || starts_with(url, "ipns://") ||
         starts_with(url, "/listas/locales/") || starts_with(url, "/") ||
         starts_with(url, "file://")) {
         return true;

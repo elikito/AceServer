@@ -372,6 +372,20 @@ void test_favoritos_m3u_export_epg_and_logos() {
     require(m3u_content.find("http://192.168.1.100:8888/auto/dazn-1-720a") != std::string::npos, "720a stream url");
 }
 
+void test_ipfs_ipns_resolution_and_validation() {
+    // 1. Validar esquemas IPFS / IPNS
+    require(is_valid_source_url("ipfs://bafybeic56tkn..."), "ipfs scheme valid");
+    require(is_valid_source_url("ipns://k51qzi5uqu5dh5q..."), "ipns scheme valid");
+    require(is_valid_source_url("http://127.0.0.1:8080/ipns/k51qzi5uqu5dh5q/lista.m3u"), "local ipns 8080 valid");
+    require(is_valid_source_url("http://127.0.0.1:8180/ipns/k51qzi5uqu5dh5q/lista.m3u"), "local ipns 8180 valid");
+    require(is_valid_source_url("http://ipfs-node:8080/ipns/k51qzi5uqu5dh5q/lista.m3u"), "docker ipfs-node valid");
+
+    // 2. Validar normalización de URLs IPFS / IPNS
+    require(normalize_list_url("ipfs://QmHash123/list.m3u") == "https://ipfs.io/ipfs/QmHash123/list.m3u", "ipfs scheme normalization");
+    require(normalize_list_url("ipns://k51qzi5uqu5dh5q/list.m3u") == "https://ipfs.io/ipns/k51qzi5uqu5dh5q/list.m3u", "ipns scheme normalization");
+    require(normalize_list_url("https://k51qzi5uqu5dh5q.ipns.inbrowser.link/hashes.json") == "https://ipfs.io/ipns/k51qzi5uqu5dh5q/hashes.json", "inbrowser ipns normalization");
+}
+
 } // namespace
 
 int main() {
@@ -390,6 +404,7 @@ int main() {
         test_fhda_720a_variants_and_custom_logos();
         test_virtual_url_and_engine_pool_status();
         test_favoritos_m3u_export_epg_and_logos();
+        test_ipfs_ipns_resolution_and_validation();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

@@ -107,14 +107,20 @@ HttpClientResponse HttpClient::get_single(const std::string& url,
 HttpClientResponse HttpClient::get(const std::string& url,
                                    const std::map<std::string, std::string>& headers,
                                    long timeout_seconds,
-                                   bool follow_redirects) const {
-    if (url.find("/ipfs/") != std::string::npos || url.find("/ipns/") != std::string::npos || url.find(".ipns.") != std::string::npos || url.find(".ipfs.") != std::string::npos) {
-        bool is_ipns = (url.find("/ipns/") != std::string::npos || url.find(".ipns.") != std::string::npos);
+                                    bool follow_redirects) const {
+    if (url.find("/ipfs/") != std::string::npos || url.find("/ipns/") != std::string::npos ||
+        url.find(".ipns.") != std::string::npos || url.find(".ipfs.") != std::string::npos ||
+        starts_with(url, "ipfs://") || starts_with(url, "ipns://")) {
+        bool is_ipns = (url.find("/ipns/") != std::string::npos || url.find(".ipns.") != std::string::npos || starts_with(url, "ipns://"));
         std::string token = is_ipns ? "/ipns/" : "/ipfs/";
         std::string path_part;
         auto pos = url.find(token);
         if (pos != std::string::npos) {
             path_part = url.substr(pos + token.length());
+        } else if (starts_with(url, "ipfs://")) {
+            path_part = url.substr(7);
+        } else if (starts_with(url, "ipns://")) {
+            path_part = url.substr(7);
         } else {
             static const std::regex inbrowser_re(R"(https?://([a-zA-Z0-9]+)\.(ipns|ipfs)\.[^/]+(/.*)?)", std::regex::icase);
             std::smatch m;
@@ -133,22 +139,30 @@ HttpClientResponse HttpClient::get(const std::string& url,
                 cid = path_part.substr(0, slash_pos);
                 subpath = path_part.substr(slash_pos);
             }
-            std::vector<std::string> gateways;
+            std::string ipfs_type = is_ipns ? "ipns" : "ipfs";
+            std::vector<std::pair<std::string, long>> gateways;
+
+            // 1. Nodo Kubo local (prioridad alta, timeout 4s)
+            gateways.push_back({"http://ipfs-node:8080/" + ipfs_type + "/" + path_part, 4});
+            gateways.push_back({"http://127.0.0.1:8180/" + ipfs_type + "/" + path_part, 4});
+            gateways.push_back({"http://127.0.0.1:8080/" + ipfs_type + "/" + path_part, 4});
+
+            // 2. Gateways públicos (fallback automático, timeout 10s)
             if (is_ipns) {
-                gateways.push_back("https://" + cid + ".ipns.dweb.link" + subpath);
-                gateways.push_back("https://dweb.link/ipns/" + path_part);
-                gateways.push_back("https://ipfs.io/ipns/" + path_part);
-                gateways.push_back("https://cloudflare-ipfs.com/ipns/" + path_part);
-                gateways.push_back("https://gateway.pinata.cloud/ipns/" + path_part);
+                gateways.push_back({"https://" + cid + ".ipns.dweb.link" + subpath, 10});
+                gateways.push_back({"https://ipfs.io/ipns/" + path_part, 10});
+                gateways.push_back({"https://dweb.link/ipns/" + path_part, 10});
+                gateways.push_back({"https://cloudflare-ipfs.com/ipns/" + path_part, 10});
+                gateways.push_back({"https://gateway.pinata.cloud/ipns/" + path_part, 10});
             } else {
-                gateways.push_back("https://" + cid + ".ipfs.dweb.link" + subpath);
-                gateways.push_back("https://dweb.link/ipfs/" + path_part);
-                gateways.push_back("https://ipfs.io/ipfs/" + path_part);
-                gateways.push_back("https://cloudflare-ipfs.com/ipfs/" + path_part);
+                gateways.push_back({"https://" + cid + ".ipfs.dweb.link" + subpath, 10});
+                gateways.push_back({"https://ipfs.io/ipfs/" + path_part, 10});
+                gateways.push_back({"https://dweb.link/ipfs/" + path_part, 10});
+                gateways.push_back({"https://cloudflare-ipfs.com/ipfs/" + path_part, 10});
             }
-            for (const auto& gw_url : gateways) {
+            for (const auto& [gw_url, gw_timeout] : gateways) {
                 try {
-                    auto resp = get_single(gw_url, headers, 15, true);
+                    auto resp = get_single(gw_url, headers, gw_timeout, true);
                     if (resp.status >= 200 && resp.status < 400 && !resp.body.empty()) {
                         return resp;
                     }
