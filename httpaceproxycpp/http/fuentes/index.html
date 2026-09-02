@@ -17,32 +17,52 @@
             box-sizing: border-box;
         }
 
-        :root {
+        :root,
+        :root[data-theme="dark"],
+        [data-theme="dark"],
+        html.dark,
+        body.dark {
             --bg-color: #121214;
+            --bg-primary: #121214;
+            --bg-card: #1a1a1e;
             --card-bg: #1a1a1e;
             --border-color: #2d2d34;
             --text-color: #e1e1e6;
+            --text-primary: #e1e1e6;
+            --text-main: #e1e1e6;
             --text-muted: #a8a8b2;
+            --text-secondary: #a8a8b2;
             --header-bg: #1a1a1e;
             --stat-bg: #202024;
             --brand-color: #4CAF50;
             --accent-color: #764ba2;
             --input-bg: #121214;
             --badge-bg: #2a2a30;
+            color-scheme: dark;
         }
 
-        body.light-theme {
+        :root[data-theme="light"],
+        [data-theme="light"],
+        html.light,
+        body.light-theme,
+        body.light {
             --bg-color: #f4f4f5;
+            --bg-primary: #f4f4f5;
+            --bg-card: #ffffff;
             --card-bg: #ffffff;
             --border-color: #e4e4e7;
             --text-color: #18181b;
+            --text-primary: #18181b;
+            --text-main: #18181b;
             --text-muted: #71717a;
+            --text-secondary: #71717a;
             --header-bg: #ffffff;
             --stat-bg: #f4f4f5;
             --brand-color: #16a34a;
             --accent-color: #667eea;
             --input-bg: #ffffff;
             --badge-bg: #e4e4e7;
+            color-scheme: light;
         }
 
         body {
@@ -652,9 +672,9 @@
                     </svg>
                     <span>Exportar JSON</span>
                 </button>
-                <button class="btn-action btn-save"
+                <button class="btn-action btn-save" id="btn-import-sources-top"
                     style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
-                    onclick="toggleImportCard()" title="Importar paquete de fuentes (M3U, M3U8, JSON, TXT)">
+                    onclick="triggerImportSources()" title="Importar paquete de fuentes (M3U, M3U8, JSON, TXT)">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                         <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
                     </svg>
@@ -875,8 +895,8 @@
                     <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬆️
                         Importar desde Archivo (.M3U / .JSON / .TXT)</div>
                     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <input type="file" id="import-file-input" class="url-input" accept=".m3u,.m3u8,.json,.txt"
-                            style="padding: 4px; font-size: 12px;">
+                        <input type="file" id="importFileInput" name="import-file-input" class="url-input" accept=".m3u,.m3u8,.json,.txt"
+                            style="padding: 4px; font-size: 12px;" title="Seleccionar archivo de fuentes (M3U o JSON)">
                         <select id="import-mode-select" class="url-input"
                             style="width: 110px; font-size: 12px; padding: 4px;" title="Modo de importación">
                             <option value="merge" selected>Fusionar</option>
@@ -984,26 +1004,22 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
         const listStatsCache = {};
 
         window.addEventListener('DOMContentLoaded', () => {
-            const themeToggle = document.getElementById('theme-toggle');
             const themeIcon = document.getElementById('theme-icon');
 
-            if (localStorage.getItem('theme') === 'light') {
-                document.body.classList.add('light-theme');
+            if (typeof applyTheme === 'function') {
+                applyTheme(localStorage.getItem('theme') || 'dark');
+            } else if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.body.classList.add('light-theme', 'light');
                 setLightIcon(themeIcon);
             }
 
-            if (themeToggle) {
-                themeToggle.addEventListener('click', () => {
-                    document.body.classList.toggle('light-theme');
-                    if (document.body.classList.contains('light-theme')) {
-                        localStorage.setItem('theme', 'light');
-                        setLightIcon(themeIcon);
-                    } else {
-                        localStorage.setItem('theme', 'dark');
-                        setDarkIcon(themeIcon);
-                    }
-                });
-            }
+            window.addEventListener('themeChanged', (e) => {
+                if (e.detail && typeof e.detail.isLight === 'boolean') {
+                    if (e.detail.isLight) setLightIcon(themeIcon);
+                    else setDarkIcon(themeIcon);
+                }
+            });
 
             const hostIp = window.location.hostname || '127.0.0.1';
             document.getElementById('server-ip').textContent = hostIp;
@@ -1142,8 +1158,15 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
 
         function loadSources() {
             loadInternalList();
-            fetch('/config?action=get_config')
-                .then(res => res.json())
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+            fetch('/config?action=get_config', { signal: controller.signal })
+                .then(res => {
+                    clearTimeout(timeoutId);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
                 .then(config => {
                     globalConfig = config;
                     if (config && config.version) {
@@ -1155,8 +1178,21 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                     updateSummaryCards(config);
                 })
                 .catch(err => {
-                    console.error('Error al cargar configuración de fuentes:', err);
-                    showToast('Error al conectar con la API de HTTPAceProxy', 'error');
+                    clearTimeout(timeoutId);
+                    console.warn('Timeout o fallo al consultar /config?action=get_config, aplicando fallback:', err);
+                    const fallbackConfig = {
+                        version: '09.02.03',
+                        aio: true,
+                        urls: {},
+                        custom_lists: [
+                            { name: 'unificada', title: 'Unificada', url: '/listas/locales/lista_acestream_unificada.m3u', enabled: true },
+                            { name: 'interna', title: 'Interna', url: '/listas/locales/interna.m3u', enabled: true }
+                        ]
+                    };
+                    globalConfig = fallbackConfig;
+                    renderPredefinedSources(fallbackConfig);
+                    renderCustomSources(fallbackConfig);
+                    updateSummaryCards(fallbackConfig);
                 });
         }
 
@@ -1739,18 +1775,28 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
             window.location.href = `/config?action=export_sources&format=${format}`;
         }
 
-        function toggleImportCard() {
+        function triggerImportSources() {
             const card = document.getElementById('import-export-card');
+            const fileInput = document.getElementById('importFileInput') || document.getElementById('import-file-input');
             if (card) {
-                card.scrollIntoView({ behavior: 'smooth' });
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 card.style.transition = 'box-shadow 0.3s ease';
                 card.style.boxShadow = '0 0 0 2px var(--brand-color)';
                 setTimeout(() => { card.style.boxShadow = ''; }, 1500);
             }
+            if (fileInput) {
+                setTimeout(() => {
+                    fileInput.click();
+                }, 250);
+            }
+        }
+
+        function toggleImportCard() {
+            triggerImportSources();
         }
 
         function importSourcesFile() {
-            const fileInput = document.getElementById('import-file-input');
+            const fileInput = document.getElementById('importFileInput') || document.getElementById('import-file-input');
             const modeSelect = document.getElementById('import-mode-select');
             const file = fileInput ? fileInput.files[0] : null;
             const mode = modeSelect ? modeSelect.value : 'merge';
@@ -1763,7 +1809,26 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
             const reader = new FileReader();
             reader.onload = function (e) {
                 const content = e.target.result;
-                sendImportPayload(content, mode);
+                if (!content || !content.trim()) {
+                    showToast('El archivo seleccionado está vacío.', 'error');
+                    return;
+                }
+
+                const isJson = file.name.toLowerCase().endsWith('.json') ||
+                               content.trim().startsWith('{') ||
+                               content.trim().startsWith('[');
+
+                if (isJson) {
+                    try {
+                        JSON.parse(content);
+                        sendImportPayload(content, mode, true);
+                    } catch (jsonErr) {
+                        console.error('Error al deserializar JSON:', jsonErr);
+                        showToast('Error: El archivo no es un JSON válido.', 'error');
+                    }
+                } else {
+                    sendImportPayload(content, mode, false);
+                }
             };
             reader.readAsText(file);
         }
@@ -1779,27 +1844,40 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                 return;
             }
 
-            sendImportPayload(content, mode);
+            const isJson = content.startsWith('{') || content.startsWith('[');
+            sendImportPayload(content, mode, isJson);
         }
 
-        function sendImportPayload(content, mode = 'merge') {
-            showToast('Procesando e importando fuentes...');
-            fetch(`/config?action=import_sources&mode=${mode}`, {
+        function sendImportPayload(content, mode = 'merge', isJson = false) {
+            showToast('Procesando e importando paquete de fuentes...');
+            const primaryUrl = `/api/sources?mode=${encodeURIComponent(mode)}`;
+            const fallbackUrl = `/config?action=import_sources&mode=${encodeURIComponent(mode)}`;
+
+            const reqOptions = {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                headers: { 'Content-Type': isJson ? 'application/json; charset=utf-8' : 'text/plain; charset=utf-8' },
                 body: content
-            })
-                .then(r => r.json())
+            };
+
+            fetch(primaryUrl, reqOptions)
+                .then(async (res) => {
+                    if (!res.ok) {
+                        return fetch(fallbackUrl, reqOptions).then(r => r.json());
+                    }
+                    return res.json();
+                })
                 .then(data => {
-                    if (data.status === 'success') {
-                        showToast(`✓ ${data.message || 'Fuentes importadas'} (${data.imported_count || 0} procesadas)`);
+                    if (data.status === 'success' || data.ok) {
+                        const count = data.imported_count || data.imported || data.count || 0;
+                        const msg = data.message || 'Fuentes importadas con éxito';
+                        showToast(`✓ ${msg} (${count} procesadas)`);
                         const textarea = document.getElementById('import-text-area');
-                        const fileInput = document.getElementById('import-file-input');
+                        const fileInput = document.getElementById('importFileInput') || document.getElementById('import-file-input');
                         if (textarea) textarea.value = '';
                         if (fileInput) fileInput.value = '';
                         loadSources();
                     } else {
-                        showToast(`Error al importar: ${data.error || 'Formato no reconocido'}`, 'error');
+                        showToast(`Error al importar: ${data.error || data.message || 'Formato no reconocido'}`, 'error');
                     }
                 })
                 .catch(err => {

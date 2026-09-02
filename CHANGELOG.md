@@ -4,6 +4,24 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.02.03] - 2026-09-02
+
+### ⚡ Modo Oscuro Reactivo sin Recarga, Desbloqueo de /fuentes y Flujo de Importación JSON
+
+#### 1. Modo Oscuro Reactivo sin Recarga de Página
+- **Conmutación Simultánea Completa**: Al alternar el tema desde el footer o navbar, se conmuta simultáneamente `data-theme="dark"|"light"` en `document.documentElement` (`<html>`), junto con las clases `.dark` y `.light` en `document.body` y `<html>`.
+- **Variables CSS Semánticas sin Colores Estáticos**: En `navbar.css` y `fuentes/index.html`, los contenedores, inputs y tarjetas dependen estrictamente de variables de tema (`--bg-primary`, `--bg-card`, `--text-primary`, `--text-main`, `--border-color`), eliminando fondos fijos y garantizando transición inmediata sin requerir F5.
+
+#### 2. Desbloqueo de `/fuentes` y Flujo de Importación JSON
+- **Prevención de Bloqueos en Carga**: En `/fuentes/index.html`, `loadSources()` implementa un timeout estricto de 4 segundos mediante `AbortController`. Si la API de backend tarda o falla, se aplica una configuración fallback segura (`fallbackConfig`), garantizando que la tabla de fuentes predefinidas y personalizadas se inicialice siempre sin quedarse colgada en *"Cargando fuentes predefinidas..."*.
+- **Deserialización e Importación de Backups JSON**: El botón "Subir e Importar Fuentes" detecta archivos `.json` de backup, valida y deserializa el formato, y lo envía al endpoint `/api/sources` (con fallback a `/config?action=import_sources`). Recarga reactivamente la lista y emite toast de confirmación.
+- **Aliases REST en Backend (`proxy.cpp`)**: Añadidos endpoints directos `/api/status`, `/api/config` y `/api/sources` (GET/POST), evitando errores `400 Bad Request` en integraciones y automatizaciones.
+
+#### 3. Consistencia de Botones Importar / Exportar
+- **Acceso Directo al Selector de Archivos**: El botón superior "Importar Fuentes" en `/fuentes` ahora ejecuta scroll suave hacia el contenedor `#import-export-card`, activa una animación de resaltado y dispara directamente el selector `#importFileInput` para agilizar la carga de listas y copias de seguridad.
+
+---
+
 ## [09.02.02] - 2026-09-02
 
 ### 🚀 Resolución de fuentes locales Docker, Sincronización de Tema y Mejoras en Web Player / Statplugin

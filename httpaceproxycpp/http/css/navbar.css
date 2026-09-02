@@ -1,5 +1,5 @@
 /* ==========================================================================
-   HTTPAceProxy — Unified Navigation Bar (v09.02.02)
+   HTTPAceProxy — Unified Navigation Bar (v09.02.03)
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -34,10 +34,14 @@
     --text-primary: #f8fafc;
     --text-color: #f8fafc;
     --text: #f8fafc;
+    --text-main: #f8fafc;
+    --text-body: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #94a3b8;
     --muted: #94a3b8;
     --bg-color: #0f0f13;
+    --bg-main: #0f0f13;
+    --bg-container: #18181f;
     --header-bg: #18181f;
     --stat-bg: #22222b;
     --input-bg: #18181f;
@@ -46,7 +50,9 @@
 }
 
 :root[data-theme="dark"],
-[data-theme="dark"] {
+[data-theme="dark"],
+html.dark,
+body.dark {
     --bg-primary: #0f0f13;
     --bg-secondary: #18181f;
     --bg-tertiary: #22222b;
@@ -63,10 +69,14 @@
     --text-primary: #f8fafc;
     --text-color: #f8fafc;
     --text: #f8fafc;
+    --text-main: #f8fafc;
+    --text-body: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #94a3b8;
     --muted: #94a3b8;
     --bg-color: #0f0f13;
+    --bg-main: #0f0f13;
+    --bg-container: #18181f;
     --header-bg: #18181f;
     --stat-bg: #22222b;
     --input-bg: #18181f;
@@ -77,7 +87,9 @@
 /* Light Theme Variables (Global Immediate Switch) */
 :root[data-theme="light"],
 [data-theme="light"],
-body.light-theme {
+html.light,
+body.light-theme,
+body.light {
     --bg-primary: #f8fafc;
     --bg-secondary: #ffffff;
     --bg-tertiary: #f1f5f9;
@@ -94,10 +106,14 @@ body.light-theme {
     --text-primary: #0f172a;
     --text-color: #0f172a;
     --text: #0f172a;
+    --text-main: #0f172a;
+    --text-body: #0f172a;
     --text-secondary: #334155;
     --text-muted: #64748b;
     --muted: #64748b;
     --bg-color: #f8fafc;
+    --bg-main: #f8fafc;
+    --bg-container: #ffffff;
     --header-bg: #ffffff;
     --stat-bg: #f1f5f9;
     --input-bg: #ffffff;

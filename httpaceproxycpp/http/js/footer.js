@@ -12,7 +12,7 @@
 
     let canonicalIp = window.location.hostname || '127.0.0.1';
     let canonicalHostname = '';
-    let canonicalVersion = '09.02.02';
+    let canonicalVersion = '09.02.03';
     let ipResetTimer = null;
     let verResetTimer = null;
 
@@ -150,18 +150,23 @@
                 } else {
                     if (e) { e.preventDefault(); e.stopPropagation(); }
                     const cur = document.documentElement.getAttribute('data-theme') ||
-                                (document.body && document.body.classList.contains('light-theme') ? 'light' : 'dark') ||
+                                (document.body && (document.body.classList.contains('light-theme') || document.body.classList.contains('light')) ? 'light' : 'dark') ||
                                 'dark';
                     const next = cur === 'light' ? 'dark' : 'light';
+                    const isLight = next === 'light';
                     document.documentElement.setAttribute('data-theme', next);
+                    document.documentElement.classList.toggle('light', isLight);
+                    document.documentElement.classList.toggle('dark', !isLight);
                     if (document.body) {
                         document.body.setAttribute('data-theme', next);
-                        document.body.classList.toggle('light-theme', next === 'light');
+                        document.body.classList.toggle('light-theme', isLight);
+                        document.body.classList.toggle('light', isLight);
+                        document.body.classList.toggle('dark', !isLight);
                     }
                     localStorage.setItem('theme', next);
                     localStorage.setItem('aceproxy-theme', next);
-                    updateThemeIcon(next === 'light');
-                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: next, isLight: next === 'light' } }));
+                    updateThemeIcon(isLight);
+                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: next, isLight: isLight } }));
                 }
             };
         }

@@ -669,10 +669,66 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         }
     }
 
-    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || ctx.parts[1] == "sources" || (ctx.parts[1] == "fuentes" && ctx.query.find("action=") != std::string::npos))) {
-        auto action = query_get(ctx.query, "action");
+    bool is_api_call = (ctx.parts.size() > 1 && ctx.parts[1] == "api");
+    bool is_api_status = (is_api_call && ctx.parts.size() > 2 && (ctx.parts[2] == "status" || ctx.parts[2] == "stat"));
+    bool is_api_config = (is_api_call && ctx.parts.size() > 2 && ctx.parts[2] == "config");
+    bool is_api_sources = (is_api_call && ctx.parts.size() > 2 && (ctx.parts[2] == "sources" || ctx.parts[2] == "fuentes"));
+
+    if (is_api_status) {
         std::map<std::string, std::string> headers = {
             {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, OPTIONS"},
+            {"Access-Control-Allow-Headers", "Content-Type"},
+            {"Content-Type", "application/json; charset=utf-8"},
+            {"Connection", "close"}
+        };
+        if (request.method == "OPTIONS") {
+            connection.send_response_headers(204, "No Content", headers);
+            return;
+        }
+        auto body_str = status_json().dump(2);
+        headers["Content-Length"] = std::to_string(body_str.size());
+        connection.send_response_headers(200, status_reason(200), headers);
+        connection.send_text(body_str);
+        return;
+    }
+
+    if (is_api_config || (is_api_sources && request.method == "GET")) {
+        std::map<std::string, std::string> headers = {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
+            {"Access-Control-Allow-Headers", "Content-Type"},
+            {"Content-Type", "application/json; charset=utf-8"},
+            {"Connection", "close"}
+        };
+        if (request.method == "OPTIONS") {
+            connection.send_response_headers(204, "No Content", headers);
+            return;
+        }
+        Json config_obj = plugins_state_json_.is_null() ? Json::object{} : plugins_state_json_;
+        if (config_obj.is_object()) {
+            auto obj = config_obj.as_object();
+            obj["version"] = kAppVersion;
+            config_obj = obj;
+        }
+        auto body_str = config_obj.dump(2);
+        headers["Content-Length"] = std::to_string(body_str.size());
+        connection.send_response_headers(200, status_reason(200), headers);
+        connection.send_text(body_str);
+        return;
+    }
+
+    if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || ctx.parts[1] == "sources" ||
+        (ctx.parts[1] == "fuentes" && ctx.query.find("action=") != std::string::npos) ||
+        (is_api_sources && request.method == "POST"))) {
+        auto action = query_get(ctx.query, "action");
+        if (is_api_sources && action.empty() && request.method == "POST") {
+            action = "import_sources";
+        }
+        std::map<std::string, std::string> headers = {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
+            {"Access-Control-Allow-Headers", "Content-Type"},
             {"Content-Type", "application/json; charset=utf-8"},
             {"Connection", "close"}
         };
@@ -1249,49 +1305,55 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                                 }
                             }
                         }
-                        // 2. Process "custom_lists" array
+                        // 2. Process "custom_lists" or "sources" array
+                        Json::array imp_custom;
                         if (j.contains("custom_lists") && j["custom_lists"].is_array()) {
-                            auto imp_custom = j["custom_lists"].as_array();
-                            for (const auto& item : imp_custom) {
-                                if (!item.is_object()) continue;
-                                auto c_obj = item.as_object();
-                                std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : (c_obj.contains("id") ? c_obj.at("id").as_string() : "");
-                                std::string c_title = c_obj.contains("title") ? c_obj.at("title").as_string() : c_name;
-                                std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : (c_obj.contains("uri") ? c_obj.at("uri").as_string() : "");
-                                bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool(true) : true;
+                            imp_custom = j["custom_lists"].as_array();
+                        } else if (j.contains("sources") && j["sources"].is_array()) {
+                            imp_custom = j["sources"].as_array();
+                        }
+                        for (const auto& item : imp_custom) {
+                            if (!item.is_object()) continue;
+                            auto c_obj = item.as_object();
+                            std::string c_name = c_obj.contains("name") ? c_obj.at("name").as_string() : (c_obj.contains("id") ? c_obj.at("id").as_string() : "");
+                            std::string c_title = c_obj.contains("title") ? c_obj.at("title").as_string() : c_name;
+                            std::string c_url = c_obj.contains("url") ? c_obj.at("url").as_string() : (c_obj.contains("uri") ? c_obj.at("uri").as_string() : "");
+                            bool c_enabled = c_obj.contains("enabled") ? c_obj.at("enabled").as_bool(true) : true;
 
-                                if (c_name.empty()) c_name = "fuente_" + std::to_string(imported_count + 1);
-                                if (c_title.empty()) c_title = c_name;
-                                if (c_url.empty() || !is_valid_source_url(c_url)) continue;
+                            if (c_name.empty()) c_name = "fuente_" + std::to_string(imported_count + 1);
+                            if (c_title.empty()) c_title = c_name;
+                            if (c_url.empty() || !is_valid_source_url(c_url)) continue;
 
-                                bool found = false;
-                                for (auto& existing : custom_arr) {
-                                    if (existing.is_object() && existing.as_object().contains("name") && existing.as_object().at("name").as_string() == c_name) {
-                                        Json::object ex_obj = existing.as_object();
-                                        ex_obj["title"] = c_title;
-                                        ex_obj["url"] = c_url;
-                                        ex_obj["enabled"] = c_enabled;
-                                        existing = ex_obj;
-                                        found = true;
-                                        break;
-                                    }
+                            bool found = false;
+                            for (auto& existing : custom_arr) {
+                                if (existing.is_object() && existing.as_object().contains("name") && existing.as_object().at("name").as_string() == c_name) {
+                                    Json::object ex_obj = existing.as_object();
+                                    ex_obj["title"] = c_title;
+                                    ex_obj["url"] = c_url;
+                                    ex_obj["enabled"] = c_enabled;
+                                    existing = ex_obj;
+                                    found = true;
+                                    break;
                                 }
-                                if (!found) {
-                                    custom_arr.push_back(Json::object{
-                                        {"name", c_name},
-                                        {"title", c_title},
-                                        {"url", c_url},
-                                        {"enabled", c_enabled}
-                                    });
-                                }
-                                imported_count++;
-                                add_custom_list_plugin(c_name, c_url);
                             }
+                            if (!found) {
+                                custom_arr.push_back(Json::object{
+                                    {"name", c_name},
+                                    {"title", c_title},
+                                    {"url", c_url},
+                                    {"enabled", c_enabled}
+                                });
+                            }
+                            imported_count++;
+                            add_custom_list_plugin(c_name, c_url);
                         }
                         // 3. Process top-level plugin keys if present
                         for (const auto& [k, v] : j.as_object()) {
-                            if (k != "urls" && k != "custom_lists" && k != "version" && known_predefined.count(k) > 0) {
-                                if (v.is_string() && is_valid_source_url(v.as_string())) {
+                            if (k != "urls" && k != "custom_lists" && k != "sources" && k != "version") {
+                                if (v.is_bool()) {
+                                    obj[k] = v.as_bool();
+                                    imported_count++;
+                                } else if (v.is_string() && is_valid_source_url(v.as_string()) && known_predefined.count(k) > 0) {
                                     urls_obj[k] = v.as_string();
                                     imported_count++;
                                     set_plugin_url(k, v.as_string());

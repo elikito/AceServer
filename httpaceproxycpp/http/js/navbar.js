@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v09.02.02)
+ * HTTPAceProxy — Unified Navigation Component (v09.02.03)
  */
 (function () {
     'use strict';
@@ -21,9 +21,13 @@
         const isLight = themeName === 'light';
         const mode = isLight ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', mode);
+        document.documentElement.classList.toggle('light', isLight);
+        document.documentElement.classList.toggle('dark', !isLight);
         if (document.body) {
             document.body.setAttribute('data-theme', mode);
             document.body.classList.toggle('light-theme', isLight);
+            document.body.classList.toggle('light', isLight);
+            document.body.classList.toggle('dark', !isLight);
         }
         localStorage.setItem('theme', mode);
         localStorage.setItem('aceproxy-theme', mode);
