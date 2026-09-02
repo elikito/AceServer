@@ -192,6 +192,50 @@ HttpClientResponse HttpClient::get(const std::string& url,
             }
         }
     }
+
+    bool is_local = (url.find("://127.0.0.1") != std::string::npos ||
+                     url.find("://localhost") != std::string::npos);
+    if (is_local) {
+        std::vector<std::string> local_candidates;
+        // 1. IPFS / Kubo container resolution if targeting port 8080/8180 or IPFS/IPNS paths
+        if (url.find(":8080") != std::string::npos || url.find(":8180") != std::string::npos ||
+            url.find("/ipfs/") != std::string::npos || url.find("/ipns/") != std::string::npos) {
+            std::string ipfs_cand = replace_all(url, "127.0.0.1:8180", "ipfs-node:8080");
+            ipfs_cand = replace_all(ipfs_cand, "localhost:8180", "ipfs-node:8080");
+            ipfs_cand = replace_all(ipfs_cand, "127.0.0.1:8080", "ipfs-node:8080");
+            ipfs_cand = replace_all(ipfs_cand, "localhost:8080", "ipfs-node:8080");
+            local_candidates.push_back(ipfs_cand);
+        }
+
+        // 2. Host Docker internal (ZeroNet 43110, host-bound services)
+        std::string host_cand = replace_all(url, "127.0.0.1", "host.docker.internal");
+        host_cand = replace_all(host_cand, "localhost", "host.docker.internal");
+        local_candidates.push_back(host_cand);
+
+        // 3. Docker bridge gateway (172.17.0.1 fallback)
+        std::string gw_cand = replace_all(url, "127.0.0.1", "172.17.0.1");
+        gw_cand = replace_all(gw_cand, "localhost", "172.17.0.1");
+        local_candidates.push_back(gw_cand);
+
+        // 4. Original URL
+        local_candidates.push_back(url);
+
+        std::string last_err;
+        for (const auto& cand_url : local_candidates) {
+            try {
+                auto resp = get_single(cand_url, headers, timeout_seconds, follow_redirects);
+                if (resp.status >= 200 && resp.status < 400 && !resp.body.empty()) {
+                    return resp;
+                }
+            } catch (const std::exception& e) {
+                last_err = e.what();
+            }
+        }
+        if (!last_err.empty()) {
+            throw std::runtime_error("Fallo al resolver fuente local (" + url + "): " + last_err);
+        }
+    }
+
     return get_single(url, headers, timeout_seconds, follow_redirects);
 }
 

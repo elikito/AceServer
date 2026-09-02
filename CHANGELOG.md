@@ -4,6 +4,36 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.02.02] - 2026-09-02
+
+### 🚀 Resolución de fuentes locales Docker, Sincronización de Tema y Mejoras en Web Player / Statplugin
+
+#### 1. Resolución de Fuentes Locales Docker (`127.0.0.1` / IPFS / ZeroNet)
+- **Fallback Automático en Contenedor Docker**: En `HttpClient::get` (`http_client.cpp`), si se solicita una URL dirigida a `127.0.0.1` o `localhost` (puertos 8080, 8180, 43110, etc.), el proxy prueba automáticamente resolución alternativa hacia:
+  - `http://ipfs-node:8080/` para peticiones de IPFS.
+  - `http://host.docker.internal:<PORT>/` conectando con el host gateway.
+  - `http://172.17.0.1:<PORT>/` hacia el bridge de red por defecto de Docker.
+- **Docker Compose Networking**: Añadida directiva `extra_hosts: ["host.docker.internal:host-gateway"]` en el servicio `httpaceproxy` dentro de `docker-compose.yml`.
+
+#### 2. Sincronización y Toggle Inmediato de Modo Claro / Oscuro
+- **Centralización en `navbar.js` y `footer.js`**: Eliminada duplicidad de escuchadores de eventos click que generaban condiciones de carrera entre `<html>` y `<body>`.
+- **Conmutación Instantánea sin Recarga**: `toggleTheme()` y `applyTheme()` actualizan simultáneamente `document.documentElement` y `document.body` (`data-theme` y clase `light-theme`), sincronizan `localStorage` (`theme` y `aceproxy-theme`) y despachan el evento global `themeChanged`.
+
+#### 3. Normalización y Lógica del Buscador (`/player` y `/statplugin`)
+- **Búsqueda Avanzada Multicriterio por Tokens**: Normalización profunda (`normalizeSearchText`) eliminando tildes, signos diacríticos, puntuación y aliases (`m+`, `movistar+`, `m.`, `\bm\b` -> `movistar`).
+- **Matching Desordenado**: Búsqueda insensible al orden de las palabras (`matchSearchTokens`), permitiendo que términos como "m+ deportes" coincidan con "14. M Deportes FHDa" y "Movistar Deportes 1".
+- **Espera a Resolución de Catálogo**: Tanto el reproductor como statplugin aseguran la carga y resolución completa de fuentes antes de ejecutar el filtro, evitando listas vacías.
+
+#### 4. Mejoras en el Reproductor Web (`/player`)
+- **Visualización y Copia de Content ID Completo**: Los 40 caracteres hexadecimales se muestran en tipografía monoespaciada (`.id-mono-text` / `.player-cid-badge`). Clic directo copia el hash al portapapeles con toast flotante `✓ ID copiado` y feedback inline temporal `✓ Copiado!`. Eliminado el icono redundante de portapapeles.
+- **Indicador de Salud de Enlace**: Badge unificado en la cabecera del reproductor (`#player-health-badge`) que consulta el estado real (`ONLINE`, `LOW_PEERS`, `OFFLINE`) con recuento de peers vía `/statplugin?action=get_health_one`.
+- **Manejo de Fallos de Reproducción y Watchdog**: Temporizador de arranque (10-12s) y captura de errores MSE (`MEDIA_MSE_ERROR` por HEVC o E-AC3). Si el canal no arranca, cancela el spinner de reconexión y muestra overlay con motivo explícito, botón directo «Abrir en VLC» y botón «Copiar enlace stream».
+
+#### 5. Consistencia de Diseño entre `/statplugin` y `/player`
+- Homogeneización de tarjetas bento, badges de estado (`badge-online`, `badge-low`, `badge-offline`), paleta de colores CSS compartida y tipografía monoespaciada para hashes AceStream.
+
+---
+
 ## [09.02.01] - 2026-09-02
 
 ### ⚙️ Sistema de Filtros Regex Personalizados por Canal y Reparación del Modo Claro/Oscuro

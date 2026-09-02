@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v09.02.01)
+ * HTTPAceProxy — Unified Navigation Component (v09.02.02)
  */
 (function () {
     'use strict';
@@ -19,21 +19,32 @@
 
     function applyTheme(themeName) {
         const isLight = themeName === 'light';
-        document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+        const mode = isLight ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', mode);
         if (document.body) {
+            document.body.setAttribute('data-theme', mode);
             document.body.classList.toggle('light-theme', isLight);
         }
-        localStorage.setItem('aceproxy-theme', isLight ? 'light' : 'dark');
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        localStorage.setItem('theme', mode);
+        localStorage.setItem('aceproxy-theme', mode);
         updateIcons(isLight);
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: mode, isLight: isLight } }));
     }
 
     function toggleTheme(e) {
-        if (e) e.stopPropagation();
-        const current = document.documentElement.getAttribute('data-theme') || (document.body && document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const current = document.documentElement.getAttribute('data-theme') ||
+                        (document.body && document.body.classList.contains('light-theme') ? 'light' : 'dark') ||
+                        'dark';
         const next = current === 'light' ? 'dark' : 'light';
         applyTheme(next);
     }
+
+    window.applyTheme = applyTheme;
+    window.toggleTheme = toggleTheme;
 
     // Apply immediately to head/html
     applyTheme(getSavedTheme());
@@ -41,10 +52,9 @@
     function initNavbar() {
         applyTheme(getSavedTheme());
 
-        // Bind all theme toggles
+        // Bind all theme toggles without duplicate listeners
         document.querySelectorAll('#theme-toggle, .theme-btn, .theme-toggle').forEach(btn => {
-            btn.removeEventListener('click', toggleTheme);
-            btn.addEventListener('click', toggleTheme);
+            btn.onclick = toggleTheme;
         });
 
         const nav = document.querySelector('.navbar');

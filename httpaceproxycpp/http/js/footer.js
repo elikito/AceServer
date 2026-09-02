@@ -12,7 +12,7 @@
 
     let canonicalIp = window.location.hostname || '127.0.0.1';
     let canonicalHostname = '';
-    let canonicalVersion = '09.02.01';
+    let canonicalVersion = '09.02.02';
     let ipResetTimer = null;
     let verResetTimer = null;
 
@@ -128,28 +128,42 @@
             });
         }
 
-        // 5. Gestión del tema Claro / Oscuro
+        // 5. Gestión del tema Claro / Oscuro sincronizado
         function updateThemeIcon(isLight) {
             if (!themeIcon) return;
             themeIcon.innerHTML = isLight ? SUN_SVG : MOON_SVG;
         }
 
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light-theme');
-            updateThemeIcon(true);
-        } else {
-            document.body.classList.remove('light-theme');
-            updateThemeIcon(false);
-        }
+        const initialLight = (localStorage.getItem('theme') === 'light');
+        updateThemeIcon(initialLight);
+
+        window.addEventListener('themeChanged', (e) => {
+            if (e.detail && typeof e.detail.isLight === 'boolean') {
+                updateThemeIcon(e.detail.isLight);
+            }
+        });
 
         if (themeToggle) {
-            themeToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.body.classList.toggle('light-theme');
-                const isLight = document.body.classList.contains('light-theme');
-                localStorage.setItem('theme', isLight ? 'light' : 'dark');
-                updateThemeIcon(isLight);
-            });
+            themeToggle.onclick = function (e) {
+                if (typeof window.toggleTheme === 'function') {
+                    window.toggleTheme(e);
+                } else {
+                    if (e) { e.preventDefault(); e.stopPropagation(); }
+                    const cur = document.documentElement.getAttribute('data-theme') ||
+                                (document.body && document.body.classList.contains('light-theme') ? 'light' : 'dark') ||
+                                'dark';
+                    const next = cur === 'light' ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', next);
+                    if (document.body) {
+                        document.body.setAttribute('data-theme', next);
+                        document.body.classList.toggle('light-theme', next === 'light');
+                    }
+                    localStorage.setItem('theme', next);
+                    localStorage.setItem('aceproxy-theme', next);
+                    updateThemeIcon(next === 'light');
+                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: next, isLight: next === 'light' } }));
+                }
+            };
         }
     }
 

@@ -783,29 +783,137 @@
             border: 1px solid rgba(255, 59, 48, 0.4);
         }
 
-        /* Player Header Content ID Badge */
-        .player-cid-badge {
+        /* Unified Health Badges */
+        .health-badge {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            background: rgba(76, 175, 80, 0.15);
-            border: 1px solid rgba(76, 175, 80, 0.4);
-            color: #4CAF50;
-            padding: 3px 10px;
+            padding: 3px 8px;
             border-radius: 20px;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .health-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .badge-online { background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.25); }
+        .badge-online .dot { background: #22c55e; box-shadow: 0 0 5px #22c55e; }
+
+        .badge-low { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); }
+        .badge-low .dot { background: #f59e0b; box-shadow: 0 0 5px #f59e0b; }
+
+        .badge-offline { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
+        .badge-offline .dot { background: #ef4444; }
+
+        .badge-unknown { background: var(--border-color); color: var(--text-muted); }
+        .badge-error { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* Player Header Content ID Badge - Full 40 hex monospace */
+        .player-cid-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #22c55e;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
             cursor: pointer;
             transition: all 0.2s ease;
-            user-select: none;
+            user-select: all;
             margin-left: 8px;
         }
 
-        .player-cid-badge:hover {
-            background: rgba(76, 175, 80, 0.3);
-            border-color: #4CAF50;
+        .player-cid-badge:hover,
+        .player-cid-badge.copied {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: #22c55e;
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+        }
+
+        /* Channel Card Ace ID Monospace */
+        .channel-ace-id {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: all;
+            word-break: break-all;
+        }
+
+        .channel-ace-id:hover,
+        .channel-ace-id.copied {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border-color: #22c55e;
+        }
+
+        /* Player Error & Fallback Overlay */
+        .player-error-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 14, 0.94);
+            backdrop-filter: blur(5px);
+            z-index: 25;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .player-vlc-btn {
+            background: #22c55e;
+            color: #ffffff !important;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .player-vlc-btn:hover {
+            background: #16a34a;
+        }
+
+        .player-vlc-btn.copy-btn {
+            background: #27272a;
+            color: #e4e4e7 !important;
+            border: 1px solid #3f3f46;
+        }
+
+        .player-vlc-btn.copy-btn:hover {
+            background: #3f3f46;
         }
 
         /* Active Playing Bento Card Highlight */
@@ -1177,13 +1285,10 @@
                     <span class="player-live-dot"></span>
                     <span id="player-title" class="player-title-text">Canal en Directo</span>
                     <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
+                    <span id="player-health-badge" class="health-badge badge-unknown" style="display: none;">• Sin datos</span>
                     <div id="player-content-id-box" class="player-cid-badge" style="display: none;"
-                        onclick="copyPlayerContentId()" title="Clic para copiar Content ID en reproducción">
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-                            <path
-                                d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
-                        </svg>
-                        <span id="player-cid-text">ID: ...</span>
+                        onclick="copyPlayerContentId()" title="Clic para copiar Content ID completo">
+                        <span id="player-cid-text"></span>
                     </div>
                 </div>
                 <div class="player-info-right">
@@ -1263,9 +1368,20 @@
                 </div>
             </div>
 
-            <div class="video-container" style="background: #000; text-align: center;">
+            <div class="video-container" style="background: #000; text-align: center; position: relative;">
                 <video id="web-player" controls autoplay
                     style="width: 100%; max-height: 480px; background: #000; border-radius: 0 0 8px 8px; display: block;"></video>
+                <div id="player-error-overlay" class="player-error-overlay" style="display: none;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">📺⚡</div>
+                    <div id="player-error-reason" style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">Canal no disponible o sin peers suficientes</div>
+                    <div style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px; max-width: 460px; line-height: 1.4;">
+                        El stream no ha arrancado o el códec de audio/vídeo (ej. AC3 o HEVC) no puede ser reproducido nativamente por el navegador.
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <a id="player-error-vlc-btn" href="#" class="player-vlc-btn" target="_blank">🚀 Abrir en VLC</a>
+                        <button id="player-error-copy-btn" class="player-vlc-btn copy-btn" onclick="copyCurrentStreamUrl()">📋 Copiar enlace stream</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1379,25 +1495,8 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            const themeToggle = document.getElementById('theme-toggle');
-            const themeIcon = document.getElementById('theme-icon');
-
-            if (localStorage.getItem('theme') === 'light') {
-                document.body.classList.add('light-theme');
-                setLightIcon(themeIcon);
-            }
-
-            if (themeToggle) {
-                themeToggle.addEventListener('click', () => {
-                    document.body.classList.toggle('light-theme');
-                    if (document.body.classList.contains('light-theme')) {
-                        localStorage.setItem('theme', 'light');
-                        setLightIcon(themeIcon);
-                    } else {
-                        localStorage.setItem('theme', 'dark');
-                        setDarkIcon(themeIcon);
-                    }
-                });
+            if (typeof applyTheme === 'function') {
+                applyTheme(localStorage.getItem('theme') || 'dark');
             }
 
             const hostIp = window.location.hostname || '127.0.0.1';
@@ -1418,6 +1517,21 @@
 
         let activeSourcesList = [];
         let globalChannelAceIdMap = {}; // Map: channelName/normalizedKey -> aceId
+        let isCatalogLoading = true;
+        let globalHealthCache = {};
+
+        async function fetchHealthMap() {
+            try {
+                const res = await fetch('/statplugin?action=get_health');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.health_map) {
+                        globalHealthCache = { ...globalHealthCache, ...data.health_map };
+                        renderChannels();
+                    }
+                }
+            } catch (e) { }
+        }
 
         async function preloadChannelAceIds() {
             try {
@@ -1440,7 +1554,7 @@
                         curName = '';
                     }
                 }
-                // Si allChannels ya se ha cargado en otra pestaña sin IDs, refrescar
+                // Si allChannels ya se ha cargado sin IDs, refrescar
                 if (allChannels && allChannels.length > 0) {
                     let updated = false;
                     allChannels.forEach(c => {
@@ -1460,10 +1574,14 @@
         }
 
         async function initSourcesAndLoad() {
-            preloadChannelAceIds();
+            isCatalogLoading = true;
+            setStatusText('Cargando catálogo completo de fuentes y canales...');
             try {
-                const res = await fetch('/config?action=get_config');
-                const config = await res.json();
+                const [_, configRes] = await Promise.all([
+                    preloadChannelAceIds(),
+                    fetch('/config?action=get_config').then(r => r.json()).catch(() => ({}))
+                ]);
+                const config = configRes || {};
                 if (config && config.version) {
                     document.querySelectorAll('.app-version').forEach(el => el.textContent = config.version);
                 }
@@ -1526,7 +1644,8 @@
                 activeSourcesList = sources;
                 currentSourceUrl = sources[0].url;
                 renderTabs();
-                loadData(currentSourceUrl);
+                await loadData(currentSourceUrl);
+                fetchHealthMap();
             } catch (err) {
                 console.warn('No se pudo cargar la configuración de fuentes, usando AIO:', err);
                 activeSourcesList = [
@@ -1535,7 +1654,10 @@
                 ];
                 currentSourceUrl = '/channels/favoritos.m3u';
                 renderTabs();
-                loadData(currentSourceUrl);
+                await loadData(currentSourceUrl);
+            } finally {
+                isCatalogLoading = false;
+                renderChannels();
             }
         }
 
@@ -1785,17 +1907,92 @@
             }
         }
 
+        let playbackWatchdogTimer = null;
+        let currentPlayingStreamUrl = '';
+
         function copyPlayerContentId() {
             const cidBox = document.getElementById('player-content-id-box');
             const fullCid = cidBox ? cidBox.getAttribute('data-full-cid') : '';
             if (!fullCid) return;
-            if (typeof copyToClipboard === 'function') {
-                copyToClipboard(fullCid);
-            } else if (navigator.clipboard) {
-                navigator.clipboard.writeText(fullCid);
+            copyTextToClipboard(fullCid, cidBox, '✓ ID copiado: ' + fullCid);
+        }
+
+        function copyCurrentStreamUrl() {
+            if (currentPlayingStreamUrl) {
+                copyTextToClipboard(currentPlayingStreamUrl, null, '✓ Enlace de stream copiado para VLC');
             }
-            if (typeof showToast === 'function') {
-                showToast('✓ Content ID copiado: ' + fullCid, 'success');
+        }
+
+        function showPlaybackFailure(reason, streamUrl) {
+            clearTimeout(playbackWatchdogTimer);
+            updatePlayerStatus(reason, 'error');
+            if (webMpegtsPlayer) {
+                try {
+                    webMpegtsPlayer.pause();
+                    webMpegtsPlayer.unload();
+                } catch (e) { }
+            }
+            const overlay = document.getElementById('player-error-overlay');
+            const reasonEl = document.getElementById('player-error-reason');
+            const vlcBtn = document.getElementById('player-error-vlc-btn');
+            if (overlay) {
+                if (reasonEl) reasonEl.textContent = reason;
+                if (vlcBtn && streamUrl) {
+                    const vlcUrl = streamUrl.replace(/^https?:\/\//i, 'vlc://');
+                    vlcBtn.href = vlcUrl;
+                }
+                overlay.style.display = 'flex';
+            }
+        }
+
+        async function updatePlayerHealthBadge(cid) {
+            const badge = document.getElementById('player-health-badge');
+            if (!badge) return;
+            if (!cid) {
+                badge.style.display = 'none';
+                return;
+            }
+            badge.style.display = 'inline-flex';
+
+            let cached = globalHealthCache[cid];
+            if (!cached) {
+                badge.className = 'health-badge badge-unknown';
+                badge.innerHTML = '<span class="dot"></span> Consultando...';
+                try {
+                    const resp = await fetch(`/statplugin?action=get_health_one&content_id=${cid}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && data.health) {
+                            cached = data;
+                            globalHealthCache[cid] = data;
+                        }
+                    }
+                } catch (e) { }
+            }
+
+            if (cached) {
+                const health = cached.health || 'UNKNOWN';
+                const peers = cached.peers ?? null;
+                const peersStr = peers !== null ? ` (${peers} peers)` : '';
+                if (health === 'ONLINE') {
+                    badge.className = 'health-badge badge-online';
+                    badge.innerHTML = `<span class="dot"></span> En Línea${peersStr}`;
+                } else if (health === 'LOW_PEERS') {
+                    badge.className = 'health-badge badge-low';
+                    badge.innerHTML = `<span class="dot"></span> Enjambre Lento${peersStr}`;
+                } else if (health === 'OFFLINE') {
+                    badge.className = 'health-badge badge-offline';
+                    badge.innerHTML = `<span class="dot"></span> Sin Fuentes${peersStr}`;
+                } else if (health === 'ERROR') {
+                    badge.className = 'health-badge badge-error';
+                    badge.innerHTML = `❌ Caído`;
+                } else {
+                    badge.className = 'health-badge badge-unknown';
+                    badge.innerHTML = `• Sin datos`;
+                }
+            } else {
+                badge.className = 'health-badge badge-unknown';
+                badge.innerHTML = `• Sin datos`;
             }
         }
 
@@ -1839,6 +2036,13 @@
         }
 
         function stopWebPlayer() {
+            clearTimeout(playbackWatchdogTimer);
+            currentPlayingStreamUrl = '';
+            const overlay = document.getElementById('player-error-overlay');
+            if (overlay) overlay.style.display = 'none';
+            const healthBadge = document.getElementById('player-health-badge');
+            if (healthBadge) healthBadge.style.display = 'none';
+
             if (nerdStatsInterval) {
                 clearInterval(nerdStatsInterval);
                 nerdStatsInterval = null;
@@ -1909,7 +2113,7 @@
 
             const streamUrl = `/content_id/${cid}/stream.ts`;
             const shortName = `AceStream Directo: ${cid.substring(0, 8)}...${cid.substring(32)}`;
-            playChannelInWebPlayer(streamUrl, shortName);
+            playChannelInWebPlayer(streamUrl, shortName, cid);
 
             const wrapper = document.getElementById('player-wrapper');
             if (wrapper) {
@@ -1919,6 +2123,7 @@
 
         function playChannelInWebPlayer(streamUrl, channelName, forceContentId) {
             stopWebPlayer();
+            currentPlayingStreamUrl = streamUrl;
 
             const wrapper = document.getElementById('player-wrapper');
             const titleEl = document.getElementById('player-title');
@@ -1933,7 +2138,7 @@
             const cidText = document.getElementById('player-cid-text');
             if (cidBox && cidText) {
                 if (currentCid && currentCid.length >= 10) {
-                    cidText.textContent = `ID: ${currentCid.substring(0, 8)}...${currentCid.substring(32)}`;
+                    cidText.textContent = currentCid;
                     cidBox.style.display = 'inline-flex';
                     cidBox.setAttribute('data-full-cid', currentCid);
                 } else {
@@ -1942,11 +2147,19 @@
                 }
             }
 
+            updatePlayerHealthBadge(currentCid);
             highlightPlayingCard(streamUrl, channelName, currentCid);
 
             currentStreamStats = { speedKBps: 0, fps: 0, totalBytes: 0, droppedFrames: 0, decodedFrames: 0 };
             lastDecodedFrames = 0;
             lastStatTime = Date.now();
+
+            let streamHasStartedPlaying = false;
+            playbackWatchdogTimer = setTimeout(() => {
+                if (!streamHasStartedPlaying) {
+                    showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+                }
+            }, 10000);
 
             if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
                 try {
@@ -2003,26 +2216,21 @@
                     webMpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
                         console.error('Error en mpegts player:', errorType, errorDetail, errorInfo);
                         if (errorDetail === mpegts.ErrorDetails.MEDIA_MSE_ERROR) {
-                            updatePlayerStatus('Códec no soportado (HEVC / E-AC3)', 'error');
-                            showToast('⚠ Este canal transmite en HEVC / E-AC3. Abre el enlace en VLC o tu cliente IPTV.', 'error');
-                            const vlcUrl = streamUrl.replace('http://', 'vlc://').replace('https://', 'vlc://');
-                            const playerStatus = document.getElementById('player-status-badge');
-                            if (playerStatus) {
-                                playerStatus.innerHTML = `Códec HEVC/E-AC3. <a href="${vlcUrl}" target="_blank" style="color:#4caf50;font-weight:bold;text-decoration:underline;margin-left:6px;">🚀 Abrir en VLC</a> | <a href="${streamUrl}" target="_blank" style="color:#64b5f6;font-weight:bold;text-decoration:underline;margin-left:4px;">Enlace Directo TS</a>`;
-                            }
+                            showPlaybackFailure('Códec no soportado en navegador (HEVC / AC3)', streamUrl);
                         } else {
-                            updatePlayerStatus('Reconectando...', 'loading');
+                            showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
                         }
                     });
 
                     webMpegtsPlayer.play().then(() => {
-                        updatePlayerStatus('En directo', 'live');
+                        updatePlayerStatus('Conectado', 'loading');
                     }).catch(err => {
                         console.warn('Error reproduciendo stream:', err);
-                        updatePlayerStatus('Cargando...', 'loading');
                     });
 
                     videoElement.onplaying = () => {
+                        streamHasStartedPlaying = true;
+                        clearTimeout(playbackWatchdogTimer);
                         updatePlayerStatus('En directo', 'live');
                         checkVideoAudioTracks(videoElement);
                     };
@@ -2036,19 +2244,23 @@
                     };
 
                     videoElement.onerror = () => {
-                        updatePlayerStatus('Error al conectar', 'error');
+                        clearTimeout(playbackWatchdogTimer);
+                        showPlaybackFailure('Error al conectar con el stream', streamUrl);
                     };
 
                 } catch (e) {
                     console.error('Excepción al crear mpegts player:', e);
-                    updatePlayerStatus('Error al conectar', 'error');
+                    showPlaybackFailure('Error al inicializar reproductor mpegts', streamUrl);
                 }
             } else {
                 videoElement.src = streamUrl;
-                videoElement.play().then(() => {
+                videoElement.onplaying = () => {
+                    streamHasStartedPlaying = true;
+                    clearTimeout(playbackWatchdogTimer);
                     updatePlayerStatus('En directo', 'live');
-                }).catch(() => {
-                    updatePlayerStatus('Error al conectar', 'error');
+                };
+                videoElement.play().catch(() => {
+                    showPlaybackFailure('Error al reproducir stream directo', streamUrl);
                 });
             }
 
@@ -2125,7 +2337,7 @@
             currentSourceUrl = sourceUrl || '/channels/favoritos.m3u';
             const currentSourceObj = activeSourcesList.find(s => s.url === currentSourceUrl) || { sourceName: 'Favoritos', label: '⭐ Favoritos' };
             const fetchUrl = currentSourceUrl + (currentSourceUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
-            fetch(fetchUrl)
+            return fetch(fetchUrl)
                 .then(res => res.text())
                 .then(async m3uText => {
                     allChannels = parseM3U(m3uText, currentSourceObj);
@@ -2369,30 +2581,59 @@
             return channels;
         }
 
+        function normalizeSearchText(str) {
+            if (!str) return '';
+            return str
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/movistar\+/g, 'movistar')
+                .replace(/m\+/g, 'movistar')
+                .replace(/m\./g, 'movistar')
+                .replace(/\bm\b/g, 'movistar')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+        }
+
+        function matchSearchTokens(queryTokens, ...fields) {
+            if (!queryTokens || queryTokens.length === 0) return true;
+            const combined = fields.map(f => normalizeSearchText(f)).join(' ');
+            return queryTokens.every(tok => combined.includes(tok));
+        }
+
         function renderChannels() {
             const container = document.getElementById('channels-container');
-            const searchVal = document.getElementById('search').value.toLowerCase().trim();
+            const searchVal = document.getElementById('search') ? document.getElementById('search').value : '';
+            const normSearch = normalizeSearchText(searchVal);
+            const searchTokens = normSearch ? normSearch.split(/\s+/).filter(Boolean) : [];
+            const isSearching = searchTokens.length > 0;
+
             document.getElementById('loading-indicator').style.display = 'none';
             container.innerHTML = '';
+
+            if (isCatalogLoading) {
+                container.innerHTML = `
+                    <div class="loading-screen" style="padding: 40px 20px;">
+                        <div class="spinner dark" style="width: 28px; height: 28px; border-width: 3px; margin: 0 auto 16px auto;"></div>
+                        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Cargando catálogo de canales...</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Sincronizando fuentes y verificación de enlaces.</div>
+                    </div>
+                `;
+                return;
+            }
 
             container.classList.remove('channels-fade-in');
             void container.offsetWidth; // Trigger reflow for animation restart
             container.classList.add('channels-fade-in');
 
             const isAio = currentSourceUrl === '/aio';
-            const isSearching = searchVal.length > 0;
 
             const grouped = {};
             allChannels.forEach((chan, idx) => {
                 const chanAceId = chan.aceId || extractAceId(chan.url) || (!chan.url.includes('/auto/') ? (globalChannelAceIdMap[chan.name] || globalChannelAceIdMap[normalizeKey(chan.name)]) : '');
                 chan.aceId = chanAceId;
 
-                const nameMatch = chan.name.toLowerCase().includes(searchVal);
-                const groupMatch = chan.group.toLowerCase().includes(searchVal);
-                const sourceMatch = (chan.source || '').toLowerCase().includes(searchVal);
-                const aceIdMatch = (chan.aceId || '').toLowerCase().includes(searchVal);
-
-                if (isSearching && !nameMatch && !groupMatch && !sourceMatch && !aceIdMatch) {
+                const isMatch = !isSearching || matchSearchTokens(searchTokens, chan.name, chan.group, chan.source, chan.aceId);
+                if (!isMatch) {
                     return;
                 }
 
@@ -2457,6 +2698,15 @@
 
                     const aceId = item.chan.aceId || extractAceId(item.chan.url) || (!item.chan.url.includes('/auto/') ? (globalChannelAceIdMap[item.chan.name] || globalChannelAceIdMap[normalizeKey(item.chan.name)]) : '');
 
+                    const cachedHealth = globalHealthCache[aceId];
+                    let healthBadgeHtml = '';
+                    if (cachedHealth) {
+                        const h = cachedHealth.health || 'UNKNOWN';
+                        const cls = h === 'ONLINE' ? 'badge-online' : h === 'LOW_PEERS' ? 'badge-low' : h === 'OFFLINE' ? 'badge-offline' : 'badge-unknown';
+                        const label = h === 'ONLINE' ? 'En Línea' : h === 'LOW_PEERS' ? 'Lento' : h === 'OFFLINE' ? 'Sin Fuentes' : 'Estado';
+                        healthBadgeHtml = `<span class="health-badge ${cls}" style="font-size: 10px; padding: 1px 6px;"><span class="dot"></span> ${label}</span>`;
+                    }
+
                     card.innerHTML = `
                         <div class="channel-info">
                             <img class="channel-logo" src="${effectiveLogo || fallbackLogo}" onerror="this.src='${fallbackLogo}'" alt="Logo">
@@ -2464,10 +2714,10 @@
                                 <div class="channel-name" title="${item.chan.name}">${item.chan.name}</div>
                                 <div class="channel-meta-tags">
                                     ${item.chan.source ? `<span class="source-pill" title="Fuente: ${item.chan.source}">${item.chan.source}</span>` : ''}
+                                    ${healthBadgeHtml}
                                     ${aceId ? `
-                                        <div class="channel-ace-id" onclick="copyAceId('${aceId}', this, event)" title="Clic para copiar AceStream ID: ${aceId}">
-                                            <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" class="id-copy-icon"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                            <span class="id-text">ID: <code>${aceId.substring(0, 8)}...${aceId.substring(32)}</code></span>
+                                        <div class="channel-ace-id" onclick="copyAceId('${aceId}', this, event)" title="Clic para copiar Content ID completo: ${aceId}">
+                                            <span class="id-mono-text">${aceId}</span>
                                             <span class="id-copied-indicator">✓ Copiado!</span>
                                         </div>
                                     ` : ''}
@@ -2511,6 +2761,10 @@
         }
 
         function filterChannels() {
+            if (isCatalogLoading) {
+                setStatusText('Cargando catálogo antes de aplicar búsqueda...');
+                return;
+            }
             renderChannels();
             if (xmltvData) {
                 updateEPGForAll();

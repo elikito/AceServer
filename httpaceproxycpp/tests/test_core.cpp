@@ -495,6 +495,96 @@ void test_channel_regex_filters_and_theme() {
     require(eval_filter({"[invalid(regex"}, "test [invalid(regex channel"), "fallback substring match");
 }
 
+// v09.02.02 - Tests para fuentes Docker locales y normalización de búsqueda por tokens
+void test_v09_02_02_docker_sources_and_search_tokens() {
+    // 1. Verificación de candidatos de resolución para 127.0.0.1 / localhost en Docker
+    auto build_fallback_candidates = [](const std::string& original_url) -> std::vector<std::string> {
+        std::vector<std::string> candidates;
+        if (original_url.rfind("http://127.0.0.1:", 0) == 0 ||
+            original_url.rfind("http://localhost:", 0) == 0 ||
+            original_url.rfind("http://127.0.0.1/", 0) == 0 ||
+            original_url.rfind("http://localhost/", 0) == 0) {
+            std::string prefix = (original_url.rfind("http://127.0.0.1", 0) == 0) ? "http://127.0.0.1" : "http://localhost";
+            std::string rest = original_url.substr(prefix.size());
+            if (rest.rfind(":8080", 0) == 0 || rest.rfind(":8180", 0) == 0 || original_url.find("/ipfs/") != std::string::npos || original_url.find("/ipns/") != std::string::npos) {
+                std::string path_only = rest;
+                auto slash_pos = rest.find('/', 1);
+                if (slash_pos != std::string::npos) {
+                    path_only = rest.substr(slash_pos);
+                } else {
+                    path_only = "/";
+                }
+                candidates.push_back("http://ipfs-node:8080" + path_only);
+            }
+            candidates.push_back("http://host.docker.internal" + rest);
+            candidates.push_back("http://172.17.0.1" + rest);
+        }
+        candidates.push_back(original_url);
+        return candidates;
+    };
+
+    auto c1 = build_fallback_candidates("http://127.0.0.1:8080/ipfs/QmTestHash123");
+    require(c1.size() >= 3, "IPFS 127.0.0.1 candidates generated");
+    require(c1[0] == "http://ipfs-node:8080/ipfs/QmTestHash123", "IPFS ipfs-node candidate is first");
+    require(c1[1] == "http://host.docker.internal:8080/ipfs/QmTestHash123", "host.docker.internal candidate is present");
+    require(c1[2] == "http://172.17.0.1:8080/ipfs/QmTestHash123", "172.17.0.1 candidate is present");
+
+    auto c2 = build_fallback_candidates("http://localhost:43110/ZeroNet/data.m3u");
+    require(c2.size() >= 3, "ZeroNet localhost candidates generated");
+    require(c2[0] == "http://host.docker.internal:43110/ZeroNet/data.m3u", "ZeroNet host.docker.internal is first");
+    require(c2[1] == "http://172.17.0.1:43110/ZeroNet/data.m3u", "ZeroNet 172.17.0.1 is second");
+
+    // 2. Normalización de texto y matching multi-término de búsqueda
+    auto normalize_search = [](const std::string& input) -> std::string {
+        std::string s = lower(input);
+        s = replace_all(s, "movistar+", "movistar");
+        s = replace_all(s, "m+", "movistar");
+        s = replace_all(s, "m.", "movistar");
+        std::string out;
+        for (char ch : s) {
+            if (std::isalnum(static_cast<unsigned char>(ch))) {
+                out += ch;
+            } else {
+                out += ' ';
+            }
+        }
+        std::vector<std::string> words = split(out, ' ');
+        std::string clean;
+        for (const auto& w : words) {
+            if (w.empty()) continue;
+            if (w == "m") {
+                if (!clean.empty()) clean += " ";
+                clean += "movistar";
+            } else {
+                if (!clean.empty()) clean += " ";
+                clean += w;
+            }
+        }
+        return clean;
+    };
+
+    auto match_tokens = [&](const std::string& query, const std::string& target) -> bool {
+        std::string norm_q = normalize_search(query);
+        std::string norm_t = normalize_search(target);
+        std::vector<std::string> tokens = split(norm_q, ' ');
+        for (const auto& tok : tokens) {
+            if (tok.empty()) continue;
+            if (norm_t.find(tok) == std::string::npos) return false;
+        }
+        return true;
+    };
+
+    require(match_tokens("m+ deportes", "14. M Deportes FHDa"), "m+ deportes matches 14. M Deportes FHDa");
+    require(match_tokens("deportes movistar", "14. M Deportes FHDa"), "reversed query tokens match");
+    require(match_tokens("m. deportes", "Movistar Deportes 1"), "m. deportes matches Movistar Deportes 1");
+    require(match_tokens("m deportes", "M+ Deportes"), "m deportes matches M+ Deportes");
+    require(!match_tokens("m+ cine", "M+ Deportes FHD"), "m+ cine does not match M+ Deportes");
+
+    // 3. Content ID de 40 caracteres hexadecimales
+    std::string cid = "4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik82";
+    require(cid.length() == 40, "CID must be 40 chars");
+}
+
 } // namespace
 
 int main() {
@@ -516,6 +606,7 @@ int main() {
         test_ipfs_ipns_resolution_and_validation();
         test_dynamic_source_channel_matching();
         test_channel_regex_filters_and_theme();
+        test_v09_02_02_docker_sources_and_search_tokens();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

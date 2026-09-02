@@ -108,6 +108,8 @@ services:
     depends_on:
       - aceserve-modern
       - ipfs-node
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - aceproxy-net
 
