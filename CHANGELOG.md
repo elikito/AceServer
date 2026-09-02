@@ -4,6 +4,39 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.02.01] - 2026-09-02
+
+### ⚙️ Sistema de Filtros Regex Personalizados por Canal y Reparación del Modo Claro/Oscuro
+
+#### 1. Sistema de Filtros Regex Personalizados por Canal (`proxy.cpp` / `config/channel_filters.json`)
+- **Persistencia en backend**: Almacenamiento JSON persistente en `config/channel_filters.json` (con tolerancia a `.bak` y sincronización) mapeando `slug` -> patrones regex / palabras clave.
+- **Endpoints REST**:
+  - `GET /api/channel_filters`: Devuelve el mapa JSON de filtros activos (o el filtro de un canal si se especifica `?slug=...`).
+  - `POST /api/channel_filters`: Guarda o actualiza las reglas para un canal `slug`.
+- **Motor de Ingesta y Matching**:
+  - Evaluación contra expresiones regulares para cualquier fuente M3U/JSON (incluyendo IPFS/IPNS). Si coincide, se añade automáticamente como candidato válido al slug correspondiente.
+  - Compatibilidad de sintaxis: soporte transparente para flags inline `(?i)` en `std::regex` convirtiéndolo a case-insensitive y soporte para lookaheads negativos `(?!...)`.
+- **Reglas predeterminadas de fábrica para la familia Movistar Deportes**:
+  - `m-deportes`: `(?i)(m\+|m\.|movistar)[\s_]*deportes(?![\s_]*[2-8])`
+  - `m-deportes-2` a `m-deportes-8`: `(?i)(m\+|m\.|movistar)[\s_]*deportes[\s_]*[2-8]`
+
+#### 2. UI EPG: Botón «Personalizar» y Modal de Filtros (`epg/index.html` / `epg.js`)
+- **Nuevo Botón en la Tarjeta de Canal**: Añadido el botón `⚙ Personalizar` en la botonera superior derecha de cada tarjeta de canal junto a `Copiar URL`, `Ver` y `Fuentes`.
+- **Modal Interactivo de Configuración**:
+  - Campo de texto editable para la expresión regular o palabras clave del canal.
+  - Botón **«Copiar Regla»**: copia al portapapeles con toast flotante de confirmación.
+  - Botón **«Pegar y Aplicar»**: pega directamente desde el portapapeles en el campo.
+  - Botón **«Guardar y Reindexar»**: persiste la regla vía API REST y refresca/reindexa inmediatamente los candidatos del canal.
+  - Botón para restablecer la regla a los valores de fábrica o eliminarla.
+
+#### 3. Reparación Integral del Modo Claro / Oscuro (`http/css/navbar.css` y `http/js/navbar.js`)
+- **Normalización de Variables CSS Semánticas**: Definidos tokens CSS estándar (`--bg-primary`, `--bg-card`, `--text-primary`, `--text-secondary`, `--border-color`) aplicados uniformemente bajo `[data-theme="dark"]` y `[data-theme="light"]`.
+- **Contraste y Legibilidad**: Corregido contraste de textos, títulos, badges, cids y tarjetas para evitar texto ilegible en modo claro.
+- **Eliminación de Estilos Hardcodeados**: Reemplazados colores fijos (como `#ffffff` en pills sobre fondo claro) en `/player/index.html` y `/epg/index.html`.
+- **Persistencia**: Sincronización asegurada en `localStorage.getItem('theme')` y `localStorage.getItem('aceproxy-theme')`.
+
+---
+
 ## [08.30.08] - 2026-08-30
 
 ### ⚡ Indexación de Fuentes Dinámicas IPFS en EPG, Caché de Registros y Test Global de Salud

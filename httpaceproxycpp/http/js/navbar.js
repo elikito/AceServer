@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v08.30.08)
+ * HTTPAceProxy — Unified Navigation Component (v09.02.01)
  */
 (function () {
     'use strict';
@@ -8,7 +8,7 @@
     const MOON_SVG = '<path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3zm0-2a11 11 0 1 0 10.978 11.978A9.5 9.5 0 0 1 12 1.022V1z"/>';
 
     function getSavedTheme() {
-        return localStorage.getItem('aceproxy-theme') || localStorage.getItem('theme') || 'dark';
+        return localStorage.getItem('theme') || localStorage.getItem('aceproxy-theme') || 'dark';
     }
 
     function updateIcons(isLight) {

@@ -86,6 +86,15 @@ public:
     void load_custom_logos();
     void save_custom_logos();
 
+    // v09.02.01 — Filtros Regex Personalizados por Canal (channel_filters.json)
+    std::map<std::string, std::vector<std::string>> get_channel_filters() const;
+    std::vector<std::string> get_channel_filters_for_slug(const std::string& slug) const;
+    void set_channel_filter(const std::string& slug, const std::vector<std::string>& patterns);
+    void remove_channel_filter(const std::string& slug);
+    bool matches_channel_filter(const std::string& slug, const std::string& title) const;
+    void load_channel_filters();
+    void save_channel_filters();
+
     // v08.30.02 — Re-comprobación forzada y Panel Gestor de Motores AceStream
     Json recheck_sources(const std::string& slug_or_channel = "");
     Json get_engines_status();
@@ -154,6 +163,10 @@ private:
     // Logos personalizados persistidos
     mutable std::mutex custom_logos_mutex_;
     std::map<std::string, std::string> custom_logos_;
+
+    // v09.02.01 — Filtros Regex Personalizados por Canal
+    mutable std::mutex channel_filters_mutex_;
+    std::map<std::string, std::vector<std::string>> channel_filters_;
 };
 
 } // namespace httpace

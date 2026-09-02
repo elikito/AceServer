@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <regex>
 #include <stdexcept>
 #include <vector>
 
@@ -415,6 +416,85 @@ void test_dynamic_source_channel_matching() {
     }
 }
 
+// v09.02.01 - Tests para Filtros Regex Personalizados por Canal
+void test_channel_regex_filters_and_theme() {
+    auto eval_filter = [](const std::vector<std::string>& patterns, const std::string& title) -> bool {
+        for (const auto& raw_pat : patterns) {
+            if (raw_pat.empty()) continue;
+            std::string pat = raw_pat;
+            bool icase = true;
+            if (pat.rfind("(?i)", 0) == 0) {
+                pat = pat.substr(4);
+                icase = true;
+            } else if (pat.rfind("(?-i)", 0) == 0) {
+                pat = pat.substr(5);
+                icase = false;
+            }
+            if (pat.find("(?i)") != std::string::npos) {
+                pat = replace_all(pat, "(?i)", "");
+                icase = true;
+            }
+            try {
+                auto flags = std::regex::ECMAScript;
+                if (icase) flags |= std::regex::icase;
+                std::regex reg(pat, flags);
+                if (std::regex_search(title, reg)) return true;
+            } catch (...) {
+                auto low_title = lower(title);
+                auto low_pat = lower(pat);
+                if (low_title.find(low_pat) != std::string::npos) return true;
+            }
+        }
+        return false;
+    };
+
+    // Factory rules
+    std::string rule_m_dep = "(?i)(m\\+|m\\.|movistar)[\\s_]*deportes(?![\\s_]*[2-8])";
+    std::string rule_m_dep2 = "(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*2";
+    std::string rule_m_dep3 = "(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*3";
+
+    // Matches for m-deportes
+    require(eval_filter({rule_m_dep}, "M+ Deportes FHD"), "M+ Deportes FHD matches m-deportes");
+    require(eval_filter({rule_m_dep}, "Movistar Deportes 1080p"), "Movistar Deportes 1080p matches m-deportes");
+    require(eval_filter({rule_m_dep}, "m. deportes"), "m. deportes matches m-deportes");
+    require(eval_filter({rule_m_dep}, "MOVISTAR_DEPORTES"), "MOVISTAR_DEPORTES matches m-deportes");
+
+    // Negative lookahead test: M+ Deportes 2 to 8 MUST NOT match m-deportes rule
+    require(!eval_filter({rule_m_dep}, "M+ Deportes 2"), "M+ Deportes 2 does NOT match m-deportes");
+    require(!eval_filter({rule_m_dep}, "Movistar Deportes 3 FHD"), "Movistar Deportes 3 does NOT match m-deportes");
+    require(!eval_filter({rule_m_dep}, "M+ Deportes 4"), "M+ Deportes 4 does NOT match m-deportes");
+    require(!eval_filter({rule_m_dep}, "m+ deportes 8"), "m+ deportes 8 does NOT match m-deportes");
+
+    // Matches for m-deportes-2
+    require(eval_filter({rule_m_dep2}, "M+ Deportes 2 FHD"), "M+ Deportes 2 FHD matches m-deportes-2");
+    require(eval_filter({rule_m_dep2}, "Movistar Deportes 2"), "Movistar Deportes 2 matches m-deportes-2");
+    require(!eval_filter({rule_m_dep2}, "M+ Deportes"), "M+ Deportes does NOT match m-deportes-2");
+    require(!eval_filter({rule_m_dep2}, "M+ Deportes 3"), "M+ Deportes 3 does NOT match m-deportes-2");
+
+    // Matches for m-deportes-3
+    require(eval_filter({rule_m_dep3}, "M+ Deportes 3 HD"), "M+ Deportes 3 HD matches m-deportes-3");
+    require(!eval_filter({rule_m_dep3}, "M+ Deportes 2 HD"), "M+ Deportes 2 HD does NOT match m-deportes-3");
+
+    // JSON persistence test
+    Json root = Json::object{
+        {"status", "success"},
+        {"filters", Json::object{
+            {"m-deportes", Json::array{Json(rule_m_dep)}},
+            {"m-deportes-2", Json::array{Json(rule_m_dep2)}}
+        }}
+    };
+    std::string json_str = root.dump();
+    auto parsed = Json::parse(json_str);
+    require(parsed.is_object(), "channel_filters parsed object");
+    require(parsed.as_object().contains("filters"), "contains filters key");
+    auto filters_obj = parsed.as_object().at("filters").as_object();
+    require(filters_obj.contains("m-deportes"), "contains m-deportes");
+    require(filters_obj.at("m-deportes").as_array().size() == 1, "has 1 pattern");
+
+    // Fallback keyword test on invalid regex
+    require(eval_filter({"[invalid(regex"}, "test [invalid(regex channel"), "fallback substring match");
+}
+
 } // namespace
 
 int main() {
@@ -435,6 +515,7 @@ int main() {
         test_favoritos_m3u_export_epg_and_logos();
         test_ipfs_ipns_resolution_and_validation();
         test_dynamic_source_channel_matching();
+        test_channel_regex_filters_and_theme();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

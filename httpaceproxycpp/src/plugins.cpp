@@ -1280,6 +1280,87 @@ public:
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;
+        } else if (action == "get_channel_filters") {
+            std::string chan = query_get(ctx.query, "channel");
+            if (chan.empty()) chan = query_get(ctx.query, "slug");
+            auto filters = proxy_.get_channel_filters();
+            Json::object obj;
+            for (const auto& [k, v] : filters) {
+                Json::array arr;
+                for (const auto& p : v) arr.push_back(p);
+                obj[k] = arr;
+            }
+            Json::object res_obj{
+                {"status", "success"},
+                {"count", static_cast<double>(filters.size())},
+                {"filters", Json(obj)}
+            };
+            if (!chan.empty()) {
+                auto pats = proxy_.get_channel_filters_for_slug(chan);
+                Json::array p_arr;
+                for (const auto& p : pats) p_arr.push_back(p);
+                res_obj["slug"] = canonical_slug(chan);
+                res_obj["patterns"] = p_arr;
+                res_obj["rule"] = pats.empty() ? "" : pats[0];
+            }
+            Json res = res_obj;
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "set_channel_filter" || action == "save_channel_filter") {
+            std::string chan = query_get(ctx.query, "channel");
+            if (chan.empty()) chan = query_get(ctx.query, "slug");
+            std::vector<std::string> patterns;
+
+            if (!ctx.request.body.empty()) {
+                try {
+                    auto j = Json::parse(ctx.request.body);
+                    if (j.is_object()) {
+                        auto obj = j.as_object();
+                        if (chan.empty()) {
+                            if (obj.contains("slug") && obj.at("slug").is_string()) chan = obj.at("slug").as_string();
+                            else if (obj.contains("channel") && obj.at("channel").is_string()) chan = obj.at("channel").as_string();
+                        }
+                        if (obj.contains("rules") && obj.at("rules").is_array()) {
+                            for (const auto& el : obj.at("rules").as_array()) {
+                                if (el.is_string() && !el.as_string().empty()) patterns.push_back(el.as_string());
+                            }
+                        } else if (obj.contains("patterns") && obj.at("patterns").is_array()) {
+                            for (const auto& el : obj.at("patterns").as_array()) {
+                                if (el.is_string() && !el.as_string().empty()) patterns.push_back(el.as_string());
+                            }
+                        } else if (obj.contains("rule") && obj.at("rule").is_string()) {
+                            patterns.push_back(obj.at("rule").as_string());
+                        } else if (obj.contains("regex") && obj.at("regex").is_string()) {
+                            patterns.push_back(obj.at("regex").as_string());
+                        }
+                    }
+                } catch (...) {}
+            }
+
+            if (patterns.empty()) {
+                auto q_rule = query_get(ctx.query, "rule");
+                if (q_rule.empty()) q_rule = query_get(ctx.query, "regex");
+                if (q_rule.empty()) q_rule = query_get(ctx.query, "pattern");
+                if (!q_rule.empty()) patterns.push_back(url_decode(q_rule));
+            }
+
+            bool remove_req = query_get(ctx.query, "action") == "remove_channel_filter" || query_get(ctx.query, "delete") == "true";
+            if (remove_req && !chan.empty()) {
+                proxy_.remove_channel_filter(chan);
+            } else if (!chan.empty()) {
+                proxy_.set_channel_filter(chan, patterns);
+            }
+
+            Json::array p_arr;
+            for (const auto& p : patterns) p_arr.push_back(p);
+            Json res = Json::object{
+                {"status", "success"},
+                {"slug", canonical_slug(chan)},
+                {"patterns", Json(p_arr)},
+                {"message", remove_req ? "Regla eliminada" : "Regla guardada correctamente"}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
         }
 
         std::string relative = "index.html";

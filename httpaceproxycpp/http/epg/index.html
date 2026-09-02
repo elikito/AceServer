@@ -18,34 +18,54 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --bg-color: #121214;
+        :root,
+        :root[data-theme="dark"],
+        [data-theme="dark"] {
+            --bg-primary: #0f0f13;
+            --bg-secondary: #18181f;
+            --bg-tertiary: #22222b;
+            --bg-card: #1a1a1e;
             --card-bg: #1a1a1e;
             --border-color: #2d2d34;
-            --text-color: #e1e1e6;
-            --text-muted: #a8a8b2;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
             --header-bg: #1a1a1e;
             --stat-bg: #202024;
             --brand-color: #4CAF50;
             --accent-color: #764ba2;
             --input-bg: #121214;
+            --bg-color: #0f0f13;
+            color-scheme: dark;
         }
 
+        :root[data-theme="light"],
+        [data-theme="light"],
         body.light-theme {
-            --bg-color: #f4f4f5;
+            --bg-primary: #f4f4f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --bg-card: #ffffff;
             --card-bg: #ffffff;
             --border-color: #e4e4e7;
-            --text-color: #18181b;
-            --text-muted: #71717a;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-color: #0f172a;
+            --text-muted: #64748b;
             --header-bg: #ffffff;
             --stat-bg: #f4f4f5;
             --input-bg: #ffffff;
+            --brand-color: #16a34a;
+            --accent-color: #764ba2;
+            --bg-color: #f4f4f5;
+            color-scheme: light;
         }
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
             padding-bottom: 60px;
         }
@@ -202,7 +222,7 @@
             height: 56px;
             object-fit: contain;
             border-radius: 8px;
-            background-color: #141418;
+            background-color: var(--stat-bg);
             border: 1px solid var(--border-color);
             padding: 4px;
         }
@@ -258,7 +278,7 @@
         }
 
         .candidates-drawer {
-            background-color: rgba(0, 0, 0, 0.25);
+            background-color: var(--stat-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 14px;
@@ -288,7 +308,7 @@
 
         .candidates-table td {
             padding: 8px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
             color: var(--text-color);
         }
 
@@ -340,7 +360,7 @@
             gap: 4px;
             font-size: 11px;
             font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--card-bg);
             color: var(--text-muted);
             padding: 2px 6px;
             border-radius: 4px;
@@ -1108,7 +1128,7 @@
             <div class="epg-stats-bar">
                 <div class="stat-pill" style="background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.3); color: #22c55e;" title="Hora actual del sistema">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    <strong id="live-clock" style="color: #ffffff;">--:--:--</strong>
+                    <strong id="live-clock" style="color: var(--text-primary); font-weight: 700;">--:--:--</strong>
                 </div>
                 <div class="stat-pill">Canales: <strong id="stat-channels-count">0</strong></div>
                 <div class="stat-pill">Programas: <strong id="stat-programmes-count">0</strong></div>
@@ -1222,7 +1242,7 @@
             <div class="modal-body">
                 <!-- Preview actual -->
                 <div style="display: flex; align-items: center; gap: 16px; background: var(--stat-bg); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px;">
-                    <img id="logo-preview-img" src="" alt="Preview" style="width: 56px; height: 56px; object-fit: contain; background: #2d2d34; border-radius: 8px; padding: 4px;">
+                    <img id="logo-preview-img" src="" alt="Preview" style="width: 56px; height: 56px; object-fit: contain; background: var(--stat-bg); border-radius: 8px; padding: 4px; border: 1px solid var(--border-color);">
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-size: 13px; font-weight: 600; color: var(--text-color);">Logo Seleccionado</div>
                         <div id="logo-preview-url" style="font-size: 11px; color: var(--text-muted); word-break: break-all; font-family: monospace; margin-top: 2px;">-</div>
@@ -1264,6 +1284,59 @@
                     <button type="button" class="fav-action-btn" onclick="hideLogoModal()">Cancelar</button>
                     <button type="button" class="fav-action-btn fav-save-btn" onclick="saveSelectedChannelLogo()" style="background: var(--brand-color); color: #fff; font-weight: 700;">
                         💾 Guardar Logo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Personalización de Filtros Regex por Canal (v09.02.01) -->
+    <div class="modal-overlay" id="filter-modal" onclick="closeChannelFilterModal(event)">
+        <div class="modal-card" style="max-width: 620px;">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title">⚙ Personalizar Filtros Regex</h3>
+                    <div style="font-size: 13px; color: var(--brand-color); font-weight: 700; margin-top: 4px;" id="filter-modal-channel-name">Canal</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Slug: <code id="filter-modal-slug" style="color:var(--brand-color);">-</code></div>
+                </div>
+                <button class="modal-close" onclick="hideChannelFilterModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                    Define una expresión regular o palabras clave para asociar automáticamente streams M3U/JSON/IPFS/IPNS a este canal:
+                </p>
+
+                <!-- Input / Textarea de la regla Regex -->
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Expresión Regular o Palabras Clave
+                    </label>
+                    <textarea id="filter-modal-regex-input" class="search-box" rows="3" style="width: 100%; border-radius: 8px; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-family: monospace; font-size: 13px; resize: vertical;" placeholder="Ej: (?i)(m\+|m\.|movistar)[\s_]*deportes(?![\s_]*[2-8])"></textarea>
+                </div>
+
+                <!-- Botonera de utilidades: Copiar / Pegar -->
+                <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+                    <button type="button" class="action-btn-sm" onclick="copyFilterRule()" style="flex:1; justify-content:center;" title="Copiar patrón actual al portapapeles">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        📋 Copiar Regla
+                    </button>
+                    <button type="button" class="action-btn-sm" onclick="pasteFilterRule()" style="flex:1; justify-content:center;" title="Pegar patrón desde el portapapeles">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        📥 Pegar y Aplicar
+                    </button>
+                </div>
+
+                <div id="filter-modal-status" style="font-size: 12px; color: var(--text-muted); min-height: 18px; margin-bottom: 8px;"></div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+                <button type="button" class="fav-action-btn" onclick="resetChannelFilter()" style="color: #ff5252;" title="Eliminar regla personalizada o restablecer">
+                    🗑 Restablecer
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="fav-action-btn" onclick="hideChannelFilterModal()">Cancelar</button>
+                    <button type="button" class="fav-action-btn fav-save-btn" onclick="saveAndReindexChannelFilter()" style="background: var(--brand-color); color: #fff; font-weight: 700;">
+                        💾 Guardar y Reindexar
                     </button>
                 </div>
             </div>
@@ -1949,6 +2022,155 @@
             }
         }
 
+        // =========================================================================
+        // CANAL REGEX FILTERS MODAL (v09.02.01)
+        // =========================================================================
+        let currentFilterChannel = null;
+        let currentFilterSlug = '';
+
+        async function openChannelFilterModal(chanName, chanId, event) {
+            if (event) event.stopPropagation();
+            currentFilterChannel = { name: chanName, id: chanId };
+            currentFilterSlug = toCanonicalSlug(chanName);
+            if (!currentFilterSlug || currentFilterSlug === 'channel') {
+                currentFilterSlug = toCanonicalSlug(chanId);
+            }
+
+            document.getElementById('filter-modal-channel-name').textContent = chanName;
+            document.getElementById('filter-modal-slug').textContent = '/auto/' + currentFilterSlug;
+            const input = document.getElementById('filter-modal-regex-input');
+            const statusEl = document.getElementById('filter-modal-status');
+            input.value = '';
+            statusEl.textContent = 'Cargando regla actual del canal...';
+            document.getElementById('filter-modal').classList.add('show');
+
+            try {
+                const res = await fetch(`/api/channel_filters?slug=${encodeURIComponent(currentFilterSlug)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.patterns && data.patterns.length > 0) {
+                        input.value = data.patterns.join('\n');
+                        statusEl.textContent = `✓ Regla activa (${data.patterns.length} patrón/es cargado/s)`;
+                    } else if (data && data.filters && data.filters[currentFilterSlug]) {
+                        const pats = data.filters[currentFilterSlug];
+                        input.value = Array.isArray(pats) ? pats.join('\n') : pats;
+                        statusEl.textContent = '✓ Regla activa cargada';
+                    } else {
+                        input.value = '';
+                        statusEl.textContent = 'Sin regla específica (utilizando normalización canónica)';
+                    }
+                } else {
+                    statusEl.textContent = 'Listo para configurar regla';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Listo para configurar regla';
+            }
+            input.focus();
+        }
+
+        function hideChannelFilterModal() {
+            const modal = document.getElementById('filter-modal');
+            if (modal) modal.classList.remove('show');
+            currentFilterChannel = null;
+            currentFilterSlug = '';
+        }
+
+        function closeChannelFilterModal(e) {
+            if (e.target.id === 'filter-modal') {
+                hideChannelFilterModal();
+            }
+        }
+
+        async function copyFilterRule() {
+            const val = (document.getElementById('filter-modal-regex-input').value || '').trim();
+            if (!val) {
+                showToast('No hay ninguna regla para copiar', 'info');
+                return;
+            }
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(val);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = val;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                showToast('📋 Regla copiada al portapapeles', 'success');
+            } catch (err) {
+                showToast('Error al copiar al portapapeles: ' + err.message, 'error');
+            }
+        }
+
+        async function pasteFilterRule() {
+            try {
+                let text = '';
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    text = await navigator.clipboard.readText();
+                } else {
+                    text = prompt('Pega aquí la regla o expresión regular:');
+                }
+                if (text) {
+                    document.getElementById('filter-modal-regex-input').value = text.trim();
+                    showToast('📥 Regla pegada desde el portapapeles', 'info');
+                }
+            } catch (err) {
+                const text = prompt('Pega aquí la expresión regular o palabras clave:');
+                if (text) {
+                    document.getElementById('filter-modal-regex-input').value = text.trim();
+                    showToast('📥 Regla aplicada', 'info');
+                }
+            }
+        }
+
+        async function saveAndReindexChannelFilter() {
+            if (!currentFilterSlug) return;
+            const inputVal = (document.getElementById('filter-modal-regex-input').value || '').trim();
+            const patterns = inputVal.split('\n').map(s => s.trim()).filter(Boolean);
+
+            const targetSlug = currentFilterSlug;
+            hideChannelFilterModal();
+            showToast('💾 Guardando regla y reindexando fuentes...', 'info');
+
+            try {
+                const res = await fetch('/api/channel_filters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        slug: targetSlug,
+                        rules: patterns
+                    })
+                });
+
+                if (res.ok) {
+                    showToast('✓ Regla guardada. Reindexando candidatos...', 'success');
+                    recheckChannelSources(targetSlug);
+                } else {
+                    showToast('Error al guardar regla en el servidor', 'error');
+                }
+            } catch (err) {
+                showToast('Error guardando regla: ' + err.message, 'error');
+            }
+        }
+
+        async function resetChannelFilter() {
+            if (!currentFilterSlug) return;
+            const targetSlug = currentFilterSlug;
+            hideChannelFilterModal();
+
+            try {
+                await fetch(`/api/channel_filters?slug=${encodeURIComponent(targetSlug)}&action=delete`, {
+                    method: 'POST'
+                });
+                showToast('🗑 Regla restablecida a valores por defecto', 'info');
+                recheckChannelSources(targetSlug);
+            } catch (err) {
+                showToast('Error al restablecer regla: ' + err.message, 'error');
+            }
+        }
+
         function toCanonicalSlug(name) {
             if (!name) return 'channel';
             let n = name.toLowerCase()
@@ -2382,8 +2604,12 @@
                                 Ver
                             </button>
                             <button class="action-btn-sm" onclick="toggleCandidatesDrawer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', this, event)" title="Ver y gestionar fuentes / candidatos asignados">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                                 Fuentes
+                            </button>
+                            <button class="action-btn-sm" onclick="openChannelFilterModal('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Personalizar filtros Regex y palabras clave para este canal">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                ⚙ Personalizar
                             </button>
                             <button class="btn-fav-star ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="${isFav ? '#FFD700' : 'none'}" stroke="${isFav ? '#FFD700' : 'var(--text-muted)'}" stroke-width="2">
@@ -2484,6 +2710,7 @@
             return isNaN(d.getTime()) ? new Date() : d;
         }
     </script>
+    <script src="/epg/epg.js"></script>
     <script src="/js/footer.js"></script>
     <script src="/stat/js/navbar.js"></script>
 </body>

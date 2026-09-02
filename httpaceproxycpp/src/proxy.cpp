@@ -370,6 +370,7 @@ Proxy::Proxy(Config config)
     load_plugins_state();
     load_epg_favorites();
     load_custom_logos();
+    load_channel_filters();
     auto plugins = create_plugins(config_, http_client_, *this);
     for (auto& plugin : plugins) plugins_.add(plugin);
 }
@@ -517,6 +518,155 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             {"Connection", "close"}
         });
         return;
+    }
+
+    // -----------------------------------------------------------------------
+    // v09.02.01 — Endpoints REST: /api/channel_filters
+    // -----------------------------------------------------------------------
+    if ((ctx.parts.size() > 1 && ctx.parts[1] == "api" && ctx.parts.size() > 2 && ctx.parts[2] == "channel_filters") ||
+        (ctx.parts.size() > 1 && ctx.parts[1] == "channel_filters")) {
+        std::map<std::string, std::string> headers = {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE"},
+            {"Access-Control-Allow-Headers", "Content-Type"},
+            {"Content-Type", "application/json; charset=utf-8"},
+            {"Connection", "close"}
+        };
+
+        if (request.method == "OPTIONS") {
+            connection.send_response_headers(204, "No Content", headers);
+            return;
+        }
+
+        if (request.method == "GET") {
+            std::string slug = query_get(ctx.query, "slug");
+            if (slug.empty()) slug = query_get(ctx.query, "channel");
+
+            auto filters = get_channel_filters();
+            Json::object filters_obj;
+            for (const auto& [k, v] : filters) {
+                Json::array arr;
+                for (const auto& pat : v) arr.push_back(pat);
+                filters_obj[k] = arr;
+            }
+
+            Json::object res_obj{
+                {"status", "success"},
+                {"count", static_cast<double>(filters.size())},
+                {"filters", Json(filters_obj)}
+            };
+
+            if (!slug.empty()) {
+                auto pats = get_channel_filters_for_slug(slug);
+                Json::array p_arr;
+                for (const auto& p : pats) p_arr.push_back(p);
+                res_obj["slug"] = canonical_slug(slug);
+                res_obj["patterns"] = p_arr;
+                res_obj["rule"] = pats.empty() ? "" : pats[0];
+            }
+
+            Json res = res_obj;
+            auto body_str = res.dump(2);
+            headers["Content-Length"] = std::to_string(body_str.size());
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(body_str);
+            return;
+        }
+
+        if (request.method == "POST") {
+            std::string slug = query_get(ctx.query, "slug");
+            if (slug.empty()) slug = query_get(ctx.query, "channel");
+            std::vector<std::string> patterns;
+
+            std::string body_raw = request.body;
+            if (!body_raw.empty()) {
+                try {
+                    auto j = Json::parse(body_raw);
+                    if (j.is_object()) {
+                        auto obj = j.as_object();
+                        if (slug.empty()) {
+                            if (obj.contains("slug") && obj.at("slug").is_string()) slug = obj.at("slug").as_string();
+                            else if (obj.contains("channel") && obj.at("channel").is_string()) slug = obj.at("channel").as_string();
+                        }
+                        if (obj.contains("rules") && obj.at("rules").is_array()) {
+                            for (const auto& el : obj.at("rules").as_array()) {
+                                if (el.is_string() && !el.as_string().empty()) patterns.push_back(el.as_string());
+                            }
+                        } else if (obj.contains("patterns") && obj.at("patterns").is_array()) {
+                            for (const auto& el : obj.at("patterns").as_array()) {
+                                if (el.is_string() && !el.as_string().empty()) patterns.push_back(el.as_string());
+                            }
+                        } else if (obj.contains("rule") && obj.at("rule").is_string()) {
+                            patterns.push_back(obj.at("rule").as_string());
+                        } else if (obj.contains("regex") && obj.at("regex").is_string()) {
+                            patterns.push_back(obj.at("regex").as_string());
+                        } else if (obj.contains("pattern") && obj.at("pattern").is_string()) {
+                            patterns.push_back(obj.at("pattern").as_string());
+                        }
+
+                        // Batch update
+                        if (obj.contains("filters") && obj.at("filters").is_object()) {
+                            for (const auto& [k, v] : obj.at("filters").as_object()) {
+                                std::vector<std::string> batch_pats;
+                                if (v.is_array()) {
+                                    for (const auto& el : v.as_array()) {
+                                        if (el.is_string() && !el.as_string().empty()) batch_pats.push_back(el.as_string());
+                                    }
+                                } else if (v.is_string() && !v.as_string().empty()) {
+                                    batch_pats.push_back(v.as_string());
+                                }
+                                set_channel_filter(k, batch_pats);
+                            }
+                        }
+                    }
+                } catch (...) {}
+            }
+
+            if (patterns.empty()) {
+                auto q_rule = query_get(ctx.query, "rule");
+                if (q_rule.empty()) q_rule = query_get(ctx.query, "regex");
+                if (q_rule.empty()) q_rule = query_get(ctx.query, "pattern");
+                if (!q_rule.empty()) patterns.push_back(url_decode(q_rule));
+            }
+
+            bool remove_req = query_get(ctx.query, "action") == "delete" || query_get(ctx.query, "delete") == "true";
+            if (remove_req && !slug.empty()) {
+                remove_channel_filter(slug);
+            } else if (!slug.empty()) {
+                set_channel_filter(slug, patterns);
+            }
+
+            Json::array p_arr;
+            for (const auto& p : patterns) p_arr.push_back(p);
+
+            Json res = Json::object{
+                {"status", "success"},
+                {"slug", canonical_slug(slug)},
+                {"patterns", Json(p_arr)},
+                {"message", remove_req ? "Regla eliminada" : "Regla guardada correctamente"}
+            };
+            auto body_str = res.dump(2);
+            headers["Content-Length"] = std::to_string(body_str.size());
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(body_str);
+            return;
+        }
+
+        if (request.method == "DELETE") {
+            std::string slug = query_get(ctx.query, "slug");
+            if (slug.empty()) slug = query_get(ctx.query, "channel");
+            if (!slug.empty()) remove_channel_filter(slug);
+            Json res = Json::object{
+                {"status", "success"},
+                {"slug", canonical_slug(slug)},
+                {"message", "Regla eliminada"}
+            };
+            auto body_str = res.dump(2);
+            headers["Content-Length"] = std::to_string(body_str.size());
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(body_str);
+            return;
+        }
     }
 
     if (ctx.parts.size() > 1 && (ctx.parts[1] == "config" || ctx.parts[1] == "sources" || (ctx.parts[1] == "fuentes" && ctx.query.find("action=") != std::string::npos))) {
@@ -2956,7 +3106,8 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
             bool matches = (item_slug == target_slug) ||
                            (item_cname == target_cname) ||
                            (!item_slug_compact.empty() && item_slug_compact == target_slug_compact) ||
-                           (!item_cname_compact.empty() && item_cname_compact == target_cname_compact);
+                           (!item_cname_compact.empty() && item_cname_compact == target_cname_compact) ||
+                           matches_channel_filter(target_slug, item.name);
 
             if (matches) {
                 if (seen_cids.find(cid) != seen_cids.end()) continue;
@@ -3272,7 +3423,17 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             std::string slug = canonical_slug(item.name);
             if (slug.empty() || slug == "channel") continue;
 
-            if (fav_slugs.find(slug) == fav_slugs.end()) continue;
+            if (fav_slugs.find(slug) == fav_slugs.end()) {
+                bool matched_fav = false;
+                for (const auto& fav_candidate : fav_slugs) {
+                    if (matches_channel_filter(fav_candidate, item.name)) {
+                        slug = fav_candidate;
+                        matched_fav = true;
+                        break;
+                    }
+                }
+                if (!matched_fav) continue;
+            }
 
             ChannelCandidate c;
             c.name = item.name;
@@ -3726,6 +3887,230 @@ std::vector<std::string> Proxy::get_all_logos_for_channel(const std::string& cha
         }
     }
     return results;
+}
+
+// ---------------------------------------------------------------------------
+// v09.02.01 — Filtros Regex Personalizados por Canal (channel_filters.json)
+// ---------------------------------------------------------------------------
+static const std::map<std::string, std::vector<std::string>> kDefaultChannelFilters = {
+    {"m-deportes", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes(?![\\s_]*[2-8])"}},
+    {"m-deportes-2", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*2"}},
+    {"m-deportes-3", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*3"}},
+    {"m-deportes-4", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*4"}},
+    {"m-deportes-5", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*5"}},
+    {"m-deportes-6", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*6"}},
+    {"m-deportes-7", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*7"}},
+    {"m-deportes-8", {"(?i)(m\\+|m\\.|movistar)[\\s_]*deportes[\\s_]*8"}}
+};
+
+void Proxy::load_channel_filters() {
+    std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+    channel_filters_ = kDefaultChannelFilters;
+
+    auto cfg_dir = config_.get_config_dir();
+    auto filters_file = cfg_dir / "channel_filters.json";
+    auto bak_file = cfg_dir / "channel_filters.json.bak";
+    auto root_filters = std::filesystem::path(config_.root_dir) / "config" / "channel_filters.json";
+    auto root_bak = std::filesystem::path(config_.root_dir) / "config" / "channel_filters.json.bak";
+
+    auto parse_filters = [&](const std::string& content) -> bool {
+        if (content.empty()) return false;
+        try {
+            auto j = Json::parse(content);
+            if (j.is_object()) {
+                auto obj = j.as_object();
+                const Json::object* target_map = &obj;
+                if (obj.contains("filters") && obj.at("filters").is_object()) {
+                    target_map = &obj.at("filters").as_object();
+                }
+                for (const auto& [k, v] : *target_map) {
+                    if (k.empty()) continue;
+                    std::string slug = canonical_slug(k);
+                    std::vector<std::string> pats;
+                    if (v.is_array()) {
+                        for (const auto& p : v.as_array()) {
+                            if (p.is_string() && !p.as_string().empty()) pats.push_back(p.as_string());
+                        }
+                    } else if (v.is_string() && !v.as_string().empty()) {
+                        pats.push_back(v.as_string());
+                    }
+                    if (!pats.empty()) {
+                        channel_filters_[slug] = pats;
+                    }
+                }
+                return true;
+            }
+        } catch (...) {}
+        return false;
+    };
+
+    bool loaded = false;
+    if (std::filesystem::exists(filters_file)) {
+        loaded = parse_filters(read_file_binary(filters_file.string()));
+    }
+    if (!loaded && std::filesystem::exists(bak_file)) {
+        loaded = parse_filters(read_file_binary(bak_file.string()));
+    }
+    if (!loaded && std::filesystem::exists(root_filters)) {
+        loaded = parse_filters(read_file_binary(root_filters.string()));
+    }
+    if (!loaded && std::filesystem::exists(root_bak)) {
+        loaded = parse_filters(read_file_binary(root_bak.string()));
+    }
+    if (loaded) {
+        log_line("INFO", "Cargados filtros de canal desde channel_filters.json (" + std::to_string(channel_filters_.size()) + " reglas)");
+    }
+}
+
+void Proxy::save_channel_filters() {
+    std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+    try {
+        auto cfg_dir = config_.get_config_dir();
+        std::filesystem::create_directories(cfg_dir);
+        auto filters_file = cfg_dir / "channel_filters.json";
+        auto bak_file = cfg_dir / "channel_filters.json.bak";
+        auto root_filters = std::filesystem::path(config_.root_dir) / "config" / "channel_filters.json";
+        auto root_bak = std::filesystem::path(config_.root_dir) / "config" / "channel_filters.json.bak";
+
+        Json::object filters_obj;
+        for (const auto& [k, v] : channel_filters_) {
+            Json::array arr;
+            for (const auto& pat : v) {
+                arr.push_back(pat);
+            }
+            filters_obj[k] = arr;
+        }
+
+        Json root = Json::object{
+            {"status", "success"},
+            {"filters", Json(filters_obj)}
+        };
+
+        std::string json_str = root.dump(2);
+        std::ofstream out(filters_file, std::ios::binary);
+        if (out.is_open()) {
+            out << json_str;
+            out.close();
+            std::ofstream out_bak(bak_file, std::ios::binary);
+            if (out_bak.is_open()) {
+                out_bak << json_str;
+                out_bak.close();
+            }
+        }
+        if (std::filesystem::exists(root_filters.parent_path())) {
+            std::ofstream out_r(root_filters, std::ios::binary);
+            if (out_r.is_open()) {
+                out_r << json_str;
+                out_r.close();
+            }
+            std::ofstream out_rbak(root_bak, std::ios::binary);
+            if (out_rbak.is_open()) {
+                out_rbak << json_str;
+                out_rbak.close();
+            }
+        }
+    } catch (const std::exception& e) {
+        log_line("ERROR", "Error saving channel_filters.json: " + std::string(e.what()));
+    }
+}
+
+std::map<std::string, std::vector<std::string>> Proxy::get_channel_filters() const {
+    std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+    return channel_filters_;
+}
+
+std::vector<std::string> Proxy::get_channel_filters_for_slug(const std::string& slug) const {
+    if (slug.empty()) return {};
+    auto cslug = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+    auto it = channel_filters_.find(cslug);
+    if (it != channel_filters_.end()) return it->second;
+    it = channel_filters_.find(slug);
+    if (it != channel_filters_.end()) return it->second;
+    return {};
+}
+
+void Proxy::set_channel_filter(const std::string& slug, const std::vector<std::string>& patterns) {
+    if (slug.empty()) return;
+    auto cslug = canonical_slug(slug);
+    {
+        std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+        std::vector<std::string> valid_pats;
+        for (const auto& p : patterns) {
+            auto t = trim(p);
+            if (!t.empty()) valid_pats.push_back(t);
+        }
+        if (valid_pats.empty()) {
+            channel_filters_.erase(cslug);
+            channel_filters_.erase(slug);
+        } else {
+            channel_filters_[cslug] = valid_pats;
+        }
+    }
+    save_channel_filters();
+}
+
+void Proxy::remove_channel_filter(const std::string& slug) {
+    if (slug.empty()) return;
+    auto cslug = canonical_slug(slug);
+    {
+        std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+        channel_filters_.erase(cslug);
+        channel_filters_.erase(slug);
+    }
+    save_channel_filters();
+}
+
+bool Proxy::matches_channel_filter(const std::string& slug_or_query, const std::string& title) const {
+    if (slug_or_query.empty() || title.empty()) return false;
+    std::string slug = canonical_slug(slug_or_query);
+
+    std::vector<std::string> patterns;
+    {
+        std::lock_guard<std::mutex> lock(channel_filters_mutex_);
+        auto it = channel_filters_.find(slug);
+        if (it != channel_filters_.end()) {
+            patterns = it->second;
+        } else {
+            it = channel_filters_.find(slug_or_query);
+            if (it != channel_filters_.end()) patterns = it->second;
+        }
+    }
+
+    if (patterns.empty()) return false;
+
+    for (const auto& raw_pat : patterns) {
+        if (raw_pat.empty()) continue;
+        std::string pat = raw_pat;
+        bool icase = true;
+        if (pat.rfind("(?i)", 0) == 0) {
+            pat = pat.substr(4);
+            icase = true;
+        } else if (pat.rfind("(?-i)", 0) == 0) {
+            pat = pat.substr(5);
+            icase = false;
+        }
+        if (pat.find("(?i)") != std::string::npos) {
+            pat = replace_all(pat, "(?i)", "");
+            icase = true;
+        }
+
+        try {
+            auto flags = std::regex::ECMAScript;
+            if (icase) flags |= std::regex::icase;
+            std::regex reg(pat, flags);
+            if (std::regex_search(title, reg)) {
+                return true;
+            }
+        } catch (const std::exception&) {
+            auto low_title = lower(title);
+            auto low_pat = lower(pat);
+            if (low_title.find(low_pat) != std::string::npos) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // ---------------------------------------------------------------------------
