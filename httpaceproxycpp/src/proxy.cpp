@@ -790,7 +790,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             std::string relative_url = "/listas/locales/" + filename;
 
             {
-                std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                 Json::object obj;
                 if (plugins_state_json_.is_object()) {
                     obj = plugins_state_json_.as_object();
@@ -972,7 +972,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             std::string relative_url = "/listas/locales/interna.m3u";
 
             {
-                std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                 Json::object obj;
                 if (plugins_state_json_.is_object()) {
                     obj = plugins_state_json_.as_object();
@@ -1100,7 +1100,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 if (title.empty()) title = name;
                 auto decoded_title = url_decode(title);
                 {
-                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                     Json::object obj;
                     if (plugins_state_json_.is_object()) {
                         obj = plugins_state_json_.as_object();
@@ -1145,7 +1145,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             auto name = query_get(ctx.query, "name");
             if (!name.empty()) {
                 {
-                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                     Json::object obj;
                     if (plugins_state_json_.is_object()) {
                         obj = plugins_state_json_.as_object();
@@ -1178,7 +1178,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
 
             Json::object config_obj;
             {
-                std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                 if (plugins_state_json_.is_object()) {
                     config_obj = plugins_state_json_.as_object();
                 }
@@ -1273,7 +1273,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             int imported_count = 0;
             std::set<std::string> known_predefined = {"newera", "elcano", "af1c1onados", "acepl", "epg"};
 
-            std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+            std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
             Json::object obj;
             if (plugins_state_json_.is_object()) {
                 obj = plugins_state_json_.as_object();
@@ -1716,7 +1716,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 bool enabled = (enabled_str != "false");
                 if (title.empty()) title = name;
                 {
-                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                     Json::object obj;
                     if (plugins_state_json_.is_object()) {
                         obj = plugins_state_json_.as_object();
@@ -1770,7 +1770,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             auto name = query_get(ctx.query, "name");
             if (!name.empty()) {
                 {
-                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                     Json::object obj;
                     if (plugins_state_json_.is_object()) {
                         obj = plugins_state_json_.as_object();
@@ -1802,7 +1802,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             if (!name.empty() && !status_str.empty()) {
                 bool status = (status_str == "true");
                 {
-                    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+                    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
                     Json::object obj;
                     if (plugins_state_json_.is_object()) {
                         obj = plugins_state_json_.as_object();
@@ -2818,7 +2818,7 @@ Json Proxy::get_network_diagnostics() {
 }
 
 bool Proxy::is_plugin_enabled(const std::string& name) const {
-    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
     if (!plugins_state_json_.is_object()) return true;
     if (plugins_state_json_.contains("custom_lists") && plugins_state_json_["custom_lists"].is_array()) {
         for (const auto& item : plugins_state_json_["custom_lists"].as_array()) {
@@ -2835,7 +2835,7 @@ bool Proxy::is_plugin_enabled(const std::string& name) const {
 
 void Proxy::set_plugin_enabled(const std::string& name, bool enabled) {
     {
-        std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+        std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
         Json::object obj;
         if (plugins_state_json_.is_object()) {
             obj = plugins_state_json_.as_object();
@@ -2879,7 +2879,7 @@ void Proxy::set_plugin_enabled(const std::string& name, bool enabled) {
 }
 
 std::string Proxy::get_plugin_url(const std::string& name, const std::string& fallback) const {
-    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
     if (!plugins_state_json_.is_object()) return fallback;
     if (plugins_state_json_.contains("custom_lists") && plugins_state_json_["custom_lists"].is_array()) {
         for (const auto& item : plugins_state_json_["custom_lists"].as_array()) {
@@ -2902,7 +2902,7 @@ std::string Proxy::get_plugin_url(const std::string& name, const std::string& fa
 
 void Proxy::set_plugin_url(const std::string& name, const std::string& url) {
     {
-        std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+        std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
         Json::object obj;
         if (plugins_state_json_.is_object()) {
             obj = plugins_state_json_.as_object();
@@ -2948,7 +2948,7 @@ void Proxy::set_plugin_url(const std::string& name, const std::string& url) {
 }
 
 Json Proxy::plugins_state_json() const {
-    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
     return plugins_state_json_;
 }
 
@@ -2993,7 +2993,7 @@ void Proxy::remove_custom_list_plugin(const std::string& name) {
 }
 
 void Proxy::load_plugins_state() {
-    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
     auto cfg_path = config_.get_config_dir() / "plugins_state.json";
     auto root_path = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
     auto target = std::filesystem::exists(cfg_path) ? cfg_path : root_path;
@@ -3014,7 +3014,7 @@ void Proxy::load_plugins_state() {
 }
 
 void Proxy::save_plugins_state() {
-    std::lock_guard<std::mutex> lock(plugins_state_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
     auto cfg_dir = config_.get_config_dir();
     std::filesystem::create_directories(cfg_dir);
     auto cfg_path = cfg_dir / "plugins_state.json";

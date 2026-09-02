@@ -146,7 +146,7 @@ private:
     std::chrono::steady_clock::time_point ace_status_time_{};
     Json ace_status_cache_;
     Json plugins_state_json_;
-    mutable std::mutex plugins_state_mutex_;
+    mutable std::recursive_mutex plugins_state_mutex_;
     CpuInfoResult cpu_info_;
     std::string engine_mode_{"auto"};
     mutable std::mutex bunker_mutex_;
