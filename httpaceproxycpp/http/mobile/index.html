@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AceProxy Mobile">
     <meta name="theme-color" content="#0a0c10">
-    <meta name="description" content="HTTPAceProxy Mobile-First Web Player">
+    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.02">
     <title>AceProxy Mobile</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,7 +36,7 @@
             --text-muted: #64748b;
             --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
-            --touch-target: 44px;
+            --touch-target: 42px;
         }
 
         * {
@@ -57,13 +57,13 @@
             line-height: 1.4;
         }
 
-        /* Contenedor Principal */
+        /* Contenedor Principal Optimizado */
         .mobile-app {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
             width: 100%;
-            max-width: 600px;
+            max-width: 640px;
             margin: 0 auto;
             position: relative;
             padding-bottom: max(24px, env(safe-area-inset-bottom));
@@ -74,7 +74,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: max(8px, env(safe-area-inset-top)) 16px 8px 16px;
+            padding: max(8px, env(safe-area-inset-top)) 12px 8px 12px;
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border);
             z-index: 50;
@@ -86,16 +86,17 @@
             gap: 8px;
             text-decoration: none;
             color: var(--text-primary);
+            flex-shrink: 0;
         }
 
         .header-logo {
-            width: 26px;
-            height: 26px;
+            width: 24px;
+            height: 24px;
             border-radius: 6px;
         }
 
         .header-title {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: -0.3px;
             background: linear-gradient(135deg, #fff 40%, #94a3b8);
@@ -105,7 +106,7 @@
         }
 
         .header-badge {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 800;
             padding: 2px 6px;
             border-radius: 10px;
@@ -115,22 +116,27 @@
             text-transform: uppercase;
         }
 
+        /* Botones de acción situados a la izquierda del botón EPG */
         .header-links {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .header-icon-btn {
-            min-height: var(--touch-target);
-            min-width: var(--touch-target);
+            min-height: 36px;
+            min-width: 36px;
+            padding: 0 8px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 5px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 8px;
             color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.2s;
@@ -139,6 +145,13 @@
         .header-icon-btn:active {
             transform: scale(0.95);
             background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .header-icon-btn.accent {
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.35);
+            color: #4ade80;
         }
 
         /* 1. Reproductor Superior Sticky 16:9 */
@@ -185,15 +198,15 @@
         }
 
         .idle-play-btn {
-            width: 60px;
-            height: 60px;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
             background: linear-gradient(135deg, #22c55e, #16a34a);
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 8px 24px var(--accent-glow);
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             transition: transform 0.2s;
         }
 
@@ -202,29 +215,29 @@
         }
 
         .idle-play-btn svg {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             fill: #fff;
             margin-left: 3px;
         }
 
         .idle-text {
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             color: #fff;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .idle-subtext {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
         }
 
         .player-status-strip {
             position: absolute;
             bottom: 6px;
-            left: 10px;
-            right: 10px;
+            left: 8px;
+            right: 8px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -239,7 +252,7 @@
             font-size: 9px;
             font-weight: 800;
             letter-spacing: 0.5px;
-            padding: 2px 7px;
+            padding: 2px 6px;
             border-radius: 4px;
             display: inline-flex;
             align-items: center;
@@ -271,21 +284,21 @@
             border-radius: 4px;
         }
 
-        /* 2. Ficha de Programa Actual */
+        /* 2. Ficha de Información de Canal y EPG */
         .current-program-card {
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border);
-            padding: 14px 16px;
+            padding: 10px 14px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
 
         .channel-info-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
         }
 
         .channel-main-meta {
@@ -293,11 +306,12 @@
             align-items: center;
             gap: 10px;
             overflow: hidden;
+            flex: 1;
         }
 
         .channel-thumb {
-            width: 38px;
-            height: 38px;
+            width: 36px;
+            height: 36px;
             border-radius: 8px;
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -314,11 +328,24 @@
 
         .channel-display-name {
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 800;
             color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .channel-dial-badge {
+            font-size: 10px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.07);
+            padding: 1px 5px;
+            border-radius: 4px;
         }
 
         .channel-cid-strip {
@@ -331,16 +358,18 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            cursor: pointer;
         }
 
+        /* Ficha EPG Dinámica */
         .epg-program-box {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
         }
 
         .epg-title-row {
@@ -351,7 +380,7 @@
         }
 
         .epg-show-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: #fff;
             line-height: 1.3;
@@ -367,15 +396,14 @@
 
         .epg-progress-container {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 2px;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .epg-progress-track {
-            flex: 1;
+            width: 100%;
             height: 5px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 3px;
             overflow: hidden;
         }
@@ -384,21 +412,38 @@
             height: 100%;
             background: linear-gradient(90deg, #22c55e, #4ade80);
             border-radius: 3px;
-            transition: width 0.3s;
+            transition: width 0.4s ease;
         }
 
-        .epg-rem-text {
+        .epg-progress-labels {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+        }
+
+        .epg-pct-text {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .epg-rem-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(34, 197, 94, 0.12);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.25);
+            border-radius: 5px;
+            padding: 1px 6px;
             font-size: 10px;
             font-weight: 700;
-            color: var(--accent);
-            min-width: 60px;
-            text-align: right;
         }
 
         .epg-desc-preview {
             font-size: 11px;
             color: var(--text-muted);
-            line-height: 1.4;
+            line-height: 1.3;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             line-clamp: 2;
@@ -412,32 +457,27 @@
             line-clamp: unset;
         }
 
-        /* 3. Barra de Acciones Rápidas */
-        .quick-actions-bar {
-            background: var(--bg-surface);
-            border-bottom: 1px solid var(--border);
-            padding: 10px 16px;
+        /* 3. Selector de Calidad Dinámico en Cajitas de Texto / Pills */
+        .qualities-pills-bar {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 2px 0;
         }
 
-        .quality-segmented-control {
-            display: flex;
+        .qualities-pills-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .quality-pill {
+            flex: 1;
+            min-height: 34px;
+            padding: 0 10px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 3px;
-            gap: 3px;
-            width: 100%;
-        }
-
-        .quality-btn {
-            flex: 1;
-            min-height: 38px;
-            background: transparent;
-            border: none;
-            border-radius: 9px;
+            border-radius: 8px;
             color: var(--text-secondary);
             font-size: 12px;
             font-weight: 700;
@@ -446,142 +486,179 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 4px;
+            white-space: nowrap;
+            user-select: none;
         }
 
-        .quality-btn.active {
+        .quality-pill:active {
+            transform: scale(0.97);
+        }
+
+        .quality-pill.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #ffffff;
+            box-shadow: 0 2px 8px var(--accent-glow);
+        }
+
+        .quality-pill-seeds {
+            font-size: 9px;
+            opacity: 0.8;
+            font-family: var(--font-mono);
+            font-weight: normal;
+        }
+
+        /* 4. Lista Inferior de Canales (Pestañas Favoritos / Todos) */
+        .channels-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 14px;
+            gap: 10px;
+        }
+
+        .channel-tabs-bar {
+            display: flex;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 2px;
+            gap: 3px;
+        }
+
+        .channel-tab-btn {
+            flex: 1;
+            min-height: 36px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .channel-tab-btn.active {
             background: var(--accent);
             color: #ffffff;
             box-shadow: 0 2px 8px var(--accent-glow);
         }
 
-        .action-buttons-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .action-touch-btn {
-            min-height: var(--touch-target);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            padding: 8px 12px;
-            transition: all 0.2s;
-            user-select: none;
-        }
-
-        .action-touch-btn:active {
-            transform: scale(0.97);
-            background: var(--bg-elevated);
-        }
-
-        .action-touch-btn.accent {
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.08));
-            border-color: rgba(34, 197, 94, 0.4);
-            color: #4ade80;
-        }
-
-        /* 4. Lista Inferior de Favoritos */
-        .favorites-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 14px 16px;
-            gap: 12px;
-        }
-
-        .favorites-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .favorites-title {
-            font-size: 14px;
+        .channel-tab-badge {
+            font-size: 10px;
             font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            padding: 1px 5px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: inherit;
         }
 
-        .favorites-search {
+        .channel-tab-btn.active .channel-tab-badge {
+            background: rgba(0, 0, 0, 0.25);
+            color: #fff;
+        }
+
+        .channel-search-bar {
             position: relative;
             width: 100%;
         }
 
-        .favorites-search input {
+        .channel-search-bar input {
             width: 100%;
-            min-height: var(--touch-target);
+            min-height: 40px;
             background: var(--bg-surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 0 14px 0 38px;
+            border-radius: 10px;
+            padding: 0 12px 0 34px;
             font-size: 13px;
             color: #fff;
             outline: none;
             transition: border-color 0.2s;
         }
 
-        .favorites-search input:focus {
+        .channel-search-bar input:focus {
             border-color: var(--accent);
         }
 
-        .favorites-search svg {
+        .channel-search-bar svg {
             position: absolute;
-            left: 12px;
+            left: 10px;
             top: 50%;
             transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
             fill: var(--text-muted);
             pointer-events: none;
         }
 
-        .favorites-list {
+        .channels-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
-        .fav-row {
-            min-height: 58px;
+        .channel-row {
+            min-height: 56px;
             background: var(--bg-surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 8px 12px;
+            border-radius: 10px;
+            padding: 6px 10px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             cursor: pointer;
             transition: all 0.2s;
+            position: relative;
         }
 
-        .fav-row:active {
+        .channel-row:active {
             transform: scale(0.98);
             background: var(--bg-card);
         }
 
-        .fav-row.active {
+        .channel-row.active {
             border-color: var(--accent);
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.03));
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0.03));
+            box-shadow: 0 3px 10px rgba(34, 197, 94, 0.15);
         }
 
-        .fav-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+        .channel-star-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 18px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            border-radius: 6px;
+        }
+
+        .channel-star-btn:hover,
+        .channel-star-btn:active {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .channel-star-btn.is-fav {
+            color: #eab308;
+            text-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+        }
+
+        .channel-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
             background: var(--bg-card);
             object-fit: contain;
             border: 1px solid var(--border);
@@ -589,7 +666,7 @@
             flex-shrink: 0;
         }
 
-        .fav-info {
+        .channel-info {
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -597,37 +674,49 @@
             gap: 2px;
         }
 
-        .fav-name-line {
+        .channel-name-line {
             display: flex;
             align-items: center;
-            justify-content: space-between;
             gap: 6px;
+            overflow: hidden;
         }
 
-        .fav-name {
-            font-size: 14px;
+        .channel-dial-num {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 1px 4px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .channel-name {
+            font-size: 13px;
             font-weight: 700;
             color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            flex: 1;
         }
 
-        .fav-active-dot {
-            width: 8px;
-            height: 8px;
+        .channel-active-dot {
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
+            box-shadow: 0 0 6px var(--accent);
             display: none;
             flex-shrink: 0;
         }
 
-        .fav-row.active .fav-active-dot {
+        .channel-row.active .channel-active-dot {
             display: block;
         }
 
-        .fav-epg-line {
+        .channel-epg-line {
             font-size: 11px;
             color: var(--text-secondary);
             white-space: nowrap;
@@ -635,20 +724,43 @@
             text-overflow: ellipsis;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }
 
-        .fav-epg-line .live-tag {
+        .channel-epg-line .live-tag {
             color: var(--accent);
+            font-weight: 800;
+            font-size: 9px;
+            background: rgba(34, 197, 94, 0.15);
+            padding: 1px 4px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .channel-epg-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .channel-rem-badge {
+            margin-left: auto;
+            font-size: 9px;
             font-weight: 700;
-            font-size: 10px;
+            color: #4ade80;
+            background: rgba(34, 197, 94, 0.12);
+            padding: 1px 5px;
+            border-radius: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         /* Modal Bottom Sheet - ID Manual */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(6px);
             display: flex;
             align-items: flex-end;
@@ -656,7 +768,7 @@
             z-index: 200;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .modal-backdrop.open {
@@ -667,15 +779,15 @@
         .modal-sheet {
             background: var(--bg-surface);
             border-top: 1px solid var(--border);
-            border-radius: 20px 20px 0 0;
+            border-radius: 18px 18px 0 0;
             width: 100%;
-            max-width: 600px;
-            padding: 20px 20px max(24px, env(safe-area-inset-bottom)) 20px;
+            max-width: 640px;
+            padding: 18px 18px max(20px, env(safe-area-inset-bottom)) 18px;
             transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
         }
 
         .modal-backdrop.open .modal-sheet {
@@ -683,12 +795,11 @@
         }
 
         .sheet-handle {
-            width: 40px;
+            width: 36px;
             height: 4px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 2px;
             align-self: center;
-            margin-bottom: 4px;
         }
 
         .sheet-header {
@@ -698,8 +809,8 @@
         }
 
         .sheet-title {
-            font-size: 17px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 800;
             color: #fff;
         }
 
@@ -707,12 +818,13 @@
             background: transparent;
             border: none;
             color: var(--text-muted);
-            min-width: 36px;
-            min-height: 36px;
+            min-width: 32px;
+            min-height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            font-size: 16px;
         }
 
         .modal-input-group {
@@ -731,13 +843,13 @@
 
         .modal-input {
             width: 100%;
-            min-height: 48px;
+            min-height: 44px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 0 14px;
+            border-radius: 10px;
+            padding: 0 12px;
             font-family: var(--font-mono);
-            font-size: 13px;
+            font-size: 12px;
             color: #fff;
             outline: none;
         }
@@ -749,15 +861,15 @@
         .modal-actions {
             display: grid;
             grid-template-columns: 1fr 1.5fr;
-            gap: 10px;
-            margin-top: 4px;
+            gap: 8px;
+            margin-top: 2px;
         }
 
         .modal-btn-secondary {
-            min-height: var(--touch-target);
+            min-height: 42px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 10px;
             color: var(--text-secondary);
             font-size: 13px;
             font-weight: 600;
@@ -765,29 +877,29 @@
         }
 
         .modal-btn-primary {
-            min-height: var(--touch-target);
+            min-height: 42px;
             background: linear-gradient(135deg, #22c55e, #16a34a);
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             color: #fff;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 4px 14px var(--accent-glow);
+            box-shadow: 0 4px 12px var(--accent-glow);
         }
 
         /* Toast Feedback */
         .mobile-toast {
             position: fixed;
-            bottom: max(20px, env(safe-area-inset-bottom));
+            bottom: max(16px, env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%) translateY(100px);
             background: rgba(18, 21, 28, 0.95);
             backdrop-filter: blur(12px);
             border: 1px solid var(--border);
             color: #fff;
-            padding: 10px 18px;
-            border-radius: 30px;
+            padding: 9px 16px;
+            border-radius: 24px;
             font-size: 12px;
             font-weight: 600;
             display: flex;
@@ -795,7 +907,7 @@
             gap: 8px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             z-index: 300;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: none;
         }
 
@@ -807,7 +919,7 @@
 
 <body>
     <div class="mobile-app">
-        <!-- Cabecera Compacta -->
+        <!-- Cabecera Compacta: Botones de acción situados a la izquierda del botón EPG -->
         <header class="mobile-header">
             <a href="/mobile/" class="header-brand">
                 <img src="/stat/img/shesterenka.png" alt="Logo" class="header-logo">
@@ -815,13 +927,29 @@
                 <span class="header-badge">Mobile</span>
             </a>
             <div class="header-links">
-                <a href="/epg/" class="header-icon-btn" title="Guía EPG">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <!-- Botón Copiar Canal (VLC / stream virtual) a la izquierda de /epg -->
+                <button id="btn-header-copy-vlc" class="header-icon-btn accent" onclick="copyActiveChannelUrl()" title="Copiar enlace de reproducción (VLC / Stream)">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    <span>Copiar</span>
+                </button>
+                <!-- Botón ID Manual a la izquierda de /epg -->
+                <button id="btn-header-manual-id" class="header-icon-btn" onclick="openManualIdModal()" title="Reproducir Content ID Manual AceStream">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                        <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                    </svg>
+                    <span>ID</span>
+                </button>
+                <!-- Botón EPG -->
+                <a href="/epg/" class="header-icon-btn" title="Guía EPG Completa">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                         <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
                     </svg>
                 </a>
+                <!-- Botón Versión Escritorio -->
                 <a href="/player/" class="header-icon-btn" title="Versión Escritorio Bento">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                         <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 16H3V4h18v10z"/>
                     </svg>
                 </a>
@@ -837,7 +965,7 @@
                         <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     </div>
                     <div class="idle-text" id="idle-title">Toca para reproducir</div>
-                    <div class="idle-subtext" id="idle-sub">Selecciona un canal favorito abajo</div>
+                    <div class="idle-subtext" id="idle-sub">Selecciona un canal de la guía abajo</div>
                 </div>
                 <div class="player-status-strip">
                     <span id="player-live-badge" class="player-badge-live" style="display: none;">
@@ -848,15 +976,18 @@
             </div>
         </div>
 
-        <!-- 2. Ficha de Programa Actual -->
+        <!-- 2. Ficha de Canal Actual con Información EPG en Tiempo Real y Calidades Dinámicas -->
         <section class="current-program-card">
             <div class="channel-info-row">
                 <div class="channel-main-meta">
                     <img id="active-channel-logo" class="channel-thumb" src="/stat/img/shesterenka.png" alt="Canal">
                     <div class="channel-names">
-                        <div id="active-channel-name" class="channel-display-name">Selecciona un canal</div>
-                        <div id="active-channel-cid" class="channel-cid-strip" onclick="copyActiveContentId()" title="Toca para copiar Content ID">
-                            <span id="active-cid-text">Sin stream activo</span>
+                        <div class="channel-display-name">
+                            <span id="active-channel-dial" class="channel-dial-badge">#--</span>
+                            <span id="active-channel-name">Sintonizando...</span>
+                        </div>
+                        <div id="active-channel-cid" class="channel-cid-strip" onclick="copyActiveContentId()" title="Toca para copiar Content ID activo">
+                            <span id="active-cid-text">Auto Engine</span>
                         </div>
                     </div>
                 </div>
@@ -872,57 +1003,47 @@
                     <div class="epg-progress-track">
                         <div id="epg-progress-fill" class="epg-progress-fill" style="width: 0%;"></div>
                     </div>
-                    <div id="epg-rem-time" class="epg-rem-text">- min</div>
+                    <div class="epg-progress-labels">
+                        <span id="epg-pct-text" class="epg-pct-text">--%</span>
+                        <span id="epg-rem-time" class="epg-rem-badge">⏱️ Quedan -- min</span>
+                    </div>
                 </div>
                 <div id="epg-show-desc" class="epg-desc-preview" onclick="this.classList.toggle('expanded')" title="Toca para expandir sinopsis">
-                    Cargando guía de programación...
+                    Sincronizando guía de eventos...
                 </div>
             </div>
-        </section>
 
-        <!-- 3. Barra de Acciones Rápidas -->
-        <section class="quick-actions-bar">
-            <!-- Selector de Calidad -->
-            <div class="quality-segmented-control">
-                <button class="quality-btn active" data-quality="auto" onclick="setStreamQuality('auto')">Auto</button>
-                <button class="quality-btn" data-quality="1080p" onclick="setStreamQuality('1080p')">1080p</button>
-                <button class="quality-btn" data-quality="720p" onclick="setStreamQuality('720p')">720p</button>
-                <button class="quality-btn" data-quality="sd" onclick="setStreamQuality('sd')">SD</button>
-            </div>
-
-            <!-- Acciones Táctiles -->
-            <div class="action-buttons-row">
-                <button class="action-touch-btn accent" onclick="copyVlcLink()">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                    </svg>
-                    <span>Copiar VLC</span>
-                </button>
-                <button class="action-touch-btn" onclick="openManualIdModal()">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
-                    </svg>
-                    <span>ID Manual</span>
-                </button>
+            <!-- Cajitas de Texto / Pills para Calidades y Variantes (FHDa, 720a, etc.) -->
+            <div id="qualities-container" class="qualities-pills-bar">
+                <button class="quality-pill active" data-quality="auto" onclick="selectQualityOption('auto')">Auto</button>
+                <button class="quality-pill" data-quality="1080p" onclick="selectQualityOption('1080p')">1080p</button>
+                <button class="quality-pill" data-quality="720p" onclick="selectQualityOption('720p')">720p</button>
+                <button class="quality-pill" data-quality="sd" onclick="selectQualityOption('sd')">SD</button>
             </div>
         </section>
 
-        <!-- 4. Lista Inferior de Favoritos -->
-        <section class="favorites-section">
-            <div class="favorites-header">
-                <div class="favorites-title">
+        <!-- 3. Lista Inferior de Canales EPG (Pestañas Favoritos / Todos) -->
+        <section class="channels-section">
+            <div class="channel-tabs-bar">
+                <button class="channel-tab-btn active" id="tab-btn-favs" onclick="switchChannelTab('favs')">
                     <span>⭐ Favoritos</span>
-                    <span id="fav-count" style="font-size: 11px; color: var(--accent);">(0)</span>
-                </div>
+                    <span id="fav-count-badge" class="channel-tab-badge">(0)</span>
+                </button>
+                <button class="channel-tab-btn" id="tab-btn-all" onclick="switchChannelTab('all')">
+                    <span>📺 Canales EPG</span>
+                    <span id="all-count-badge" class="channel-tab-badge">(...)</span>
+                </button>
             </div>
 
-            <div class="favorites-search">
+            <div class="channel-search-bar">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="search-favs" placeholder="Buscar canal favorito..." oninput="filterFavorites(this.value)">
+                <input type="text" id="channel-search-input" placeholder="Buscar canal o programa..." oninput="filterChannels(this.value)">
             </div>
 
-            <div id="favorites-container" class="favorites-list">
-                <!-- Se inyectan dinámicamente las filas de favoritos -->
+            <div id="channels-container" class="channels-list">
+                <div style="padding: 30px 10px; text-align: center; color: var(--text-muted);">
+                    Sincronizando canales EPG...
+                </div>
             </div>
         </section>
     </div>
@@ -932,12 +1053,12 @@
         <div class="modal-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle"></div>
             <div class="sheet-header">
-                <div class="sheet-title">Reproducir Content ID</div>
+                <div class="sheet-title">Reproducir Content ID Manual</div>
                 <button class="sheet-close-btn" onclick="closeManualIdModal()">✕</button>
             </div>
             <div class="modal-input-group">
                 <label class="modal-input-label">Content ID AceStream (40 caracteres)</label>
-                <input type="text" id="manual-cid-input" class="modal-input" placeholder="Pega el hash aquí..." maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <input type="text" id="manual-cid-input" class="modal-input" placeholder="Pega el hash de 40 caracteres..." maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
             <div class="modal-actions">
                 <button class="modal-btn-secondary" onclick="pasteFromClipboard()">📋 Pegar</button>
@@ -952,18 +1073,23 @@
     </div>
 
     <script>
-        // --- ESTADO GLOBAL MOBILE ---
-        let currentActiveChannel = null;
-        let selectedQuality = 'auto'; // 'auto', '1080p', '720p', 'sd'
-        let favoriteChannels = [];
-        let epgCache = {};
-        let channelKeyMap = {};
+        // --- ESTADO GLOBAL MOBILE v09.08.02 ---
+        const DEFAULT_EPG_URL = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz";
+        let epgChannels = [];
+        let epgProgrammes = {};
+        let customLogosMap = {};
+        let favoriteList = [];
+        let currentTab = 'favs'; // 'favs' o 'all'
+        let activeChannel = null;
+        let activeCandidates = [];
+        let activeQualityFilter = 'auto';
+        let currentPlayingCid = '';
+        let searchQuery = '';
         let mpegtsPlayer = null;
         let hlsPlayer = null;
-        let currentPlayingCid = '';
         let epgSyncTimer = null;
 
-        // Normalización canónica para emparejar EPG y diales
+        // Normalización canónica estricta compartida con C++ y /epg
         function toCanonicalSlug(name) {
             if (!name) return 'channel';
             let n = name.toLowerCase()
@@ -976,118 +1102,387 @@
             return n || 'channel';
         }
 
+        function getChannelEffectiveLogo(chan) {
+            if (!chan) return '/stat/img/shesterenka.png';
+            const slug = toCanonicalSlug(chan.name);
+            const slugId = toCanonicalSlug(chan.id);
+            if (customLogosMap[slug]) return customLogosMap[slug];
+            if (customLogosMap[slugId]) return customLogosMap[slugId];
+            if (customLogosMap[chan.name]) return customLogosMap[chan.name];
+            if (customLogosMap[chan.id]) return customLogosMap[chan.id];
+            return chan.logo || '/stat/img/shesterenka.png';
+        }
+
         // --- INICIALIZACIÓN ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            await Promise.all([
-                loadFavorites(),
-                loadEPGData()
-            ]);
-            epgSyncTimer = setInterval(updateActiveProgramCard, 30000);
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Cargar logos personalizados y favoritos guardados
+            await loadCustomLogos();
+            await loadServerFavorites();
+
+            // Cargar e indexar Guía EPG
+            await loadEpgData();
+
+            // Temporizador reactivo para barra de progreso y estado EPG cada 15 segundos
+            epgSyncTimer = setInterval(() => {
+                updateActiveProgramCard();
+            }, 15000);
         });
 
-        // --- CARGA DE FAVORITOS ---
-        async function loadFavorites() {
-            const container = document.getElementById('favorites-container');
-            container.innerHTML = '<div style="padding: 30px 10px; text-align: center; color: var(--text-muted);">Cargando favoritos...</div>';
-
+        // --- CARGA DE FAVORITOS Y LOGOS ---
+        async function loadServerFavorites() {
             try {
-                // Primero intentamos la playlist directa /channels/favoritos.m3u
-                const res = await fetch('/channels/favoritos.m3u');
-                if (res.ok) {
-                    const text = await res.text();
-                    favoriteChannels = parseFavoritesM3U(text);
-                }
-            } catch (err) {
-                console.warn('Error leyendo /channels/favoritos.m3u:', err);
-            }
-
-            // Si vino vacío, fallback a lista de EPG
-            if (favoriteChannels.length === 0) {
-                try {
-                    const epgFavsRes = await fetch('/epg?action=get_favorites');
-                    if (epgFavsRes.ok) {
-                        const data = await epgFavsRes.json();
-                        if (data.favorites && data.favorites.length > 0) {
-                            favoriteChannels = data.favorites.map((fav, i) => ({
-                                name: fav,
-                                slug: toCanonicalSlug(fav),
-                                dial: i + 1,
-                                logo: '',
-                                url: `/auto/${encodeURIComponent(toCanonicalSlug(fav))}`
-                            }));
-                        }
+                const resp = await fetch('/epg?action=get_favorites');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.status === 'success' && Array.isArray(data.favorites)) {
+                        favoriteList = data.favorites;
+                        localStorage.setItem('epg_favorites', JSON.stringify(data.favorites));
                     }
-                } catch (e) { }
-            }
-
-            document.getElementById('fav-count').textContent = `(${favoriteChannels.length})`;
-            renderFavoritesList(favoriteChannels);
-
-            if (favoriteChannels.length > 0 && !currentActiveChannel) {
-                // Pre-seleccionar el primer canal sin forzar autoplay antes del primer toque
-                setupActiveChannelPreview(favoriteChannels[0]);
+                }
+            } catch (e) {
+                try {
+                    favoriteList = JSON.parse(localStorage.getItem('epg_favorites')) || [];
+                } catch (_) {
+                    favoriteList = [];
+                }
             }
         }
 
-        function parseFavoritesM3U(m3uText) {
-            const lines = m3uText.split('\n');
-            const list = [];
-            let currentItem = null;
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('#EXTINF:')) {
-                    const nameMatch = line.match(/,(.*)$/);
-                    const name = nameMatch ? nameMatch[1].trim() : 'Canal';
-                    const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
-                    const logo = logoMatch ? logoMatch[1].trim() : '';
-                    const tvgIdMatch = line.match(/tvg-id="([^"]*)"/i);
-                    const tvgId = tvgIdMatch ? tvgIdMatch[1].trim() : '';
-
-                    currentItem = {
-                        name,
-                        logo,
-                        tvgId,
-                        slug: toCanonicalSlug(name)
-                    };
-                } else if (line && !line.startsWith('#') && currentItem) {
-                    currentItem.url = line;
-                    list.push(currentItem);
-                    currentItem = null;
+        async function loadCustomLogos() {
+            try {
+                const resp = await fetch('/epg?action=get_custom_logos');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.status === 'success' && data.logos) {
+                        customLogosMap = data.logos;
+                        localStorage.setItem('custom_logos', JSON.stringify(data.logos));
+                    }
                 }
+            } catch (e) {
+                try {
+                    customLogosMap = JSON.parse(localStorage.getItem('custom_logos')) || {};
+                } catch (_) {}
+            }
+        }
+
+        // --- CARGA Y PARSEO ROBUSTO DE GUÍA EPG ---
+        async function loadEpgData(forceRefresh = false) {
+            const container = document.getElementById('channels-container');
+            try {
+                const cfgRes = await fetch('/config?action=get_config');
+                const cfg = await cfgRes.json();
+
+                let sources = (cfg && cfg.epg_sources) ? cfg.epg_sources.filter(s => s.enabled) : [];
+                if (sources.length === 0) {
+                    const singleUrl = (cfg && cfg.urls && cfg.urls.epg) ? cfg.urls.epg : DEFAULT_EPG_URL;
+                    sources = [{ name: 'default', title: 'EPG Principal', url: singleUrl, enabled: true }];
+                }
+
+                epgChannels = [];
+                epgProgrammes = {};
+
+                let loadedCount = 0;
+                for (const src of sources) {
+                    try {
+                        const response = await fetch(src.url + (forceRefresh ? '?t=' + Date.now() : ''));
+                        let xmlText = '';
+                        if (src.url.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
+                            try {
+                                const ds = new DecompressionStream('gzip');
+                                const decompressedStream = response.clone().body.pipeThrough(ds);
+                                xmlText = await new Response(decompressedStream).text();
+                            } catch (e) {
+                                xmlText = await response.text();
+                            }
+                        } else {
+                            xmlText = await response.text();
+                        }
+
+                        parseXmltvChunk(xmlText);
+                        loadedCount++;
+                    } catch (e) {
+                        console.error(`Error cargando fuente EPG (${src.name}):`, e);
+                    }
+                }
+
+                if (epgChannels.length === 0) {
+                    // Fallback rápido si el EPG externo no es accesible
+                    await loadChannelsFromM3uFallback();
+                }
+
+                // Si hay favoritos, comenzar en pestaña Favoritos; si no, mostrar Todos
+                if (favoriteList.length > 0) {
+                    currentTab = 'favs';
+                } else {
+                    currentTab = 'all';
+                }
+                updateTabButtons();
+
+                // Renderizar lista de canales
+                renderChannelsList();
+
+                // Auto-seleccionar primer canal disponible para vista previa
+                const renderList = getRenderableChannels();
+                if (renderList.length > 0 && !activeChannel) {
+                    selectChannel(renderList[0].chan, renderList[0].dial, false);
+                }
+
+            } catch (err) {
+                console.warn('Error en sincronización EPG, aplicando fallback:', err);
+                await loadChannelsFromM3uFallback();
+                renderChannelsList();
+            }
+        }
+
+        function parseXmltvChunk(xmlText) {
+            if (!xmlText) return;
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+            const existingChanIds = new Set(epgChannels.map(c => c.id));
+
+            // 1. Canales Canónicos EPG
+            const chanNodes = xmlDoc.getElementsByTagName('channel');
+            for (let i = 0; i < chanNodes.length; i++) {
+                const node = chanNodes[i];
+                const id = node.getAttribute('id');
+                if (!id) continue;
+                const nameNode = node.getElementsByTagName('display-name')[0];
+                const name = nameNode ? nameNode.textContent.trim() : id;
+                const iconNode = node.getElementsByTagName('icon')[0];
+                const logo = iconNode ? iconNode.getAttribute('src') : '';
+
+                if (!existingChanIds.has(id)) {
+                    epgChannels.push({ id, name, logo, slug: toCanonicalSlug(name) });
+                    existingChanIds.add(id);
+                }
+                if (!epgProgrammes[id]) {
+                    epgProgrammes[id] = [];
+                }
+            }
+
+            // 2. Programas y Horarios
+            const nowTime = new Date();
+            const minTime = new Date(nowTime.getTime() - 2 * 3600000);
+            const maxTime = new Date(nowTime.getTime() + 48 * 3600000);
+            const progNodes = xmlDoc.getElementsByTagName('programme');
+
+            for (let i = 0; i < progNodes.length; i++) {
+                const node = progNodes[i];
+                const channelId = node.getAttribute('channel');
+                const startStr = node.getAttribute('start');
+                const stopStr = node.getAttribute('stop');
+                const titleNode = node.getElementsByTagName('title')[0];
+                const descNode = node.getElementsByTagName('desc')[0];
+                const catNode = node.getElementsByTagName('category')[0];
+
+                if (channelId && startStr && stopStr && titleNode) {
+                    const startDate = parseXMLTVDate(startStr);
+                    const stopDate = parseXMLTVDate(stopStr);
+
+                    if (stopDate >= minTime && startDate <= maxTime) {
+                        const prog = {
+                            start: startDate,
+                            stop: stopDate,
+                            title: titleNode.textContent.trim(),
+                            desc: descNode ? descNode.textContent.trim() : 'Sin información detallada.',
+                            category: catNode ? catNode.textContent.trim() : 'General'
+                        };
+
+                        if (!epgProgrammes[channelId]) {
+                            epgProgrammes[channelId] = [];
+                        }
+                        epgProgrammes[channelId].push(prog);
+                    }
+                }
+            }
+
+            // Ordenar cronológicamente
+            for (const cid in epgProgrammes) {
+                epgProgrammes[cid].sort((a, b) => a.start - b.start);
+            }
+        }
+
+        async function loadChannelsFromM3uFallback() {
+            try {
+                const res = await fetch('/aio');
+                if (res.ok) {
+                    const text = await res.text();
+                    const lines = text.split('\n');
+                    const seen = new Set();
+                    let dial = 1;
+                    lines.forEach(l => {
+                        if (l.startsWith('#EXTINF:')) {
+                            const nameMatch = l.match(/,(.*)$/);
+                            const name = nameMatch ? nameMatch[1].trim() : 'Canal';
+                            const logoMatch = l.match(/tvg-logo="([^"]*)"/i);
+                            const logo = logoMatch ? logoMatch[1].trim() : '';
+                            const cSlug = toCanonicalSlug(name);
+                            if (!seen.has(cSlug)) {
+                                seen.add(cSlug);
+                                epgChannels.push({ id: cSlug, name, logo, slug: cSlug, dial: dial++ });
+                            }
+                        }
+                    });
+                }
+            } catch (_) {}
+        }
+
+        // --- GESTIÓN DE FAVORITOS ---
+        function isFavorite(chanId, chanName) {
+            if (!favoriteList || favoriteList.length === 0) return false;
+            const slug = toCanonicalSlug(chanName || chanId);
+            return favoriteList.some(f => f === chanId || f === chanName || toCanonicalSlug(f) === slug);
+        }
+
+        async function toggleFavorite(chanId, chanName, e) {
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            const slug = toCanonicalSlug(chanName || chanId);
+            let idx = favoriteList.indexOf(chanId);
+            if (idx === -1) {
+                idx = favoriteList.findIndex(f => toCanonicalSlug(f) === slug);
+            }
+
+            let added = false;
+            if (idx !== -1) {
+                favoriteList.splice(idx, 1);
+                added = false;
+            } else {
+                favoriteList.push(chanName || chanId);
+                added = true;
+            }
+
+            localStorage.setItem('epg_favorites', JSON.stringify(favoriteList));
+            try {
+                fetch('/epg?action=set_favorites_order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ favorites: favoriteList, favorites_order: favoriteList })
+                }).catch(() => {});
+            } catch (_) {}
+
+            renderChannelsList();
+            showToast(added ? `⭐ ${chanName || chanId} añadido a Favoritos` : `Quitado de Favoritos`);
+        }
+
+        // --- RENDERIZADO DE CANALES ---
+        function getRenderableChannels() {
+            let list = [];
+            if (currentTab === 'favs') {
+                favoriteList.forEach((favId, idx) => {
+                    const favSlug = toCanonicalSlug(favId);
+                    const chan = epgChannels.find(c => c.id === favId || toCanonicalSlug(c.name) === favSlug || toCanonicalSlug(c.id) === favSlug);
+                    if (chan) {
+                        list.push({ chan, dial: idx + 1, isFav: true });
+                    } else {
+                        // Entrada virtual de favorito si aún no cargó el XML
+                        list.push({ chan: { id: favId, name: favId, slug: favSlug, logo: '' }, dial: idx + 1, isFav: true });
+                    }
+                });
+            } else {
+                epgChannels.forEach((chan, idx) => {
+                    const isFav = isFavorite(chan.id, chan.name);
+                    let dial = idx + 1;
+                    if (isFav) {
+                        const fIdx = favoriteList.findIndex(f => f === chan.id || toCanonicalSlug(f) === chan.slug);
+                        if (fIdx !== -1) dial = fIdx + 1;
+                    }
+                    list.push({ chan, dial, isFav });
+                });
             }
             return list;
         }
 
-        function renderFavoritesList(channels) {
-            const container = document.getElementById('favorites-container');
-            if (channels.length === 0) {
-                container.innerHTML = `
-                    <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center;">
-                        <div style="font-size: 28px; margin-bottom: 8px;">⭐</div>
-                        <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">Sin canales en Favoritos</div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Marca canales con estrella en la Guía EPG para verlos aquí.</div>
-                        <a href="/epg/" style="display: inline-block; background: var(--accent); color: #fff; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 13px;">📅 Ir a Guía EPG</a>
-                    </div>
-                `;
+        function renderChannelsList() {
+            const container = document.getElementById('channels-container');
+            const favBadge = document.getElementById('fav-count-badge');
+            const allBadge = document.getElementById('all-count-badge');
+            if (favBadge) favBadge.textContent = `(${favoriteList.length})`;
+            if (allBadge) allBadge.textContent = `(${epgChannels.length})`;
+
+            let items = getRenderableChannels();
+
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                items = items.filter(item => {
+                    const c = item.chan;
+                    const inName = (c.name || '').toLowerCase().includes(q) || (c.slug || '').includes(q);
+                    const inDial = String(item.dial).includes(q);
+                    const prog = getLiveProgramForChannel(c);
+                    const inProg = prog && prog.title.toLowerCase().includes(q);
+                    return inName || inDial || inProg;
+                });
+            }
+
+            if (items.length === 0) {
+                if (currentTab === 'favs') {
+                    container.innerHTML = `
+                        <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center;">
+                            <div style="font-size: 30px; margin-bottom: 8px;">⭐</div>
+                            <div style="font-weight: 700; color: #fff; margin-bottom: 4px; font-size: 14px;">Sin canales en Favoritos</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+                                Toca la estrella ☆ en cualquiera de los <strong>${epgChannels.length} canales EPG</strong> para tenerlos aquí organizados.
+                            </div>
+                            <button onclick="switchChannelTab('all')" style="background: var(--accent); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;">
+                                📺 Ver Todos los Canales (${epgChannels.length})
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div style="padding: 24px 10px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                            No se encontraron canales para "${escapeHtml(searchQuery)}"
+                        </div>
+                    `;
+                }
                 return;
             }
 
-            container.innerHTML = channels.map((chan, idx) => {
-                const isActive = currentActiveChannel && (currentActiveChannel.slug === chan.slug || currentActiveChannel.name === chan.name);
-                const epgProgram = getEpgNowForChannel(chan);
-                const logoSrc = chan.logo || '/stat/img/shesterenka.png';
+            const now = new Date();
+            const format = { hour: '2-digit', minute: '2-digit', hour12: false };
+
+            container.innerHTML = items.map(item => {
+                const chan = item.chan;
+                const dial = item.dial;
+                const isFav = item.isFav;
+                const isActive = activeChannel && (activeChannel.slug === chan.slug || activeChannel.id === chan.id);
+                const logoSrc = getChannelEffectiveLogo(chan);
+                const prog = getLiveProgramForChannel(chan);
+
+                let epgHtml = '';
+                if (prog) {
+                    const startStr = prog.start.toLocaleTimeString('es-ES', format);
+                    const stopStr = prog.stop.toLocaleTimeString('es-ES', format);
+                    const remMin = Math.max(0, Math.round((prog.stop - now) / 60000));
+                    epgHtml = `
+                        <span class="live-tag">AHORA</span>
+                        <span class="channel-epg-title">${escapeHtml(prog.title)}</span>
+                        <span class="channel-rem-badge">⏱️ ${remMin}m</span>
+                    `;
+                } else {
+                    epgHtml = `
+                        <span class="live-tag" style="background: rgba(255, 255, 255, 0.06); color: var(--text-muted);">DIRECTO</span>
+                        <span class="channel-epg-title" style="color: var(--text-muted);">Emisión en directo</span>
+                    `;
+                }
 
                 return `
-                    <div class="fav-row ${isActive ? 'active' : ''}" onclick="selectAndPlayChannelByIndex(${idx})">
-                        <img class="fav-logo" src="${escapeHtml(logoSrc)}" onerror="this.src='/stat/img/shesterenka.png'" alt="">
-                        <div class="fav-info">
-                            <div class="fav-name-line">
-                                <span class="fav-name">${escapeHtml(chan.name)}</span>
-                                <span class="fav-active-dot"></span>
+                    <div class="channel-row ${isActive ? 'active' : ''}" onclick="selectAndPlayChannel('${escapeHtml(chan.slug || chan.id)}', ${dial})">
+                        <button class="channel-star-btn ${isFav ? 'is-fav' : ''}" onclick="toggleFavorite('${escapeHtml(chan.id)}', '${escapeHtml(chan.name)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
+                            ${isFav ? '★' : '☆'}
+                        </button>
+                        <img class="channel-logo" src="${escapeHtml(logoSrc)}" onerror="this.src='/stat/img/shesterenka.png'" alt="">
+                        <div class="channel-info">
+                            <div class="channel-name-line">
+                                <span class="channel-dial-num">#${dial}</span>
+                                <span class="channel-name">${escapeHtml(chan.name)}</span>
+                                <span class="channel-active-dot"></span>
                             </div>
-                            <div class="fav-epg-line">
-                                ${epgProgram ? `<span class="live-tag">AHORA:</span> <span>${escapeHtml(epgProgram.title)}</span>` : `<span style="color: var(--text-muted);">En directo</span>`}
+                            <div class="channel-epg-line">
+                                ${epgHtml}
                             </div>
                         </div>
                     </div>
@@ -1095,97 +1490,276 @@
             }).join('');
         }
 
-        function filterFavorites(query) {
-            if (!query) {
-                renderFavoritesList(favoriteChannels);
-                return;
-            }
-            const q = query.toLowerCase();
-            const filtered = favoriteChannels.filter(c => c.name.toLowerCase().includes(q) || c.slug.includes(q));
-            renderFavoritesList(filtered);
+        function switchChannelTab(tab) {
+            currentTab = tab;
+            updateTabButtons();
+            renderChannelsList();
         }
 
-        function selectAndPlayChannelByIndex(idx) {
-            const chan = favoriteChannels[idx];
-            if (!chan) return;
-            playChannel(chan);
+        function updateTabButtons() {
+            const btnFavs = document.getElementById('tab-btn-favs');
+            const btnAll = document.getElementById('tab-btn-all');
+            if (btnFavs && btnAll) {
+                btnFavs.classList.toggle('active', currentTab === 'favs');
+                btnAll.classList.toggle('active', currentTab === 'all');
+            }
+        }
+
+        function filterChannels(q) {
+            searchQuery = (q || '').trim();
+            renderChannelsList();
+        }
+
+        // --- PROGRAMACIÓN EPG DEL CANAL ACTIVO ---
+        function getLiveProgramForChannel(chan) {
+            if (!chan) return null;
+            const progList = epgProgrammes[chan.id] || epgProgrammes[chan.slug] || [];
+            if (!progList || progList.length === 0) return null;
+            const now = new Date();
+            return progList.find(p => now >= p.start && now < p.stop) || null;
+        }
+
+        function updateActiveProgramCard() {
+            if (!activeChannel) return;
+            const prog = getLiveProgramForChannel(activeChannel);
+
+            const titleEl = document.getElementById('epg-show-title');
+            const timeEl = document.getElementById('epg-show-time');
+            const fillEl = document.getElementById('epg-progress-fill');
+            const pctEl = document.getElementById('epg-pct-text');
+            const remEl = document.getElementById('epg-rem-time');
+            const descEl = document.getElementById('epg-show-desc');
+
+            if (prog) {
+                const now = new Date();
+                const format = { hour: '2-digit', minute: '2-digit', hour12: false };
+                const sStr = prog.start.toLocaleTimeString('es-ES', format);
+                const eStr = prog.stop.toLocaleTimeString('es-ES', format);
+                const total = prog.stop - prog.start;
+                const elapsed = Math.max(0, now - prog.start);
+                const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+                const remMin = Math.max(0, Math.round((prog.stop - now) / 60000));
+
+                titleEl.textContent = prog.title;
+                timeEl.textContent = `${sStr} - ${eStr}`;
+                fillEl.style.width = `${pct}%`;
+                pctEl.textContent = `${pct}% transcurrido`;
+                remEl.textContent = `⏱️ Quedan ${remMin} min`;
+                descEl.textContent = prog.desc || 'Sin sinopsis disponible.';
+            } else {
+                titleEl.textContent = activeChannel.name;
+                timeEl.textContent = 'En directo';
+                fillEl.style.width = '100%';
+                pctEl.textContent = 'En vivo';
+                remEl.textContent = '🔴 EN DIRECTO';
+                descEl.textContent = 'Guía EPG en tiempo real. Programa emitido en directo.';
+            }
+        }
+
+        // --- SINTONIZACIÓN Y SELECCIÓN AUTOMÁTICA POR SEMILLAS ---
+        async function selectChannel(chan, dial, startPlayback = true) {
+            activeChannel = chan;
+            activeChannel.dial = dial;
+
+            document.getElementById('active-channel-name').textContent = chan.name;
+            document.getElementById('active-channel-dial').textContent = dial ? `#${dial}` : '';
+            document.getElementById('active-channel-logo').src = getChannelEffectiveLogo(chan);
+            document.getElementById('idle-title').textContent = chan.name;
+            document.getElementById('idle-sub').textContent = 'Toca para iniciar reproducción';
+
+            updateActiveProgramCard();
+            renderChannelsList();
+
+            // Consultar candidatos y variantes para este canal canónico
+            const slug = chan.slug || toCanonicalSlug(chan.name);
+            await fetchCandidatesAndBuildQualityPills(slug, startPlayback);
+        }
+
+        async function selectAndPlayChannel(slugOrId, dial) {
+            const chan = epgChannels.find(c => c.slug === slugOrId || c.id === slugOrId) ||
+                         favoriteList.find(f => toCanonicalSlug(f) === slugOrId);
+            if (chan) {
+                const cObj = (typeof chan === 'string') ? { id: chan, name: chan, slug: toCanonicalSlug(chan) } : chan;
+                await selectChannel(cObj, dial, true);
+            }
         }
 
         function startCurrentOrFirstChannel() {
-            if (currentActiveChannel) {
-                playChannel(currentActiveChannel);
-            } else if (favoriteChannels.length > 0) {
-                playChannel(favoriteChannels[0]);
+            if (activeChannel) {
+                selectChannel(activeChannel, activeChannel.dial, true);
+            } else {
+                const list = getRenderableChannels();
+                if (list.length > 0) {
+                    selectChannel(list[0].chan, list[0].dial, true);
+                }
             }
         }
 
-        function setupActiveChannelPreview(chan) {
-            currentActiveChannel = chan;
-            document.getElementById('active-channel-name').textContent = chan.name;
-            if (chan.logo) {
-                document.getElementById('active-channel-logo').src = chan.logo;
+        // Extrae la etiqueta de versión específica (FHDa, 720a, 1080p, 720p, SD, etc.)
+        function extractCandidateQualityTag(candName, qualityLabel) {
+            if (candName) {
+                const m = candName.match(/\b(FHDa|720a|1080a|1080p|720p|576p|480p|4Ka|4K|UHD|FHD|HD|SD)\b/i);
+                if (m) {
+                    const tag = m[1];
+                    if (tag.toLowerCase() === 'fhda') return 'FHDa';
+                    if (tag.toLowerCase() === '720a') return '720a';
+                    if (tag.toLowerCase() === 'fhd') return 'FHD';
+                    if (tag.toLowerCase() === 'hd') return 'HD';
+                    if (tag.toLowerCase() === '1080p') return '1080p';
+                    if (tag.toLowerCase() === '720p') return '720p';
+                    return tag.toUpperCase();
+                }
             }
-            document.getElementById('idle-title').textContent = chan.name;
-            document.getElementById('idle-sub').textContent = 'Toca para iniciar reproducción';
-            updateActiveProgramCard();
+            return qualityLabel || 'SD';
         }
 
-        // --- REPRODUCCIÓN (Mobile 16:9 Adaptativo) ---
-        async function playChannel(chan) {
-            currentActiveChannel = chan;
-            setupActiveChannelPreview(chan);
+        async function fetchCandidatesAndBuildQualityPills(slug, shouldPlay = true) {
+            const qContainer = document.getElementById('qualities-container');
+            qContainer.innerHTML = `<span style="font-size: 11px; color: var(--text-muted); padding: 4px 8px;">Consultando versiones...</span>`;
 
-            // Marcar fila activa en lista
-            renderFavoritesList(favoriteChannels);
+            try {
+                const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=list`);
+                const data = await res.json();
+                activeCandidates = (data && Array.isArray(data.candidates)) ? data.candidates : [];
 
+                if (activeCandidates.length === 0) {
+                    qContainer.innerHTML = `
+                        <button class="quality-pill active" data-quality="auto">Auto</button>
+                    `;
+                    if (shouldPlay) {
+                        startPlaybackUrl(`/auto/${encodeURIComponent(slug)}/stream.ts`, 'Auto Engine', '');
+                    }
+                    return;
+                }
+
+                // Extraer variantes únicas de calidad
+                const qualityMap = new Map();
+                // Primera opción siempre Auto (que sintoniza la mejor opción por semillas)
+                qualityMap.set('auto', {
+                    key: 'auto',
+                    label: 'Auto',
+                    candidate: data.best_candidate || activeCandidates[0]
+                });
+
+                activeCandidates.forEach(cand => {
+                    const tag = extractCandidateQualityTag(cand.name, cand.quality_label);
+                    if (!qualityMap.has(tag)) {
+                        qualityMap.set(tag, {
+                            key: tag,
+                            label: tag,
+                            candidate: cand
+                        });
+                    }
+                });
+
+                // Construir cajitas de texto / pills
+                let pillsHtml = '';
+                qualityMap.forEach((val, key) => {
+                    const cand = val.candidate;
+                    const peersText = (cand && cand.peers > 0) ? ` <span class="quality-pill-seeds">(${cand.peers})</span>` : '';
+                    pillsHtml += `
+                        <button class="quality-pill ${key === activeQualityFilter ? 'active' : ''}" data-quality="${escapeHtml(key)}" onclick="selectQualityOption('${escapeHtml(key)}')">
+                            ${escapeHtml(val.label)}${peersText}
+                        </button>
+                    `;
+                });
+                qContainer.innerHTML = pillsHtml;
+
+                // Reproducir el canal cargando por defecto el que tenga más semillas (best_candidate)
+                if (shouldPlay) {
+                    const topCand = data.best_candidate || activeCandidates[0];
+                    activeQualityFilter = 'auto';
+                    updateQualityPillsActiveState('auto');
+                    playStreamCandidate(topCand, slug);
+                }
+
+            } catch (err) {
+                console.warn('Error listando candidatos:', err);
+                qContainer.innerHTML = `<button class="quality-pill active" data-quality="auto">Auto</button>`;
+                if (shouldPlay) {
+                    startPlaybackUrl(`/auto/${encodeURIComponent(slug)}/stream.ts`, 'Auto Engine', '');
+                }
+            }
+        }
+
+        function updateQualityPillsActiveState(qKey) {
+            document.querySelectorAll('.quality-pill').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-quality') === qKey);
+            });
+        }
+
+        async function selectQualityOption(qualityKey) {
+            activeQualityFilter = qualityKey;
+            updateQualityPillsActiveState(qualityKey);
+
+            if (!activeChannel) return;
+            const slug = activeChannel.slug || toCanonicalSlug(activeChannel.name);
+
+            if (qualityKey === 'auto') {
+                showToast(`Auto: Seleccionando candidato con más semillas`);
+                const topCand = activeCandidates.length > 0 ? activeCandidates[0] : null;
+                if (topCand) {
+                    playStreamCandidate(topCand, slug);
+                } else {
+                    startPlaybackUrl(`/auto/${encodeURIComponent(slug)}/stream.ts`, 'Auto Engine', '');
+                }
+                return;
+            }
+
+            // Buscar el candidato que coincide con este tag de calidad
+            const matched = activeCandidates.find(c => {
+                const tag = extractCandidateQualityTag(c.name, c.quality_label);
+                return tag.toLowerCase() === qualityKey.toLowerCase() ||
+                       (c.quality_label && c.quality_label.toLowerCase() === qualityKey.toLowerCase());
+            });
+
+            if (matched) {
+                showToast(`Calidad seleccionada: ${qualityKey}`);
+                playStreamCandidate(matched, slug);
+            } else {
+                showToast(`Sintonizando ${qualityKey}...`);
+                startPlaybackUrl(`/auto/${encodeURIComponent(slug)}?quality=${encodeURIComponent(qualityKey)}`, `Filtro ${qualityKey}`, '');
+            }
+        }
+
+        function playStreamCandidate(cand, slug) {
+            currentPlayingCid = cand.content_id || '';
+            const cidStrip = document.getElementById('active-cid-text');
+            if (currentPlayingCid) {
+                const peersLabel = (cand.peers !== undefined) ? ` (${cand.peers} seeds)` : '';
+                cidStrip.textContent = `CID: ${currentPlayingCid.substring(0, 10)}...${peersLabel}`;
+            } else {
+                cidStrip.textContent = `Auto Engine`;
+            }
+
+            const streamUrl = currentPlayingCid ? `/content_id/${currentPlayingCid}/stream.ts` : `/auto/${encodeURIComponent(slug)}/stream.ts`;
+            const engineLabel = cand.name ? cand.name.substring(0, 20) : 'Auto Engine';
+            startPlaybackUrl(streamUrl, engineLabel, currentPlayingCid);
+        }
+
+        // --- REPRODUCTOR HLS & MPEGTS ---
+        function startPlaybackUrl(streamUrl, engineLabel, cid) {
             const video = document.getElementById('mobile-video');
             const idleCover = document.getElementById('player-idle');
             idleCover.style.display = 'none';
             document.getElementById('player-live-badge').style.display = 'inline-flex';
+            document.getElementById('player-engine-badge').textContent = engineLabel || 'Auto Engine';
 
-            // Parar reproductores previos
+            // Parar instancias previas
             if (mpegtsPlayer) {
-                try { mpegtsPlayer.destroy(); } catch (e) { }
+                try { mpegtsPlayer.destroy(); } catch (e) {}
                 mpegtsPlayer = null;
             }
             if (hlsPlayer) {
-                try { hlsPlayer.destroy(); } catch (e) { }
+                try { hlsPlayer.destroy(); } catch (e) {}
                 hlsPlayer = null;
             }
 
-            // Resolver Content ID o stream URL considerando la calidad seleccionada
-            let streamUrl = chan.url;
-            const channelSlug = chan.slug || toCanonicalSlug(chan.name);
-
-            try {
-                const resolveUrl = `/auto/${encodeURIComponent(channelSlug)}?quality=${encodeURIComponent(selectedQuality)}&action=resolve`;
-                const r = await fetch(resolveUrl);
-                if (r.ok) {
-                    const data = await r.json();
-                    if (data.content_id) {
-                        currentPlayingCid = data.content_id;
-                        document.getElementById('active-cid-text').textContent = `CID: ${currentPlayingCid.substring(0, 10)}...`;
-                        streamUrl = `/content_id/${currentPlayingCid}/stream.ts`;
-                    }
-                }
-            } catch (err) {
-                console.warn('Error resolviendo calidad:', err);
-            }
-
-            if (!currentPlayingCid) {
-                const matchCid = streamUrl.match(/[a-f0-9]{40}/i);
-                if (matchCid) {
-                    currentPlayingCid = matchCid[0];
-                    document.getElementById('active-cid-text').textContent = `CID: ${currentPlayingCid.substring(0, 10)}...`;
-                }
-            }
-
-            // Reproducción con Hls.js si es m3u8 o mpegts si es TS/MSE
             if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
                 hlsPlayer = new Hls({ enableWorker: true, lowLatencyMode: true });
                 hlsPlayer.loadSource(streamUrl);
                 hlsPlayer.attachMedia(video);
-                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => { }));
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
             } else if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
                 try {
                     mpegtsPlayer = mpegts.createPlayer({
@@ -1200,179 +1774,29 @@
                     });
                     mpegtsPlayer.attachMediaElement(video);
                     mpegtsPlayer.load();
-                    mpegtsPlayer.play().catch(() => { });
+                    mpegtsPlayer.play().catch(() => {});
                 } catch (e) {
                     video.src = streamUrl;
-                    video.play().catch(() => { });
+                    video.play().catch(() => {});
                 }
             } else {
-                // Fallback nativo HTML5 (ej. Safari iOS con soporte HLS o directo)
                 video.src = streamUrl;
-                video.play().catch(() => { });
+                video.play().catch(() => {});
             }
 
-            updateActiveProgramCard();
-            showToast(`▶ Reproduciendo: ${chan.name}`);
+            showToast(`▶ Sintonizando: ${activeChannel ? activeChannel.name : 'Canal'}`);
         }
 
-        // --- SELECTOR DE CALIDAD ---
-        function setStreamQuality(quality) {
-            selectedQuality = quality;
-            document.querySelectorAll('.quality-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-quality') === quality);
-            });
-            showToast(`Calidad seleccionada: ${quality.toUpperCase()}`);
-
-            // Si hay un canal reproduciéndose, recargar con la nueva calidad seleccionada
-            if (currentActiveChannel) {
-                playChannel(currentActiveChannel);
-            }
-        }
-
-        // --- CARGA E ÍNDICE EPG ---
-        async function loadEPGData() {
-            try {
-                const res = await fetch('/data/epg/guiatv.xml');
-                if (res.ok) {
-                    const xml = await res.text();
-                    indexEPG(xml);
-                    updateActiveProgramCard();
-                    renderFavoritesList(favoriteChannels);
-                }
-            } catch (err) { }
-        }
-
-        function indexEPG(xmlText) {
-            epgCache = {};
-            channelKeyMap = {};
-            const now = new Date();
-            const minTime = new Date(now.getTime() - 2 * 3600000);
-            const maxTime = new Date(now.getTime() + 48 * 3600000);
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(xmlText, 'text/xml');
-
-            const channels = doc.getElementsByTagName('channel');
-            for (let i = 0; i < channels.length; i++) {
-                const node = channels[i];
-                const id = node.getAttribute('id');
-                if (!id) continue;
-                channelKeyMap[toCanonicalSlug(id)] = id;
-                channelKeyMap[id.toLowerCase()] = id;
-
-                const dNames = node.getElementsByTagName('display-name');
-                for (let j = 0; j < dNames.length; j++) {
-                    const txt = dNames[j].textContent.trim();
-                    channelKeyMap[toCanonicalSlug(txt)] = id;
-                    channelKeyMap[txt.toLowerCase()] = id;
-                }
-            }
-
-            const progs = doc.getElementsByTagName('programme');
-            for (let i = 0; i < progs.length; i++) {
-                const p = progs[i];
-                const chanId = p.getAttribute('channel');
-                const startStr = p.getAttribute('start');
-                const stopStr = p.getAttribute('stop');
-                const titleNode = p.getElementsByTagName('title')[0];
-                const descNode = p.getElementsByTagName('desc')[0];
-
-                if (chanId && startStr && stopStr && titleNode) {
-                    const start = parseXMLTVDate(startStr);
-                    const stop = parseXMLTVDate(stopStr);
-                    if (stop >= minTime && start <= maxTime) {
-                        if (!epgCache[chanId]) epgCache[chanId] = [];
-                        epgCache[chanId].push({
-                            title: titleNode.textContent.trim(),
-                            desc: descNode ? descNode.textContent.trim() : '',
-                            start,
-                            stop
-                        });
-                    }
-                }
-            }
-        }
-
-        function getEpgNowForChannel(chan) {
-            if (!chan) return null;
-            const candidates = [
-                toCanonicalSlug(chan.name),
-                toCanonicalSlug(chan.tvgId),
-                (chan.name || '').toLowerCase()
-            ].filter(Boolean);
-
-            let targetId = null;
-            for (const c of candidates) {
-                if (channelKeyMap[c]) {
-                    targetId = channelKeyMap[c];
-                    break;
-                }
-            }
-
-            if (!targetId || !epgCache[targetId]) return null;
-            const now = new Date();
-            return epgCache[targetId].find(p => now >= p.start && now < p.stop) || null;
-        }
-
-        function updateActiveProgramCard() {
-            if (!currentActiveChannel) return;
-            const prog = getEpgNowForChannel(currentActiveChannel);
-
-            const titleEl = document.getElementById('epg-show-title');
-            const timeEl = document.getElementById('epg-show-time');
-            const barEl = document.getElementById('epg-progress-fill');
-            const remEl = document.getElementById('epg-rem-time');
-            const descEl = document.getElementById('epg-show-desc');
-
-            if (prog) {
-                const now = new Date();
-                const format = { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hour12: false };
-                const sStr = prog.start.toLocaleTimeString('es-ES', format);
-                const eStr = prog.stop.toLocaleTimeString('es-ES', format);
-                const total = prog.stop - prog.start;
-                const elapsed = Math.max(0, now - prog.start);
-                const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-                const remMin = Math.max(0, Math.round((prog.stop - now) / 60000));
-
-                titleEl.textContent = prog.title;
-                timeEl.textContent = `${sStr} - ${eStr}`;
-                barEl.style.width = `${pct}%`;
-                remEl.textContent = `${remMin} min restantes`;
-                descEl.textContent = prog.desc || 'Sin sinopsis disponible.';
-            } else {
-                titleEl.textContent = currentActiveChannel.name;
-                timeEl.textContent = 'En directo';
-                barEl.style.width = '100%';
-                remEl.textContent = 'EN VIVO';
-                descEl.textContent = 'Guía EPG en tiempo real. Programa emitido en directo.';
-            }
-        }
-
-        function parseXMLTVDate(dateStr) {
-            if (!dateStr) return new Date();
-            const m = dateStr.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-]\d{2}):?(\d{2}))?/);
-            if (m) {
-                const utc = Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5]), parseInt(m[6]));
-                if (m[7] !== undefined) {
-                    const offset = (parseInt(m[7]) * 60 + parseInt(m[8] || '0')) * 60000;
-                    return new Date(utc - offset);
-                }
-                return new Date(utc);
-            }
-            return new Date();
-        }
-
-        // --- ACCIONES RÁPIDAS ---
-        function copyVlcLink() {
-            if (!currentActiveChannel) {
+        // --- ACCIONES DE CABECERA (Copiar Canal & ID Manual) ---
+        function copyActiveChannelUrl() {
+            if (!activeChannel) {
                 showToast('Selecciona un canal primero');
                 return;
             }
             const host = window.location.host || '127.0.0.1:8888';
-            const slug = currentActiveChannel.slug || toCanonicalSlug(currentActiveChannel.name);
-            const streamUrl = `http://${host}/auto/${encodeURIComponent(slug)}?quality=${encodeURIComponent(selectedQuality)}`;
-
-            copyToClipboard(streamUrl, `📋 Enlace VLC copiado: ${slug}`);
+            const slug = activeChannel.slug || toCanonicalSlug(activeChannel.name);
+            const streamUrl = `http://${host}/auto/${encodeURIComponent(slug)}/stream.ts`;
+            copyToClipboard(streamUrl, `📋 Enlace de ${activeChannel.name} copiado`);
         }
 
         function copyActiveContentId() {
@@ -1383,7 +1807,6 @@
             copyToClipboard(currentPlayingCid, `✓ Content ID copiado: ${currentPlayingCid}`);
         }
 
-        // --- MODAL ID MANUAL ---
         function openManualIdModal() {
             document.getElementById('manual-modal').classList.add('open');
             setTimeout(() => document.getElementById('manual-cid-input').focus(), 150);
@@ -1419,15 +1842,36 @@
             closeManualIdModal();
 
             const customChannel = {
+                id: `manual-${cid.substring(0, 8)}`,
                 name: `AceStream ${cid.substring(0, 8)}...`,
                 slug: `manual-${cid.substring(0, 8)}`,
-                url: `/content_id/${cid}/stream.ts`,
                 logo: '/stat/img/shesterenka.png'
             };
-            playChannel(customChannel);
+            activeChannel = customChannel;
+            document.getElementById('active-channel-name').textContent = customChannel.name;
+            document.getElementById('active-channel-dial').textContent = '#ID';
+            document.getElementById('active-channel-logo').src = customChannel.logo;
+            currentPlayingCid = cid;
+            document.getElementById('active-cid-text').textContent = `CID: ${cid.substring(0, 10)}...`;
+
+            startPlaybackUrl(`/content_id/${cid}/stream.ts`, `Manual CID`, cid);
         }
 
         // --- UTILIDADES ---
+        function parseXMLTVDate(dateStr) {
+            if (!dateStr) return new Date();
+            const m = dateStr.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-]\d{2}):?(\d{2}))?/);
+            if (m) {
+                const utc = Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5]), parseInt(m[6]));
+                if (m[7] !== undefined) {
+                    const offset = (parseInt(m[7]) * 60 + parseInt(m[8] || '0')) * 60000;
+                    return new Date(utc - offset);
+                }
+                return new Date(utc);
+            }
+            return new Date();
+        }
+
         function copyToClipboard(text, successMsg) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => showToast(successMsg)).catch(() => fallbackCopy(text, successMsg));
@@ -1454,7 +1898,7 @@
             document.getElementById('toast-text').textContent = msg;
             toast.classList.add('visible');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.remove('visible'), 2800);
+            toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);
         }
 
         function escapeHtml(str) {

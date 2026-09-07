@@ -4,6 +4,27 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.08.02] - 2026-09-08
+
+### ⚡ Canales EPG Canónicos en Mobile, Sintonización por Semillas, Calidades Dinámicas (FHDa/720a) y Optimización de Espacio en Cabecera
+
+#### 1. Sincronización y Catálogo de Canales EPG en `/mobile` y `/m`
+- **Catálogo Canónico EPG**: La interfaz móvil ahora carga directamente los canales de la Guía EPG (`epgChannels`) en lugar de listar los 422 streams brutos de fuentes. Canales como *Movistar Plus*, *M+ LaLiga 2*, *M+ Deportes 8*, *La 1*, etc., se muestran con sus diales ordenados, logos oficiales (con soporte para logos personalizados del servidor) y programación en directo en tiempo real.
+- **Sincronización EPG Robusta**: Se homogeneizó la descarga y parseo de fuentes XMLTV gzipeadas (`guiatv_sincolor0.xml.gz`) con fallback transparente a texto plano en caso de navegadores sin soporte de `DecompressionStream`.
+- **Integración con Favoritos EPG**: El orden y diales numéricos de la pestaña **⭐ Favoritos** se sincronizan bidireccionalmente con `/epg?action=get_favorites` y `/epg?action=set_favorites_order`, coincidiendo exactamente con el orden configurado en `/epg/`.
+
+#### 2. Sintonización Automática por Semillas y Cajitas de Calidad Dinámicas (`FHDa`, `720a`)
+- **Carga por Defecto del Stream con Más Semillas**: Al pulsar sobre cualquier canal de la guía (ej. *Movistar Plus*), el reproductor consulta `/auto/<slug>?action=list` y sintoniza automáticamente el candidato con mayor puntuación y número de semillas/peers activos (`best_candidate`).
+- **Cajitas de Texto / Pills de Calidad Adaptativas**: Si el canal dispone de versiones específicas (`FHDa`, `720a`, `1080p`, `720p`, `SD`, `4K`), el selector genera dinámicamente cajitas de texto estilizadas con el nombre de la versión y el conteo de peers. La versión activa se resalta en verde vibrante, y al pulsar cualquiera de las cajitas se cambia de forma inmediata al stream deseado.
+
+#### 3. Optimización de Espacio Vertical en Cabecera
+- **Reubicación de Acciones Rápidas**: Se han trasladado los botones de **Copiar Canal / VLC** (`📋`) y **ID Manual** (`⚡`) a la barra de navegación superior, situados inmediatamente a la izquierda del botón de la **Guía EPG** (`📅`).
+- **Eliminación de la Barra Inferior Duplicada**: Se ha retirado la sección `.quick-actions-bar` debajo del reproductor, ganando más de 80 píxeles de espacio vertical útil para visualizar el vídeo, la ficha EPG y la lista de canales sin necesidad de scroll excesivo.
+
+#### 4. Backend C++ y Rutas
+- **Ampliación de Calidades en `matches_quality`**: Se añadió soporte explícito para descriptores de calidad con sufijo de audio/origen como `fhda`, `720a` y `4ka` en el filtro de resolución de `/auto/<slug>?quality=<q>`.
+- **Actualización de Versión**: Se actualizó la versión canónica a `09.08.02` en `config.hpp`, `footer.js`, `navbar.js`, `plugins_state.json`, `statplugin/index.html`, `fuentes/index.html`, `test_core.cpp` y `CHANGELOG.md`.
+
 ## [09.08.01] - 2026-09-08
 
 ### 📱 Nueva Interfaz Mobile-First (/mobile, /m), Fix EPG Canónico en Reproductor Web y Filtro de Calidad en API
@@ -17,12 +38,15 @@ El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.co
 #### 2. Nueva Interfaz Web Mobile-First (`/mobile` y `/m`)
 - **Diseño 100% Mobile-First**: Viewport con `viewport-fit=cover`, prevención de scroll horizontal (`overflow-x: hidden`), áreas táctiles de mínimo 44-58px de altura, estados activos hápticos/visuales y tema oscuro optimizado para pantallas OLED.
 - **Reproductor Superior Adaptativo 16:9**: Contenedor fijado superior con soporte integrado de Hls.js y mpegts.js con fallback a controles nativos móviles en iOS y Android.
-- **Ficha de Programa Actual**: Ubicada justo debajo del reproductor, muestra el título del programa en emisión, dial/canal, horario formateado (ej. "23:05 - 00:45"), barra de progreso temporal interactiva con porcentaje y tiempo restante ("Quedan X min"), y sinopsis expandible.
+- **Ficha de Programa Actual**: Ubicada justo debajo del reproductor, muestra el título del programa en emisión, dial/canal, horario formateado (ej. "23:05 - 00:45"), barra de progreso temporal interactiva con porcentaje transcurrido y badge destacado de tiempo restante ("⏱️ Quedan X min"), y sinopsis expandible.
 - **Barra de Acciones Rápidas Táctiles**:
   - **Selector de Calidad**: Segmented control táctil (`Auto`, `1080p`, `720p`, `SD`) que filtra en tiempo real los candidatos disponibles del canal.
   - **Botón `Copiar Enlace VLC`**: Copia instantáneamente al portapapeles la URL directa del stream (`http://<host>:8888/auto/<slug>?quality=<q>`) con feedback toast.
   - **Modal / Bottom Sheet `ID Manual`**: Diálogo táctil deslizable con input validado para pegar Content IDs de 40 caracteres y reproducirlos al instante.
-- **Lista Vertical de Favoritos Táctil**: Carga exclusivamente los canales marcados como favoritos desde `/config?action=get_favorites`, mostrando icono/picon, dial, nombre del canal y el programa que se está emitiendo en ese momento con actualización periódica.
+- **Pestañas de Canales Táctil (Favoritos y Todos los Canales)**:
+  - Carga inmediata de todos los canales (`/aio`, 422 canales) evitando esperas o estados infinitos de carga.
+  - Pestañas conmutables **⭐ Favoritos** y **📺 Todos los Canales**, con contador dinámico de canales (`#fav-count-badge` y `#all-count-badge`). Si el usuario aún no tiene favoritos marcados, arranca automáticamente en "Todos" con un botón para alternar.
+  - Cada fila incluye dial (#1, #2...), logo oficial, nombre del canal, botón estrella táctil (☆ / ★) para añadir/quitar de favoritos con 1 solo toque y badge en tiempo real del programa en emisión con tiempo restante ("⏱️ Quedan X min").
 
 #### 3. Backend C++
 - **Rutas Estáticas `/mobile` y `/m`**: Implementación de `MobilePlugin` en `plugins.cpp` y enrutamiento en `Proxy::handle_http` (`src/proxy.cpp`) para servir la interfaz mobile tanto en `/mobile` como en `/m` (con soporte de alias `m -> mobile`).

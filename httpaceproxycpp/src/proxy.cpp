@@ -481,13 +481,13 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
 
         auto req_quality = lower(query_get(ctx.query, "quality"));
         auto matches_quality = [](StreamQuality sq, const std::string& q_str) {
-            if (q_str == "1080p" || q_str == "1080" || q_str == "fhd") {
+            if (q_str == "1080p" || q_str == "1080" || q_str == "fhd" || q_str == "fhda") {
                 return sq == StreamQuality::FHD_1080;
-            } else if (q_str == "720p" || q_str == "720" || q_str == "hd") {
+            } else if (q_str == "720p" || q_str == "720" || q_str == "hd" || q_str == "720a") {
                 return sq == StreamQuality::HD_720;
             } else if (q_str == "sd" || q_str == "576p") {
                 return sq == StreamQuality::SD;
-            } else if (q_str == "4k" || q_str == "uhd") {
+            } else if (q_str == "4k" || q_str == "uhd" || q_str == "4ka") {
                 return sq == StreamQuality::UHD_4K;
             }
             return true;

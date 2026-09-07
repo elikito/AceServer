@@ -658,8 +658,8 @@ void test_v09_07_02_epg_and_numeric_channel_isolation() {
 }
 
 void test_v09_08_01_mobile_and_quality_filter() {
-    // 1. Verificación de versión de la app v09.08.01
-    require(std::string(kAppVersion) == "09.08.01", "App version must be 09.08.01");
+    // 1. Verificación de versión previa superada por v09.08.02
+    require(!std::string(kAppVersion).empty(), "App version must not be empty");
 
     // 2. Normalización de dial y sufijos de calidad/réplica a slug canónico
     require(canonical_slug("32. Movistar Plus FHDa") == "movistar-plus", "Dial prefix + FHDa resolves to movistar-plus");
@@ -711,6 +711,44 @@ void test_v09_08_01_mobile_and_quality_filter() {
     require(auto_all.size() == 3, "Quality auto filter returns all");
 }
 
+void test_v09_08_02_mobile_epg_and_quality_pills() {
+    // 1. Verificación estricta de versión de la aplicación v09.08.02
+    require(std::string(kAppVersion) == "09.08.02", "App version must be 09.08.02");
+
+    // 2. Comprobación de normalización a canales EPG canónicos (Movistar Plus, M+ LaLiga 2, M+ Deportes 8)
+    require(canonical_slug("31. M+ Deportes 8") == "m-deportes-8", "Dial prefix resolves 31. M+ Deportes 8 to m-deportes-8");
+    require(canonical_slug("32. Movistar Plus FHDa") == "movistar-plus", "Resolves 32. Movistar Plus FHDa to movistar-plus");
+    require(canonical_slug("33. M+ LaLiga 2 720a (2)") == "m-laliga-2", "Resolves 33. M+ LaLiga 2 720a (2) to m-laliga-2");
+
+    // 3. Verificación de detección de calidades específicas (FHDa, 720a, 4ka)
+    require(detect_stream_quality("Movistar Plus FHDa") == StreamQuality::FHD_1080, "FHDa detected as FHD_1080");
+    require(detect_stream_quality("M+ LaLiga 2 720a") == StreamQuality::HD_720, "720a detected as HD_720");
+    require(detect_stream_quality("Canal UHD 4Ka") == StreamQuality::UHD_4K, "4Ka detected as UHD_4K");
+
+    // 4. Verificación de ranking de candidatos por semillas/puntuación
+    ChannelCandidate c_fhd;
+    c_fhd.name = "Movistar Plus FHDa";
+    c_fhd.content_id = "cid_fhd_1080";
+    c_fhd.quality = StreamQuality::FHD_1080;
+    c_fhd.peers = 50;
+    c_fhd.health = ChannelHealth::ONLINE;
+
+    ChannelCandidate c_720;
+    c_720.name = "Movistar Plus 720a";
+    c_720.content_id = "cid_hd_720";
+    c_720.quality = StreamQuality::HD_720;
+    c_720.peers = 12;
+    c_720.health = ChannelHealth::ONLINE;
+
+    std::vector<ChannelCandidate> candidates = {c_720, c_fhd};
+    StreamScorer::rank_candidates(candidates);
+
+    // El candidato con más semillas y mejor calidad debe quedar en primera posición (c_fhd con 50 peers)
+    require(candidates.size() == 2, "Candidates size 2");
+    require(candidates[0].content_id == "cid_fhd_1080", "Candidate with most seeds ranked first");
+    require(candidates[0].peers == 50, "Top candidate has 50 peers");
+}
+
 } // namespace
 
 int main() {
@@ -736,6 +774,7 @@ int main() {
         test_v09_07_01_content_id_and_engine_version();
         test_v09_07_02_epg_and_numeric_channel_isolation();
         test_v09_08_01_mobile_and_quality_filter();
+        test_v09_08_02_mobile_epg_and_quality_pills();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

@@ -1,5 +1,6 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v09.08.01)
+ * HTTPAceProxy — Unified Navigation Component (v09.08.02)
+ * Ensures standard header navigation, mobile menu, and link highlights across all pages.
  */
 (function () {
     'use strict';
