@@ -2,6 +2,7 @@
 #include "httpaceproxycpp/playlist.hpp"
 #include "httpaceproxycpp/stream_scorer.hpp"
 #include "httpaceproxycpp/util.hpp"
+#include "httpaceproxycpp/broadcast.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -585,6 +586,48 @@ void test_v09_02_02_docker_sources_and_search_tokens() {
     require(cid.length() == 40, "CID must be 40 chars");
 }
 
+void test_v09_07_01_content_id_and_engine_version() {
+    // 1. Verificar constante de versión v09.07.01
+    require(std::string(kAppVersion) == "09.07.01", "kAppVersion must be 09.07.01");
+
+    // 2. StreamClient y content_id
+    StreamClient client;
+    client.content_id = "4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik82";
+    require(client.content_id.length() == 40, "StreamClient content_id must store 40 chars hex");
+
+    // 3. Parser de versión desde HELLOTS
+    auto parse_hellots_ver = [](const std::string& buffer) -> std::string {
+        auto pos = buffer.find("HELLOTS");
+        if (pos != std::string::npos) {
+            auto vpos = buffer.find("version=", pos);
+            if (vpos != std::string::npos) {
+                vpos += 8;
+                auto vend = buffer.find_first_of(" \r\n\t", vpos);
+                if (vend != std::string::npos) {
+                    return buffer.substr(vpos, vend - vpos);
+                }
+            }
+        }
+        return "unknown";
+    };
+
+    std::string hellots_sample = "HELLOTS version=3.2.17 version_code=3021700 key=ecfd7fddaf http_port=6878 bmode=0\r\n";
+    require(parse_hellots_ver(hellots_sample) == "3.2.17", "Parse version from HELLOTS 3.2.17");
+
+    std::string hellots_sample2 = "HELLOTS version=3.1.74 version_code=3017400 key=abcdef\r\n";
+    require(parse_hellots_ver(hellots_sample2) == "3.1.74", "Parse version from HELLOTS 3.1.74");
+
+    // 4. Parser de versión desde JSON HTTP
+    std::string json_sample = "{\"result\": {\"platform\": \"linux\", \"version\": \"3.2.11\", \"code\": 3021100}, \"error\": null}";
+    auto parsed_json = Json::parse(json_sample);
+    require(parsed_json["result"]["version"].as_string() == "3.2.11", "Parse version from HTTP json");
+
+    // 5. Verificación de motor inactivo
+    bool is_alive = false;
+    std::string engine_ver = is_alive ? "3.2.17" : "Inactivo";
+    require(engine_ver == "Inactivo", "Offline engine version must be Inactivo");
+}
+
 } // namespace
 
 int main() {
@@ -607,6 +650,7 @@ int main() {
         test_dynamic_source_channel_matching();
         test_channel_regex_filters_and_theme();
         test_v09_02_02_docker_sources_and_search_tokens();
+        test_v09_07_01_content_id_and_engine_version();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

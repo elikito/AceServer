@@ -134,6 +134,7 @@ std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip
     client->referer = referer;
     client->client_type = detect_client_type(user_agent, referer);
     client->stream_url = stream_url;
+    client->content_id = infohash_;
     client->epg_title = epg_title;
     client->epg_icon = epg_icon.empty() ? client->channel_icon : epg_icon;
     client->connection_time = unix_time();

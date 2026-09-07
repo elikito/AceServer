@@ -4,6 +4,30 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.07.01] - 2026-09-07
+
+### 📺 Visualización de Content ID Activo en /player, Detección Real de Versiones AceStream y Reparación de Motores Inactivos
+
+#### 1. Visualización y Copia Rápida de Content ID en el Reproductor Web (`/player`)
+- **Panel Superior e Información Visible**: El identificador de contenido activo se muestra de forma explícita (`Content ID: <hash>`) en tipografía monoespaciada en `#player-content-id-box`, acompañado de un botón de copia rápida con icono de portapapeles y feedback visual en toast.
+- **Cabecera Dedicada en «Stats for Nerds»**: Integración de un bloque destacado `#nerd-header-cid` en el panel overlay de estadísticas con el `Content ID Activo: <hash>` en tiempo real y botón «📋 Copiar ID».
+- **Resolución Inmediata para Canales Virtuales / EPG (`/auto/<canal>`)**:
+  - Al reproducir mediante URLs virtuales (`/auto/<slug>`), el reproductor consulta asíncronamente `/auto/<slug>?action=resolve` y extrae de inmediato el Content ID real resuelto y asignado por el verificador/proxy para confirmar la correspondencia del canal.
+  - La respuesta de redirección 307 expone las cabeceras `X-Content-Id` y `X-Resolved-Content-Id` con `Access-Control-Expose-Headers`.
+  - El objeto de estado devuelto por `/stat?action=get_status` incluye `content_id` y `resolved_content_id` en cada cliente activo, así como `active_content_id` en el nivel raíz del JSON.
+- **Arranque por Parámetros de URL**: Soporte automático de `?url=...` y `?cid=...` para iniciar la reproducción y asignar el Content ID inmediatamente al acceder desde otras secciones (EPG o canales).
+
+#### 2. Detección Precisa de Versión en `/statplugin` (Fin del estado "unknown")
+- **Corrección de Sondeo de API HTTP**: En `Proxy::get_engines_status()`, el sondeo HTTP apunta al puerto HTTP real del motor (`eng.http_port`, ej. 6878 en lugar de 62062) en el endpoint `/webui/api/service?method=get_version`.
+- **Sondeo TCP Telnet Directo (Puerto 62062)**: Implementación de conexión TCP directa sin fallbacks erróneos a otros hosts locales. Envía `HELLOBG version=4` y extrae con exactitud el parámetro `version=` de la respuesta `HELLOTS` (ej. `3.2.17`, `3.2.3`, `3.1.74`).
+- **Almacenamiento en `AceClient`**: `AceClient::authenticate()` parsea y almacena internamente la versión del motor devuelta en `HELLOTS` (`engine_version()`).
+- **Etiquetado Explícito «Inactivo»**: Los motores que no se encuentren en ejecución o no respondan a la sonda en reposo devuelven y muestran explícitamente `"Inactivo"` en lugar de `"unknown"`.
+
+#### 3. Subida de Versión del Sistema
+- Actualización de constantes y referencias a `v09.07.01` en `config.hpp`, `footer.js`, `plugins_state.json` (`/config` y `/http`), `fuentes/index.html` y `statplugin/index.html`.
+
+---
+
 ## [09.02.03] - 2026-09-02
 
 ### ⚡ Modo Oscuro Reactivo sin Recarga, Desbloqueo de /fuentes y Flujo de Importación JSON

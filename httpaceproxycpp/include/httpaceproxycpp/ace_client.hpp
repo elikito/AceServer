@@ -45,6 +45,10 @@ public:
     void stop_broadcast();
     void shutdown();
     bool alive() const { return running_; }
+    std::string engine_version() const {
+        std::lock_guard<std::mutex> lock(version_mutex_);
+        return engine_version_;
+    }
 
 private:
     void connect_socket();
@@ -67,6 +71,8 @@ private:
     std::map<std::string, std::deque<std::vector<std::string>>> messages_;
     mutable std::mutex status_mutex_;
     std::map<std::string, std::string> cached_status_;
+    mutable std::mutex version_mutex_;
+    std::string engine_version_;
 };
 
 } // namespace httpace

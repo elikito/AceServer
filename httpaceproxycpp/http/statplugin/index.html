@@ -1343,7 +1343,7 @@
             <div class="header-title">
                 <h2>Panel de Diagnóstico de Canales</h2>
                 <p>Verifica la reproducibilidad real de los Content IDs mediante el Worker Pool de 4 fases — v<span
-                        class="app-version">09.02.03</span></p>
+                        class="app-version">09.07.01</span></p>
             </div>
         </div>
 
@@ -1524,7 +1524,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.02.03</span>
+            <span class="val version-badge app-version">09.07.01</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -1572,6 +1572,8 @@
                         const statusClass = isConn ? 'connected' : (isStandby ? 'standby' : 'disconnected');
                         const statusLabel = isConn ? '🟢 Activo / Conectado' : (isStandby ? '🟡 En Reposo' : '🔴 Desconectado');
 
+                        const displayVer = (eng.version && eng.version !== 'unknown') ? eng.version : (isConn ? 'unknown' : 'Inactivo');
+
                         const card = document.createElement('div');
                         card.className = `engine-card ${eng.is_main ? 'active-engine' : ''}`;
                         card.innerHTML = `
@@ -1585,7 +1587,7 @@
                                 </div>
                             </div>
                             <div class="engine-meta">
-                                <div>Host: <code>${eng.name}</code> | Versión: <code>${eng.version || 'unknown'}</code></div>
+                                <div>Host: <code>${eng.name}</code> | Versión: <code>${displayVer}</code></div>
                                 <div>Puertos: API <code>${eng.api_port}</code> / HTTP <code>${eng.http_port}</code></div>
                             </div>
                             <div class="engine-actions">

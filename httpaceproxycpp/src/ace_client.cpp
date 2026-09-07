@@ -150,6 +150,10 @@ void AceClient::authenticate() {
     write_line("HELLOBG version=4");
     auto hellots = wait_for("HELLOTS", config_.ace_result_timeout);
     auto params = parse_key_values(hellots, 1);
+    if (params.contains("version") && !params["version"].empty()) {
+        std::lock_guard<std::mutex> vlock(version_mutex_);
+        engine_version_ = params["version"];
+    }
     auto key = params["key"];
     write_line(command_ready(key, config_.ace_key));
     try {

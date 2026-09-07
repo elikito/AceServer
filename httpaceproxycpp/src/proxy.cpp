@@ -12,6 +12,10 @@
 #include <unordered_set>
 
 #include <sys/utsname.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 namespace httpace {
 namespace {
@@ -460,7 +464,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         }
 
         auto action = query_get(ctx.query, "action");
-        if (action == "resolve" || action == "list") {
+        if (action == "resolve" || action == "list" || action == "status" || action == "stream_status") {
             auto candidates = find_candidates_for_channel(slug);
             StreamScorer::rank_candidates(candidates);
             Json::array arr;
@@ -486,10 +490,13 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     {"score", c.score}
                 });
             }
+            std::string resolved_cid = candidates.empty() ? "" : candidates[0].content_id;
             Json res = Json::object{
                 {"status", "success"},
                 {"slug", canonical_slug(slug)},
                 {"canonical_name", canonical_name(slug)},
+                {"content_id", resolved_cid},
+                {"resolved_content_id", resolved_cid},
                 {"candidates_count", static_cast<double>(candidates.size())},
                 {"best_candidate", candidates.empty() ? Json(nullptr) : arr[0]},
                 {"candidates", Json(arr)}
@@ -514,6 +521,9 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         std::string redirect_target = "http://" + raw_host + "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)", "") + ".ts";
         connection.send_response_headers(307, "Temporary Redirect", {
             {"Location", redirect_target},
+            {"X-Content-Id", best->content_id},
+            {"X-Resolved-Content-Id", best->content_id},
+            {"Access-Control-Expose-Headers", "Location, X-Content-Id, X-Resolved-Content-Id"},
             {"Access-Control-Allow-Origin", "*"},
             {"Connection", "close"}
         });
@@ -2251,6 +2261,8 @@ Json Proxy::status_json() {
             {"peers", static_cast<double>(peers)},
             {"status", status_str},
             {"stream_url", client->stream_url},
+            {"content_id", client->content_id},
+            {"resolved_content_id", client->content_id},
             // Legacy / Backwards compatibility
             {"sessionID", client->session_id},
             {"channelIcon", logo_url},
@@ -2284,9 +2296,15 @@ Json Proxy::status_json() {
         {"queue_pending",  server_ ? static_cast<double>(server_->pool_queue_depth())    : 0.0}
     };
 
+    std::string active_cid = "";
+    if (!clients.empty() && clients[0].contains("content_id")) {
+        active_cid = clients[0]["content_id"].as_string("");
+    }
+
     return Json::object{
         {"status", "success"},
         {"version", kAppVersion},
+        {"active_content_id", active_cid},
         {"cpu_detected", cpu_info_.cpu_detected},
         {"selected_engine", config_.ace_host},
         {"engine_mode", engine_mode_},
@@ -2334,12 +2352,15 @@ Json Proxy::acestream_engine_status() {
     };
 
     try {
-        auto url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_api_port) +
+        auto url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) +
                    "/webui/api/service?method=get_version&format=json";
         auto response = http_client_.get(url, {{"User-Agent", "HTTPAceProxyCPP"}}, 2, false);
         if (response.status >= 200 && response.status < 300) {
             auto data = Json::parse(response.body);
-            auto version = data["result"]["version"].as_string("unknown");
+            auto version = data["result"]["version"].as_string("");
+            if (version.empty()) {
+                version = data["version"].as_string("unknown");
+            }
             status = Json::object{
                 {"status", "connected"},
                 {"version", version},
@@ -2347,21 +2368,17 @@ Json Proxy::acestream_engine_status() {
                 {"api_port", config_.ace_api_port}
             };
         } else {
-            status = Json::object{
-                {"status", "disconnected"},
-                {"version", "unknown"},
-                {"host", config_.ace_host},
-                {"api_port", config_.ace_api_port},
-                {"error", "HTTP status " + std::to_string(response.status)}
-            };
+            throw std::runtime_error("HTTP status " + std::to_string(response.status));
         }
     } catch (const std::exception& http_error) {
         try {
             AceClient ace(config_, "EngineStatus");
             ace.authenticate();
+            std::string eng_ver = ace.engine_version();
+            if (eng_ver.empty()) eng_ver = "unknown";
             status = Json::object{
                 {"status", "connected"},
-                {"version", "unknown"},
+                {"version", eng_ver},
                 {"host", config_.ace_host},
                 {"api_port", config_.ace_api_port},
                 {"transport", "control"}
@@ -2369,7 +2386,7 @@ Json Proxy::acestream_engine_status() {
         } catch (const std::exception& control_error) {
             status = Json::object{
                 {"status", "disconnected"},
-                {"version", "unknown"},
+                {"version", "Inactivo"},
                 {"host", config_.ace_host},
                 {"api_port", config_.ace_api_port},
                 {"error", std::string(http_error.what()) + "; control: " + control_error.what()}
@@ -4278,33 +4295,100 @@ Json Proxy::get_engines_status() {
 
     Json::array engines_arr;
 
-    for (const auto& eng : kDefaultEngines) {
-        bool is_main = (eng.name == current_engine || (current_mode == "auto" && eng.name == (cpu_info_.has_avx_or_sse42 ? "aceserve-modern" : "aceserve-compat-light")));
-        std::string status = "standby";
-        std::string version = "unknown";
-
+    auto probe_engine = [&](const std::string& host, int api_port, int http_port) -> std::pair<bool, std::string> {
+        // 1. Probar endpoint HTTP nativo en http_port (ej. 6878): /webui/api/service?method=get_version
         try {
-            auto url = "http://" + eng.name + ":" + std::to_string(eng.api_port) + "/webui/api/service?method=get_version&format=json";
+            auto url = "http://" + host + ":" + std::to_string(http_port) + "/webui/api/service?method=get_version";
             auto resp = http_client_.get(url, {{"User-Agent", "HTTPAceProxy"}}, 2, false);
             if (resp.status >= 200 && resp.status < 300) {
                 auto data = Json::parse(resp.body);
-                version = data["result"]["version"].as_string("unknown");
-                status = is_main ? "connected" : "standby";
-            } else {
-                status = "error";
+                if (data.contains("result") && data["result"].contains("version")) {
+                    auto v = data["result"]["version"].as_string("");
+                    if (!v.empty() && v != "unknown") {
+                        return {true, v};
+                    }
+                }
             }
-        } catch (...) {
-            try {
-                Config test_cfg = config_;
-                test_cfg.ace_host = eng.name;
-                test_cfg.ace_api_port = eng.api_port;
-                AceClient probe(test_cfg, "ProbeEngine");
-                probe.authenticate();
-                probe.shutdown();
-                status = is_main ? "connected" : "standby";
-            } catch (...) {
-                status = "disconnected";
+        } catch (...) {}
+
+        // 2. Probar socket TCP telnet directo en api_port (62062): HELLOBG version=4 -> HELLOTS version=...
+        int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (fd >= 0) {
+            timeval timeout{};
+            timeout.tv_sec = 2;
+            timeout.tv_usec = 0;
+            setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+            setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+            addrinfo hints{};
+            hints.ai_family = AF_INET;
+            hints.ai_socktype = SOCK_STREAM;
+            addrinfo* result = nullptr;
+            std::string port_str = std::to_string(api_port);
+
+            if (::getaddrinfo(host.c_str(), port_str.c_str(), &hints, &result) == 0 && result) {
+                bool connected = false;
+                for (auto* rp = result; rp; rp = rp->ai_next) {
+                    if (::connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+                        connected = true;
+                        break;
+                    }
+                }
+                freeaddrinfo(result);
+
+                if (connected) {
+                    std::string hello = "HELLOBG version=4\r\n";
+                    ::send(fd, hello.data(), hello.size(), 0);
+
+                    std::string buffer;
+                    char buf[512];
+                    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+                    while (std::chrono::steady_clock::now() < deadline) {
+                        ssize_t n = ::recv(fd, buf, sizeof(buf) - 1, 0);
+                        if (n <= 0) break;
+                        buf[n] = '\0';
+                        buffer.append(buf, n);
+                        if (buffer.find('\n') != std::string::npos) break;
+                    }
+                    try {
+                        std::string bye = "SHUTDOWN\r\n";
+                        ::send(fd, bye.data(), bye.size(), 0);
+                    } catch (...) {}
+                    ::close(fd);
+
+                    auto pos = buffer.find("HELLOTS");
+                    if (pos != std::string::npos) {
+                        auto vpos = buffer.find("version=", pos);
+                        if (vpos != std::string::npos) {
+                            vpos += 8;
+                            auto vend = buffer.find_first_of(" \r\n\t", vpos);
+                            if (vend != std::string::npos) {
+                                std::string v = buffer.substr(vpos, vend - vpos);
+                                if (!v.empty()) return {true, v};
+                            }
+                        }
+                    }
+                    return {true, "unknown"};
+                }
             }
+            ::close(fd);
+        }
+
+        return {false, ""};
+    };
+
+    for (const auto& eng : kDefaultEngines) {
+        bool is_main = (eng.name == current_engine || (current_mode == "auto" && eng.name == (cpu_info_.has_avx_or_sse42 ? "aceserve-modern" : "aceserve-compat-light")));
+        std::string status = "standby";
+        std::string version = "Inactivo";
+
+        auto [is_alive, ver] = probe_engine(eng.name, eng.api_port, eng.http_port);
+        if (is_alive) {
+            status = is_main ? "connected" : "standby";
+            version = ver.empty() ? "unknown" : ver;
+        } else {
+            status = "disconnected";
+            version = "Inactivo";
         }
 
         engines_arr.push_back(Json::object{

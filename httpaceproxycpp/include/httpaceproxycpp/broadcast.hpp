@@ -54,6 +54,7 @@ struct StreamClient {
     std::string referer;
     std::string client_type;
     std::string stream_url;
+    std::string content_id;
     std::string epg_title;
     std::string epg_icon;
     std::int64_t connection_time = 0;
