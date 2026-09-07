@@ -2125,6 +2125,20 @@
             hideChannelFilterModal();
             showToast('💾 Guardando regla y reindexando fuentes...', 'info');
 
+            // Limpiar inmediatamente el drawer de candidatos si estuviera abierto
+            const cards = Array.from(document.querySelectorAll('.channel-epg-card'));
+            const matchedCard = cards.find(c => {
+                const cSlug = toCanonicalSlug(c.dataset.channelName || '') || toCanonicalSlug(c.dataset.channelId || '');
+                return cSlug === targetSlug;
+            });
+            if (matchedCard) {
+                const openDrawer = matchedCard.querySelector('.candidates-drawer');
+                if (openDrawer) {
+                    const tbody = openDrawer.querySelector('tbody');
+                    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:12px; color:var(--text-muted);">Reindexando candidatos con nueva regla...</td></tr>`;
+                }
+            }
+
             try {
                 const res = await fetch('/api/channel_filters', {
                     method: 'POST',
@@ -2166,6 +2180,7 @@
             if (!name) return 'channel';
             let n = name.toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[\(\[\{]\s*(?:mirror|replica|m|opt|alt)?\s*\d+\s*[\)\]\}]/gi, ' ')
                 .replace(/1080p|1080i|1080|720p|720i|720|576p|576i|480p|4k|uhd|fhd|hd|sd|hevc|h265|h264|back|backup|opt|alt|directo|live|envivo|castellano|spanish|spain|espana|acestream/g, ' ')
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '');
@@ -2207,8 +2222,8 @@
         }
 
         async function recheckChannelSources(slug, btnEl, e) {
-            if (e) e.stopPropagation();
-            if (btnEl) {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            if (btnEl && btnEl.innerHTML) {
                 btnEl.disabled = true;
                 btnEl.innerHTML = `⟳ Testeando...`;
             }
@@ -2218,18 +2233,29 @@
                 });
                 const res = await resp.json();
                 showToast('✓ Fuentes re-comprobadas y peers actualizados', 'success');
-                const card = btnEl.closest('.channel-epg-card');
+
+                let card = (btnEl && typeof btnEl.closest === 'function') ? btnEl.closest('.channel-epg-card') : null;
+                if (!card && slug) {
+                    const cards = Array.from(document.querySelectorAll('.channel-epg-card'));
+                    card = cards.find(c => {
+                        const cSlug = toCanonicalSlug(c.dataset.channelName || '') || toCanonicalSlug(c.dataset.channelId || '');
+                        return cSlug === slug;
+                    });
+                }
+
                 if (card) {
                     const chanName = card.dataset.channelName || slug;
                     const chanId = card.dataset.channelId || slug;
                     const drawer = card.querySelector('.candidates-drawer');
                     if (drawer) drawer.remove();
                     const sourcesBtn = card.querySelector('button[title*="Fuentes"]') || btnEl;
-                    toggleCandidatesDrawer(chanName, chanId, sourcesBtn, null);
+                    if (sourcesBtn) {
+                        toggleCandidatesDrawer(chanName, chanId, sourcesBtn, null);
+                    }
                 }
             } catch (err) {
                 showToast('Error al re-comprobar: ' + err.message, 'error');
-                if (btnEl) {
+                if (btnEl && btnEl.innerHTML) {
                     btnEl.disabled = false;
                     btnEl.innerHTML = `⟳ Re-comprobar Fuentes`;
                 }
@@ -2293,7 +2319,8 @@
         }
 
         async function toggleCandidatesDrawer(chanName, chanId, btnEl, e) {
-            if (e) e.stopPropagation();
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            if (!btnEl || typeof btnEl.closest !== 'function') return;
             const slug = toCanonicalSlug(chanName);
             const card = btnEl.closest('.channel-epg-card');
             if (!card) return;
@@ -2413,9 +2440,10 @@
         }
 
         async function toggleCandidateCID(cid, checkboxEl, e) {
-            if (e) e.stopPropagation();
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            if (!checkboxEl) return;
             const disabled = !checkboxEl.checked;
-            const row = checkboxEl.closest('tr');
+            const row = (typeof checkboxEl.closest === 'function') ? checkboxEl.closest('tr') : null;
             if (row) {
                 if (disabled) row.classList.add('candidate-disabled');
                 else row.classList.remove('candidate-disabled');

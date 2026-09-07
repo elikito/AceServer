@@ -3138,6 +3138,7 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
     std::string target_slug = canonical_slug(clean_query);
     std::string target_cname = canonical_name(clean_query);
     std::unordered_set<std::string> seen_cids;
+    bool has_custom_filters = !get_channel_filters_for_slug(target_slug).empty();
 
     for (const auto& plugin : plugins_.unique_plugins()) {
         if (!plugin->is_enabled()) continue;
@@ -3182,11 +3183,17 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
             std::string item_cname_compact = replace_all(item_cname, " ", "");
             std::string target_cname_compact = replace_all(target_cname, " ", "");
 
-            bool matches = (item_slug == target_slug) ||
-                           (item_cname == target_cname) ||
-                           (!item_slug_compact.empty() && item_slug_compact == target_slug_compact) ||
-                           (!item_cname_compact.empty() && item_cname_compact == target_cname_compact) ||
-                           matches_channel_filter(target_slug, item.name);
+            bool matches = false;
+            if (has_custom_filters) {
+                // v09.07.02: Si el canal tiene reglas regex personalizadas activas,
+                // evaluar estrictamente las reglas para excluir streams no deseados.
+                matches = matches_channel_filter(target_slug, item.name);
+            } else {
+                matches = (item_slug == target_slug) ||
+                          (item_cname == target_cname) ||
+                          (!item_slug_compact.empty() && item_slug_compact == target_slug_compact) ||
+                          (!item_cname_compact.empty() && item_cname_compact == target_cname_compact);
+            }
 
             if (matches) {
                 if (seen_cids.find(cid) != seen_cids.end()) continue;
@@ -3502,17 +3509,23 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             std::string slug = canonical_slug(item.name);
             if (slug.empty() || slug == "channel") continue;
 
-            if (fav_slugs.find(slug) == fav_slugs.end()) {
-                bool matched_fav = false;
+            std::string matched_fav_slug;
+            if (fav_slugs.find(slug) != fav_slugs.end()) {
+                auto cf = get_channel_filters_for_slug(slug);
+                if (cf.empty() || matches_channel_filter(slug, item.name)) {
+                    matched_fav_slug = slug;
+                }
+            }
+            if (matched_fav_slug.empty()) {
                 for (const auto& fav_candidate : fav_slugs) {
                     if (matches_channel_filter(fav_candidate, item.name)) {
-                        slug = fav_candidate;
-                        matched_fav = true;
+                        matched_fav_slug = fav_candidate;
                         break;
                     }
                 }
-                if (!matched_fav) continue;
             }
+            if (matched_fav_slug.empty()) continue;
+            slug = matched_fav_slug;
 
             ChannelCandidate c;
             c.name = item.name;

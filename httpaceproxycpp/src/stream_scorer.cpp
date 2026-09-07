@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <regex>
 #include <sstream>
 #include <unordered_set>
 
@@ -66,6 +67,12 @@ std::string strip_origin_suffix(std::string text) {
     return text;
 }
 
+// v09.07.02: Elimina sufijos de réplica / mirror entre paréntesis o corchetes: ej. "(2)", "(3)", "[2]", "( 2 )", "(mirror 2)"
+std::string strip_replica_suffix(std::string text) {
+    static const std::regex replica_regex(R"([\(\[\{]\s*(?:mirror|replica|m|opt|alt)?\s*\d+\s*[\)\]\}])", std::regex::icase);
+    return std::regex_replace(text, replica_regex, " ");
+}
+
 // Reconoce hashes alfanuméricos/hexadecimales de 4 caracteres (ej. "936c", "2929", "9f1a", "9e38", "ad6d")
 bool is_hex_hash_token(const std::string& token) {
     if (token.size() != 4) return false;
@@ -95,6 +102,7 @@ StreamQuality detect_stream_quality(const std::string& name) {
 
 std::string canonical_name(std::string name) {
     name = strip_origin_suffix(std::move(name));
+    name = strip_replica_suffix(std::move(name));
     name = strip_accents_utf8(name);
     name = lower(name);
 

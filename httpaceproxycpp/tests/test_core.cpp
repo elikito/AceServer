@@ -90,6 +90,17 @@ void test_stream_scorer() {
     require(canonical_slug("M+ LALIGA 3 FHD 2929 → NEW ERA VI") == "m-laliga-3", "m+ laliga 3 fhd slug");
     require(canonical_slug("DAZN 1 FHD ad6d --> NEW ERA") == "dazn-1", "dazn 1 fhd ad6d slug");
 
+    // v09.07.02 - Tests para Sufijos de Réplica (2), (3) y Aislamiento de Canales Numéricos
+    require(canonical_name("M+ LaLiga 1080p ** (2)") == "m laliga", "m+ laliga mirror (2) canonical");
+    require(canonical_slug("M+ LaLiga 1080p ** (2)") == "m-laliga", "m+ laliga mirror (2) slug");
+    require(canonical_slug("M+ LaLiga 1080p ** (3)") == "m-laliga", "m+ laliga mirror (3) slug");
+    require(canonical_slug("M+ LaLiga [2]") == "m-laliga", "m+ laliga mirror [2] slug");
+    require(canonical_name("M+ LaLiga 2 1080p ** (2)") == "m laliga 2", "m+ laliga 2 mirror (2) canonical");
+    require(canonical_slug("M+ LaLiga 2 1080p ** (2)") == "m-laliga-2", "m+ laliga 2 mirror (2) slug");
+    require(canonical_slug("M+ LaLiga_2") == "m-laliga-2", "m+ laliga_2 slug");
+    require(canonical_slug("DAZN 1 (2)") == "dazn-1", "dazn 1 (2) slug");
+    require(canonical_slug("DAZN 2 1080p ** (3)") == "dazn-2", "dazn 2 (3) slug");
+
     ChannelCandidate c1{"Teledeporte 1080p *", "cid1", "unificada", "", "General", "tdp", StreamQuality::FHD_1080, 100, 10, 500000, ChannelHealth::ONLINE, false, false, false, 0.0};
     ChannelCandidate c2{"Teledeporte 720p **", "cid2", "unificada", "", "General", "tdp", StreamQuality::HD_720, 60, 4, 50000, ChannelHealth::ONLINE, false, false, false, 0.0};
     ChannelCandidate c3{"TELEDEPORTE FHD", "cid3", "elcano", "", "General", "tdp", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::OFFLINE, false, false, false, 0.0};
@@ -587,8 +598,8 @@ void test_v09_02_02_docker_sources_and_search_tokens() {
 }
 
 void test_v09_07_01_content_id_and_engine_version() {
-    // 1. Verificar constante de versión v09.07.01
-    require(std::string(kAppVersion) == "09.07.01", "kAppVersion must be 09.07.01");
+    // 1. Verificar constante de versión >= v09.07.01
+    require(std::string(kAppVersion) >= "09.07.01", "kAppVersion must be at least 09.07.01");
 
     // 2. StreamClient y content_id
     StreamClient client;
@@ -628,6 +639,24 @@ void test_v09_07_01_content_id_and_engine_version() {
     require(engine_ver == "Inactivo", "Offline engine version must be Inactivo");
 }
 
+void test_v09_07_02_epg_and_numeric_channel_isolation() {
+    // 1. Verificación de versión de la app
+    require(std::string(kAppVersion) == "09.07.02", "App version must be 09.07.02");
+
+    // 2. Aislamiento numérico: canal principal vs canal secundario
+    std::string primary_mirror = "M+ LaLiga 1080p ** (2)";
+    std::string secondary_channel = "M+ LaLiga 2 1080p **";
+    std::string secondary_mirror = "M+ LaLiga 2 1080p ** (2)";
+
+    require(canonical_slug(primary_mirror) == "m-laliga", "Primary mirror slug must be m-laliga");
+    require(canonical_slug(secondary_channel) == "m-laliga-2", "Secondary channel slug must be m-laliga-2");
+    require(canonical_slug(secondary_mirror) == "m-laliga-2", "Secondary mirror slug must be m-laliga-2");
+    require(canonical_slug(primary_mirror) != canonical_slug(secondary_channel), "Primary mirror must NOT match secondary channel");
+
+    // 3. Verificación de slug canónico con subrayados
+    require(canonical_slug("M+ LaLiga_2") == "m-laliga-2", "LaLiga_2 slug matches m-laliga-2");
+}
+
 } // namespace
 
 int main() {
@@ -651,6 +680,7 @@ int main() {
         test_channel_regex_filters_and_theme();
         test_v09_02_02_docker_sources_and_search_tokens();
         test_v09_07_01_content_id_and_engine_version();
+        test_v09_07_02_epg_and_numeric_channel_isolation();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

@@ -4,6 +4,29 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.07.02] - 2026-09-07
+
+### 🛠 Corrección Crítica EPG (closest), Aislamiento Estricto de Canales Numéricos en C++/JS y Compactación de Content ID en /player
+
+#### 1. Reparación del Error Crítico de JS en EPG (`reading 'closest'`)
+- **Validación Defensiva del DOM**: En `httpaceproxycpp/http/epg/index.html`, `recheckChannelSources(slug, btnEl, e)` y `toggleCandidatesDrawer` validan la existencia y tipos de los elementos antes de invocar `.closest('.channel-epg-card')`.
+- **Localización Autónoma de Tarjetas**: Si la función se ejecuta programáticamente sin `btnEl` (ej. tras guardar una regla en `saveAndReindexChannelFilter` o restablecerla), se localiza la tarjeta correspondiente en el DOM mediante los atributos `data-channel-name` y `data-channel-id`.
+- **Limpieza Reactiva de Candidatos**: Al guardar una regla Regex personalizada, el contenedor de candidatos se limpia de inmediato y se reindexa a través de `/auto/${slug}?action=list`, eliminando al instante los streams que no cumplan el nuevo patrón.
+
+#### 2. Aislamiento Estricto de Canales Numéricos en C++ y JS
+- **Filtrado de Sufijos de Réplica / Mirror**: En `stream_scorer.cpp` (`canonical_name` y `canonical_slug`) y en `toCanonicalSlug` de `epg/index.html`, los sufijos de réplica entre paréntesis como `(2)`, `(3)`, `[2]`, etc. se consideran identificadores de mirror y se eliminan antes de evaluar tokens.
+- **Diferenciación de Dial Secundario**: Canales como `M+ LaLiga 1080p ** (2)` ahora se normalizan con exactitud a `m-laliga` (no `m-laliga-2`), aislándose de `M+ LaLiga 2`, `M+ LaLiga_2` y `M+ LaLiga2`.
+- **Precedencia Estricta de Filtros Regex**: En `Proxy::find_best_candidate` y en la agrupación de favoritos, si un canal tiene reglas regex personalizadas activas, se aplica de forma estricta `matches_channel_filter()`, impidiendo que streams excluidos se cuelen por correspondencia de slug por defecto.
+
+#### 3. Compactación de UX de Content ID en `/player`
+- **Eliminación del Badge Superior Duplicado**: Se retiró `#player-content-id-box` y estilos sobrantes de la barra superior.
+- **Centralización en «Stats for Nerds»**: El Content ID activo se muestra exclusivamente en una única línea compacta en la cabecera de Stats for Nerds con su botón «📋 Copiar ID» y feedback interactivo al portapapeles.
+
+#### 4. Subida de Versión del Sistema
+- Actualización de versión a `v09.07.02` en `config.hpp`, `footer.js`, `plugins_state.json` (`/config` y `/http`), `fuentes/index.html`, `statplugin/index.html` y suite de tests.
+
+---
+
 ## [09.07.01] - 2026-09-07
 
 ### 📺 Visualización de Content ID Activo en /player, Detección Real de Versiones AceStream y Reparación de Motores Inactivos

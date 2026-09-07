@@ -814,51 +814,6 @@
         .badge-unknown { background: var(--border-color); color: var(--text-muted); }
         .badge-error { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
 
-        /* Player Header Content ID Badge - Full 40 hex monospace */
-        .player-cid-badge {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(34, 197, 94, 0.12);
-            border: 1px solid rgba(34, 197, 94, 0.35);
-            color: #22c55e;
-            padding: 3px 10px;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            user-select: all;
-            margin-left: 8px;
-        }
-
-        .player-cid-badge:hover,
-        .player-cid-badge.copied {
-            background: rgba(34, 197, 94, 0.25);
-            border-color: #22c55e;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
-        }
-
-        .player-cid-copy-btn {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            padding: 2px;
-            margin-left: 6px;
-            display: inline-flex;
-            align-items: center;
-            opacity: 0.8;
-            transition: opacity 0.2s, transform 0.2s;
-        }
-
-        .player-cid-copy-btn:hover {
-            opacity: 1;
-            transform: scale(1.15);
-        }
-
         .btn-copy-nerd-cid:hover {
             background: rgba(34, 197, 94, 0.3) !important;
             border-color: #4ade80 !important;
@@ -1310,17 +1265,6 @@
                     <span id="player-title" class="player-title-text">Canal en Directo</span>
                     <span id="player-status-badge" class="player-status-badge loading">Cargando stream...</span>
                     <span id="player-health-badge" class="health-badge badge-unknown" style="display: none;">• Sin datos</span>
-                    <div id="player-content-id-box" class="player-cid-badge" style="display: none;"
-                        onclick="copyPlayerContentId()" title="Clic para copiar Content ID completo">
-                        <span class="player-cid-label" style="opacity: 0.8; font-weight: 700; margin-right: 4px;">Content ID:</span>
-                        <span id="player-cid-text"></span>
-                        <button class="player-cid-copy-btn" onclick="event.stopPropagation(); copyPlayerContentId();" title="Copiar Content ID al portapapeles">
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                        </button>
-                    </div>
                 </div>
                 <div class="player-info-right">
                     <select id="player-audio-select" class="player-engine-select"
@@ -1350,13 +1294,13 @@
 
             <!-- Stats for Nerds Overlay Panel (3 Columns x 3 Rows) -->
             <div id="nerd-stats-panel" class="nerd-stats-overlay" style="display: none;">
-                <!-- Cabecera Stats for Nerds con Content ID activo y botón copiar -->
-                <div class="nerd-stat-box nerd-header-cid" style="grid-column: span 3; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
-                        <span style="color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Content ID Activo:</span>
-                        <code id="nerd-cid-text" style="color: #4ade80; font-weight: 700; font-size: 12px; letter-spacing: 0.5px;">-</code>
+                <!-- Cabecera Stats for Nerds con Content ID activo y botón copiar (v09.07.02 compact) -->
+                <div class="nerd-stat-box nerd-header-cid" style="grid-column: span 3; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; overflow: hidden;">
+                        <span style="color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">Content ID:</span>
+                        <code id="nerd-cid-text" style="color: #4ade80; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; word-break: break-all;">-</code>
                     </div>
-                    <button class="btn-copy-nerd-cid" onclick="copyPlayerContentId()" title="Copiar Content ID al portapapeles" style="background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.35); color: #4ade80; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s ease;">
+                    <button id="btn-copy-nerd-cid" class="btn-copy-nerd-cid" onclick="copyPlayerContentId()" title="Copiar Content ID al portapapeles" style="background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.35); color: #4ade80; border-radius: 5px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.2s ease;">
                         📋 Copiar ID
                     </button>
                 </div>
@@ -1943,6 +1887,7 @@
                     }
 
                     // Sincronizar Content ID activo desde el estado del proxy si está disponible
+                    // Sincronizar Content ID activo desde el estado del proxy si está disponible
                     if (data.clients && Array.isArray(data.clients) && data.clients.length > 0) {
                         const activeClient = data.clients.find(c => c.content_id) || data.clients[0];
                         const serverCid = activeClient?.content_id || activeClient?.resolved_content_id || data.active_content_id;
@@ -1951,14 +1896,7 @@
                             if (nerdCid && (!nerdCid.textContent || nerdCid.textContent === '-')) {
                                 nerdCid.textContent = serverCid;
                             }
-                            const cidBox = document.getElementById('player-content-id-box');
-                            const cidText = document.getElementById('player-cid-text');
-                            if (cidBox && (!cidBox.getAttribute('data-full-cid') || cidBox.style.display === 'none')) {
-                                if (cidText) cidText.textContent = serverCid;
-                                cidBox.style.display = 'inline-flex';
-                                cidBox.setAttribute('data-full-cid', serverCid);
-                                updatePlayerHealthBadge(serverCid);
-                            }
+                            updatePlayerHealthBadge(serverCid);
                         }
                     } else if (data.active_content_id && data.active_content_id.length >= 10) {
                         const nerdCid = document.getElementById('nerd-cid-text');
@@ -1993,16 +1931,11 @@
         let currentPlayingStreamUrl = '';
 
         function copyPlayerContentId() {
-            const cidBox = document.getElementById('player-content-id-box');
-            let fullCid = cidBox ? cidBox.getAttribute('data-full-cid') : '';
-            if (!fullCid) {
-                const nerdCid = document.getElementById('nerd-cid-text');
-                if (nerdCid && nerdCid.textContent && nerdCid.textContent !== '-') {
-                    fullCid = nerdCid.textContent.trim();
-                }
-            }
+            const nerdCid = document.getElementById('nerd-cid-text');
+            const copyBtn = document.getElementById('btn-copy-nerd-cid') || document.querySelector('.btn-copy-nerd-cid');
+            let fullCid = (nerdCid && nerdCid.textContent && nerdCid.textContent !== '-') ? nerdCid.textContent.trim() : '';
             if (!fullCid) return;
-            copyTextToClipboard(fullCid, cidBox, '✓ ID copiado: ' + fullCid);
+            copyTextToClipboard(fullCid, copyBtn, '✓ ID copiado: ' + fullCid);
         }
 
         function copyCurrentStreamUrl() {
@@ -2142,8 +2075,6 @@
             if (btn) btn.classList.remove('active');
 
             highlightPlayingCard(null, null, null);
-            const cidBox = document.getElementById('player-content-id-box');
-            if (cidBox) cidBox.style.display = 'none';
             const nerdCid = document.getElementById('nerd-cid-text');
             if (nerdCid) nerdCid.textContent = '-';
 
@@ -2224,18 +2155,11 @@
             updatePlayerStatus('Cargando stream...', 'loading');
 
             let currentCid = forceContentId || extractAceId(streamUrl);
-            const cidBox = document.getElementById('player-content-id-box');
-            const cidText = document.getElementById('player-cid-text');
             const nerdCidText = document.getElementById('nerd-cid-text');
 
             function applyActiveCid(cid) {
                 if (!cid || cid.length < 10) return;
                 currentCid = cid;
-                if (cidText) cidText.textContent = cid;
-                if (cidBox) {
-                    cidBox.style.display = 'inline-flex';
-                    cidBox.setAttribute('data-full-cid', cid);
-                }
                 if (nerdCidText) nerdCidText.textContent = cid;
                 updatePlayerHealthBadge(cid);
                 highlightPlayingCard(streamUrl, channelName, cid);
@@ -2244,10 +2168,6 @@
             if (currentCid && currentCid.length >= 10) {
                 applyActiveCid(currentCid);
             } else {
-                if (cidBox) {
-                    cidBox.style.display = 'none';
-                    cidBox.removeAttribute('data-full-cid');
-                }
                 if (nerdCidText) nerdCidText.textContent = '-';
             }
 
