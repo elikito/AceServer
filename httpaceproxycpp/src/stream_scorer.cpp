@@ -34,7 +34,7 @@ std::string strip_accents_utf8(std::string text) {
 const std::unordered_set<std::string>& get_filter_tokens() {
     static const std::unordered_set<std::string> tokens = {
         "1080p", "1080i", "1080", "720p", "720i", "720", "576p", "576i", "480p",
-        "4k", "uhd", "fhd", "hd", "sd",
+        "4k", "uhd", "fhd", "hd", "sd", "fhda", "720a", "1080a", "4ka",
         "hevc", "h265", "h.265", "h264", "h.264",
         "50fps", "60fps", "25fps", "fps",
         "back", "backup", "opt", "alt", "directo", "live", "envivo",
@@ -73,6 +73,12 @@ std::string strip_replica_suffix(std::string text) {
     return std::regex_replace(text, replica_regex, " ");
 }
 
+// v09.08.01: Elimina prefijos numéricos de dial (ej. "32. ", "01 - ", "105_")
+std::string strip_dial_prefix(std::string text) {
+    static const std::regex dial_regex(R"(^\s*\d+\s*[\.\:\-_–]\s*)");
+    return std::regex_replace(text, dial_regex, "");
+}
+
 // Reconoce hashes alfanuméricos/hexadecimales de 4 caracteres (ej. "936c", "2929", "9f1a", "9e38", "ad6d")
 bool is_hex_hash_token(const std::string& token) {
     if (token.size() != 4) return false;
@@ -103,6 +109,7 @@ StreamQuality detect_stream_quality(const std::string& name) {
 std::string canonical_name(std::string name) {
     name = strip_origin_suffix(std::move(name));
     name = strip_replica_suffix(std::move(name));
+    name = strip_dial_prefix(std::move(name));
     name = strip_accents_utf8(name);
     name = lower(name);
 

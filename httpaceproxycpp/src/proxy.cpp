@@ -37,6 +37,7 @@ std::string header_host(const HttpRequest& request) {
 std::string map_reqtype_alias(std::string reqtype) {
     if (reqtype == "torrent") return "url";
     if (reqtype == "pid") return "content_id";
+    if (reqtype == "m") return "mobile";
     return reqtype;
 }
 
@@ -449,6 +450,21 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
     }
 
     // -----------------------------------------------------------------------
+    // v09.08.01 — Interfaz Mobile-First /mobile y /m
+    // -----------------------------------------------------------------------
+    if (ctx.path == "/mobile" || ctx.path == "/m" || starts_with(ctx.path, "/mobile/") || starts_with(ctx.path, "/m/")) {
+        std::string rel_file = "index.html";
+        if (starts_with(ctx.path, "/mobile/")) {
+            rel_file = ctx.path.substr(std::string("/mobile/").size());
+        } else if (starts_with(ctx.path, "/m/")) {
+            rel_file = ctx.path.substr(std::string("/m/").size());
+        }
+        if (rel_file.empty()) rel_file = "index.html";
+        handle_static(request, connection, "mobile/" + rel_file);
+        return;
+    }
+
+    // -----------------------------------------------------------------------
     // v08.25.06 & v08.25.07 — Endpoint Despachador Virtual /auto/<slug>
     // -----------------------------------------------------------------------
     if (ctx.parts.size() > 1 && ctx.parts[1] == "auto") {
@@ -463,10 +479,35 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             else if (ends_with(slug, ".m3u")) slug = slug.substr(0, slug.size() - 4);
         }
 
+        auto req_quality = lower(query_get(ctx.query, "quality"));
+        auto matches_quality = [](StreamQuality sq, const std::string& q_str) {
+            if (q_str == "1080p" || q_str == "1080" || q_str == "fhd") {
+                return sq == StreamQuality::FHD_1080;
+            } else if (q_str == "720p" || q_str == "720" || q_str == "hd") {
+                return sq == StreamQuality::HD_720;
+            } else if (q_str == "sd" || q_str == "576p") {
+                return sq == StreamQuality::SD;
+            } else if (q_str == "4k" || q_str == "uhd") {
+                return sq == StreamQuality::UHD_4K;
+            }
+            return true;
+        };
+
         auto action = query_get(ctx.query, "action");
         if (action == "resolve" || action == "list" || action == "status" || action == "stream_status") {
             auto candidates = find_candidates_for_channel(slug);
             StreamScorer::rank_candidates(candidates);
+
+            if (!req_quality.empty() && req_quality != "auto") {
+                std::vector<ChannelCandidate> filtered;
+                for (const auto& c : candidates) {
+                    if (matches_quality(c.quality, req_quality)) {
+                        filtered.push_back(c);
+                    }
+                }
+                candidates = std::move(filtered);
+            }
+
             Json::array arr;
             for (const auto& c : candidates) {
                 std::string quality_str = "SD";
@@ -510,7 +551,33 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             return;
         }
 
-        auto best = resolve_best_candidate(slug);
+        auto candidates = find_candidates_for_channel(slug);
+        StreamScorer::rank_candidates(candidates);
+
+        if (!req_quality.empty() && req_quality != "auto") {
+            std::vector<ChannelCandidate> filtered;
+            for (const auto& c : candidates) {
+                if (matches_quality(c.quality, req_quality)) {
+                    filtered.push_back(c);
+                }
+            }
+            if (!filtered.empty()) {
+                candidates = std::move(filtered);
+            }
+        }
+
+        std::optional<ChannelCandidate> best = std::nullopt;
+        for (const auto& c : candidates) {
+            if (!c.is_disabled) {
+                best = c;
+                break;
+            }
+        }
+
+        if (!best.has_value()) {
+            best = resolve_best_candidate(slug);
+        }
+
         if (!best.has_value()) {
             send_error(connection, 404, "No candidates found for channel: " + slug);
             return;

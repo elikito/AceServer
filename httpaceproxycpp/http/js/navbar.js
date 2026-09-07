@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v09.07.02)
+ * HTTPAceProxy — Unified Navigation Component (v09.08.01)
  */
 (function () {
     'use strict';
@@ -84,6 +84,8 @@
                 } else if (href.includes('fuentes') && path.includes('fuentes')) {
                     isActive = true;
                 } else if (href.includes('epg') && path.includes('epg')) {
+                    isActive = true;
+                } else if ((href.includes('mobile') || href.endsWith('/m')) && (path.includes('mobile') || path.endsWith('/m') || path.includes('/m/'))) {
                     isActive = true;
                 } else if (href.includes('listas') && path.includes('listas')) {
                     isActive = true;

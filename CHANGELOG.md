@@ -4,6 +4,35 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.08.01] - 2026-09-08
+
+### 📱 Nueva Interfaz Mobile-First (/mobile, /m), Fix EPG Canónico en Reproductor Web y Filtro de Calidad en API
+
+#### 1. Fix EPG en el Reproductor Web (`/player`)
+- **Normalización Canónica de Fuentes para EPG**: En `httpaceproxycpp/http/player/index.html`, la función `toCanonicalSlug(name)` limpia prefijos numéricos de dial (`^\s*\d+[\.\s_–-]+`), sufijos de réplica / mirror (`(2)`, `[3]`, etc.) y descriptores de resolución (`FHDa`, `720a`, `1080p`, `4K`, etc.). De este modo, fuentes como `"32. Movistar Plus FHDa"` resuelven con exactitud al canal canónico de la guía (`movistar-plus`), solucionando el problema de "Sin información de guía".
+- **Búsqueda Multi-Candidato en EPG**: `parseEPGForChannel` indexa y consulta los canales tanto por ID/nombre original como por slug canónico normalizado en `channelKeyMap` y `epgCache`.
+- **Badge de Programa en Emisión en Cabecera**: Se implementa `#player-header-epg` (`.player-header-epg-badge`) en la barra superior del reproductor, mostrando en tiempo real el título y horario del programa en emisión del canal activo.
+- **Actualización Reactiva de Tarjetas**: Al terminar el renderizado de la lista de canales (`renderChannels()`), se lanza automáticamente `updateEPGForAll()` para sincronizar de inmediato las tarjetas con la programación actual.
+
+#### 2. Nueva Interfaz Web Mobile-First (`/mobile` y `/m`)
+- **Diseño 100% Mobile-First**: Viewport con `viewport-fit=cover`, prevención de scroll horizontal (`overflow-x: hidden`), áreas táctiles de mínimo 44-58px de altura, estados activos hápticos/visuales y tema oscuro optimizado para pantallas OLED.
+- **Reproductor Superior Adaptativo 16:9**: Contenedor fijado superior con soporte integrado de Hls.js y mpegts.js con fallback a controles nativos móviles en iOS y Android.
+- **Ficha de Programa Actual**: Ubicada justo debajo del reproductor, muestra el título del programa en emisión, dial/canal, horario formateado (ej. "23:05 - 00:45"), barra de progreso temporal interactiva con porcentaje y tiempo restante ("Quedan X min"), y sinopsis expandible.
+- **Barra de Acciones Rápidas Táctiles**:
+  - **Selector de Calidad**: Segmented control táctil (`Auto`, `1080p`, `720p`, `SD`) que filtra en tiempo real los candidatos disponibles del canal.
+  - **Botón `Copiar Enlace VLC`**: Copia instantáneamente al portapapeles la URL directa del stream (`http://<host>:8888/auto/<slug>?quality=<q>`) con feedback toast.
+  - **Modal / Bottom Sheet `ID Manual`**: Diálogo táctil deslizable con input validado para pegar Content IDs de 40 caracteres y reproducirlos al instante.
+- **Lista Vertical de Favoritos Táctil**: Carga exclusivamente los canales marcados como favoritos desde `/config?action=get_favorites`, mostrando icono/picon, dial, nombre del canal y el programa que se está emitiendo en ese momento con actualización periódica.
+
+#### 3. Backend C++
+- **Rutas Estáticas `/mobile` y `/m`**: Implementación de `MobilePlugin` en `plugins.cpp` y enrutamiento en `Proxy::handle_http` (`src/proxy.cpp`) para servir la interfaz mobile tanto en `/mobile` como en `/m` (con soporte de alias `m -> mobile`).
+- **Filtrado por Calidad en `/auto/<slug>`**: Soporte del parámetro query `?quality=<q>` (`1080p`, `720p`, `sd`, `4k`) tanto en llamadas API (`action=resolve` y `action=list`) como en reproducción directa por redirección HTTP 307.
+
+#### 4. Subida de Versión del Sistema
+- Actualización de versión a `v09.08.01` en `config.hpp`, `footer.js`, `navbar.js`, `plugins_state.json` (`/config` y `/http`), `fuentes/index.html`, `statplugin/index.html` y suite de pruebas `test_core.cpp`.
+
+---
+
 ## [09.07.02] - 2026-09-07
 
 ### 🛠 Corrección Crítica EPG (closest), Aislamiento Estricto de Canales Numéricos en C++/JS y Compactación de Content ID en /player

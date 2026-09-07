@@ -1388,6 +1388,39 @@ private:
     Proxy& proxy_;
 };
 
+class MobilePlugin : public Plugin {
+public:
+    MobilePlugin(Config cfg) : config_(std::move(cfg)) {}
+    std::string name() const override { return "mobile"; }
+    std::vector<std::string> handlers() const override { return {"mobile", "m"}; }
+    
+    bool handle(RequestContext& ctx) override {
+        std::string relative = "index.html";
+        if (ctx.path != "/mobile" && ctx.path != "/m") {
+            if (starts_with(ctx.path, "/mobile/")) {
+                relative = ctx.path.substr(std::string("/mobile/").size());
+            } else if (starts_with(ctx.path, "/m/")) {
+                relative = ctx.path.substr(std::string("/m/").size());
+            }
+        }
+        if (relative.empty()) relative = "index.html";
+        if (!path_is_safe_relative(relative)) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+            return true;
+        }
+        try {
+            auto full = std::filesystem::path(config_.root_dir) / "http" / "mobile" / relative;
+            auto body = read_file_binary(full.string());
+            send_bytes(ctx.connection, 200, mime_type_for_path(relative), body);
+        } catch (...) {
+            send_bytes(ctx.connection, 404, "text/plain", "Not Found");
+        }
+        return true;
+    }
+private:
+    Config config_;
+};
+
 class CustomListPlugin : public PlaylistPlugin {
 public:
     CustomListPlugin(Config cfg, HttpClient& client, Proxy& proxy, std::string name, std::string url)
@@ -1562,6 +1595,7 @@ std::vector<std::shared_ptr<Plugin>> create_plugins(Config config, HttpClient& h
     plugins.push_back(std::make_shared<ListasPlugin>(config));
     plugins.push_back(std::make_shared<FuentesPlugin>(config));
     plugins.push_back(std::make_shared<EpgPlugin>(config, proxy));
+    plugins.push_back(std::make_shared<MobilePlugin>(config));
 
     // Dynamic Custom Lists
     auto state = proxy.plugins_state_json();

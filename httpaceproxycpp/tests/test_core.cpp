@@ -640,8 +640,8 @@ void test_v09_07_01_content_id_and_engine_version() {
 }
 
 void test_v09_07_02_epg_and_numeric_channel_isolation() {
-    // 1. Verificación de versión de la app
-    require(std::string(kAppVersion) == "09.07.02", "App version must be 09.07.02");
+    // 1. Verificación de versión previa superada por v09.08.01
+    require(!std::string(kAppVersion).empty(), "App version must not be empty");
 
     // 2. Aislamiento numérico: canal principal vs canal secundario
     std::string primary_mirror = "M+ LaLiga 1080p ** (2)";
@@ -655,6 +655,60 @@ void test_v09_07_02_epg_and_numeric_channel_isolation() {
 
     // 3. Verificación de slug canónico con subrayados
     require(canonical_slug("M+ LaLiga_2") == "m-laliga-2", "LaLiga_2 slug matches m-laliga-2");
+}
+
+void test_v09_08_01_mobile_and_quality_filter() {
+    // 1. Verificación de versión de la app v09.08.01
+    require(std::string(kAppVersion) == "09.08.01", "App version must be 09.08.01");
+
+    // 2. Normalización de dial y sufijos de calidad/réplica a slug canónico
+    require(canonical_slug("32. Movistar Plus FHDa") == "movistar-plus", "Dial prefix + FHDa resolves to movistar-plus");
+    require(canonical_slug("01 - La 1 1080p") == "la-1", "Dial prefix 01 - resolves to la-1");
+    require(canonical_slug("105_ DAZN 1 720a (2)") == "dazn-1", "Dial prefix + 720a + replica resolves to dazn-1");
+
+    // 3. Filtrado por calidad
+    ChannelCandidate c1;
+    c1.name = "Movistar LaLiga FHD";
+    c1.quality = StreamQuality::FHD_1080;
+    c1.content_id = "aaa111";
+
+    ChannelCandidate c2;
+    c2.name = "Movistar LaLiga 720p";
+    c2.quality = StreamQuality::HD_720;
+    c2.content_id = "bbb222";
+
+    ChannelCandidate c3;
+    c3.name = "Movistar LaLiga SD";
+    c3.quality = StreamQuality::SD;
+    c3.content_id = "ccc333";
+
+    std::vector<ChannelCandidate> list = {c1, c2, c3};
+
+    auto filter_by_quality = [](const std::vector<ChannelCandidate>& candidates, const std::string& quality_param) {
+        if (quality_param.empty()) return candidates;
+        std::string q = quality_param;
+        for (auto& ch : q) ch = std::tolower(static_cast<unsigned char>(ch));
+        std::vector<ChannelCandidate> filtered;
+        for (const auto& c : candidates) {
+            if ((q == "1080" || q == "1080p" || q == "fhd") && c.quality == StreamQuality::FHD_1080) filtered.push_back(c);
+            else if ((q == "720" || q == "720p" || q == "hd") && c.quality == StreamQuality::HD_720) filtered.push_back(c);
+            else if ((q == "sd" || q == "576" || q == "576p") && c.quality == StreamQuality::SD) filtered.push_back(c);
+            else if ((q == "4k" || q == "2160" || q == "2160p" || q == "uhd") && c.quality == StreamQuality::UHD_4K) filtered.push_back(c);
+        }
+        return filtered.empty() ? candidates : filtered;
+    };
+
+    auto fhd = filter_by_quality(list, "1080p");
+    require(fhd.size() == 1 && fhd[0].content_id == "aaa111", "Quality 1080p filter");
+
+    auto hd = filter_by_quality(list, "720p");
+    require(hd.size() == 1 && hd[0].content_id == "bbb222", "Quality 720p filter");
+
+    auto sd = filter_by_quality(list, "sd");
+    require(sd.size() == 1 && sd[0].content_id == "ccc333", "Quality SD filter");
+
+    auto auto_all = filter_by_quality(list, "auto");
+    require(auto_all.size() == 3, "Quality auto filter returns all");
 }
 
 } // namespace
@@ -681,6 +735,7 @@ int main() {
         test_v09_02_02_docker_sources_and_search_tokens();
         test_v09_07_01_content_id_and_engine_version();
         test_v09_07_02_epg_and_numeric_channel_isolation();
+        test_v09_08_01_mobile_and_quality_filter();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AceProxy Mobile">
+    <meta name="theme-color" content="#0a0c10">
+    <meta name="description" content="HTTPAceProxy Mobile-First Web Player">
+    <title>AceProxy Mobile</title>
+    <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Players: Hls.js & mpegts.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #0a0c10;
+            --bg-surface: #12151c;
+            --bg-card: #181c26;
+            --bg-elevated: #212634;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-active: #22c55e;
+            --accent: #22c55e;
+            --accent-glow: rgba(34, 197, 94, 0.25);
+            --accent-red: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --touch-target: 44px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        /* Contenedor Principal */
+        .mobile-app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+
+        /* Barra de Navegación Compacta */
+        .mobile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: max(8px, env(safe-area-inset-top)) 16px 8px 16px;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            z-index: 50;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .header-logo {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+        }
+
+        .header-title {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #fff 40%, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            text-transform: uppercase;
+        }
+
+        .header-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-icon-btn {
+            min-height: var(--touch-target);
+            min-width: var(--touch-target);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header-icon-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* 1. Reproductor Superior Sticky 16:9 */
+        .player-sticky-wrap {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #000;
+            width: 100%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .video-aspect-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #mobile-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: block;
+        }
+
+        .player-idle-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #181c26 0%, #0a0c10 80%);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .idle-play-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px var(--accent-glow);
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+        }
+
+        .idle-play-btn:active {
+            transform: scale(0.9);
+        }
+
+        .idle-play-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: #fff;
+            margin-left: 3px;
+        }
+
+        .idle-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .idle-subtext {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .player-status-strip {
+            position: absolute;
+            bottom: 6px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .player-badge-live {
+            background: rgba(239, 68, 68, 0.9);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .player-badge-live .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fff;
+            animation: pulse-live 1.5s infinite;
+        }
+
+        @keyframes pulse-live {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .player-badge-engine {
+            background: rgba(18, 21, 28, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-family: var(--font-mono);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* 2. Ficha de Programa Actual */
+        .current-program-card {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .channel-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .channel-main-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .channel-thumb {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            object-fit: contain;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+
+        .channel-names {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .channel-display-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-cid-strip {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--accent);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .epg-program-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .epg-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .epg-show-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.3;
+        }
+
+        .epg-time-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .epg-progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .epg-progress-track {
+            flex: 1;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .epg-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #4ade80);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .epg-rem-text {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .epg-desc-preview {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .epg-desc-preview.expanded {
+            -webkit-line-clamp: unset;
+            line-clamp: unset;
+        }
+
+        /* 3. Barra de Acciones Rápidas */
+        .quick-actions-bar {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quality-segmented-control {
+            display: flex;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 3px;
+            gap: 3px;
+            width: 100%;
+        }
+
+        .quality-btn {
+            flex: 1;
+            min-height: 38px;
+            background: transparent;
+            border: none;
+            border-radius: 9px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quality-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            box-shadow: 0 2px 8px var(--accent-glow);
+        }
+
+        .action-buttons-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-touch-btn {
+            min-height: var(--touch-target);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 12px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .action-touch-btn:active {
+            transform: scale(0.97);
+            background: var(--bg-elevated);
+        }
+
+        .action-touch-btn.accent {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.08));
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #4ade80;
+        }
+
+        /* 4. Lista Inferior de Favoritos */
+        .favorites-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 14px 16px;
+            gap: 12px;
+        }
+
+        .favorites-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .favorites-title {
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .favorites-search {
+            position: relative;
+            width: 100%;
+        }
+
+        .favorites-search input {
+            width: 100%;
+            min-height: var(--touch-target);
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0 14px 0 38px;
+            font-size: 13px;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .favorites-search input:focus {
+            border-color: var(--accent);
+        }
+
+        .favorites-search svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            fill: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .favorites-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .fav-row {
+            min-height: 58px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .fav-row:active {
+            transform: scale(0.98);
+            background: var(--bg-card);
+        }
+
+        .fav-row.active {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.03));
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+        }
+
+        .fav-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            object-fit: contain;
+            border: 1px solid var(--border);
+            padding: 2px;
+            flex-shrink: 0;
+        }
+
+        .fav-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            gap: 2px;
+        }
+
+        .fav-name-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .fav-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fav-active-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            display: none;
+            flex-shrink: 0;
+        }
+
+        .fav-row.active .fav-active-dot {
+            display: block;
+        }
+
+        .fav-epg-line {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .fav-epg-line .live-tag {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 10px;
+        }
+
+        /* Modal Bottom Sheet - ID Manual */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-sheet {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px 20px max(24px, env(safe-area-inset-bottom)) 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-backdrop.open .modal-sheet {
+            transform: translateY(0);
+        }
+
+        .sheet-handle {
+            width: 40px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            align-self: center;
+            margin-bottom: 4px;
+        }
+
+        .sheet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sheet-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .sheet-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .modal-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .modal-input-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-input {
+            width: 100%;
+            min-height: 48px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0 14px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: #fff;
+            outline: none;
+        }
+
+        .modal-input:focus {
+            border-color: var(--accent);
+        }
+
+        .modal-actions {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .modal-btn-secondary {
+            min-height: var(--touch-target);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .modal-btn-primary {
+            min-height: var(--touch-target);
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        /* Toast Feedback */
+        .mobile-toast {
+            position: fixed;
+            bottom: max(20px, env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(18, 21, 28, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 300;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+
+        .mobile-toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mobile-app">
+        <!-- Cabecera Compacta -->
+        <header class="mobile-header">
+            <a href="/mobile/" class="header-brand">
+                <img src="/stat/img/shesterenka.png" alt="Logo" class="header-logo">
+                <span class="header-title">HTTPAceProxy</span>
+                <span class="header-badge">Mobile</span>
+            </a>
+            <div class="header-links">
+                <a href="/epg/" class="header-icon-btn" title="Guía EPG">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
+                    </svg>
+                </a>
+                <a href="/player/" class="header-icon-btn" title="Versión Escritorio Bento">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 16H3V4h18v10z"/>
+                    </svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- 1. Reproductor Superior Sticky 16:9 -->
+        <div class="player-sticky-wrap">
+            <div class="video-aspect-box">
+                <video id="mobile-video" controls playsinline webkit-playsinline></video>
+                <div id="player-idle" class="player-idle-placeholder" onclick="startCurrentOrFirstChannel()">
+                    <div class="idle-play-btn">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
+                    <div class="idle-text" id="idle-title">Toca para reproducir</div>
+                    <div class="idle-subtext" id="idle-sub">Selecciona un canal favorito abajo</div>
+                </div>
+                <div class="player-status-strip">
+                    <span id="player-live-badge" class="player-badge-live" style="display: none;">
+                        <span class="live-dot"></span> EN DIRECTO
+                    </span>
+                    <span id="player-engine-badge" class="player-badge-engine">Auto Engine</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Ficha de Programa Actual -->
+        <section class="current-program-card">
+            <div class="channel-info-row">
+                <div class="channel-main-meta">
+                    <img id="active-channel-logo" class="channel-thumb" src="/stat/img/shesterenka.png" alt="Canal">
+                    <div class="channel-names">
+                        <div id="active-channel-name" class="channel-display-name">Selecciona un canal</div>
+                        <div id="active-channel-cid" class="channel-cid-strip" onclick="copyActiveContentId()" title="Toca para copiar Content ID">
+                            <span id="active-cid-text">Sin stream activo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ficha EPG Dinámica -->
+            <div class="epg-program-box">
+                <div class="epg-title-row">
+                    <div id="epg-show-title" class="epg-show-title">Programación en directo</div>
+                    <div id="epg-show-time" class="epg-time-badge">--:-- - --:--</div>
+                </div>
+                <div class="epg-progress-container">
+                    <div class="epg-progress-track">
+                        <div id="epg-progress-fill" class="epg-progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="epg-rem-time" class="epg-rem-text">- min</div>
+                </div>
+                <div id="epg-show-desc" class="epg-desc-preview" onclick="this.classList.toggle('expanded')" title="Toca para expandir sinopsis">
+                    Cargando guía de programación...
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Barra de Acciones Rápidas -->
+        <section class="quick-actions-bar">
+            <!-- Selector de Calidad -->
+            <div class="quality-segmented-control">
+                <button class="quality-btn active" data-quality="auto" onclick="setStreamQuality('auto')">Auto</button>
+                <button class="quality-btn" data-quality="1080p" onclick="setStreamQuality('1080p')">1080p</button>
+                <button class="quality-btn" data-quality="720p" onclick="setStreamQuality('720p')">720p</button>
+                <button class="quality-btn" data-quality="sd" onclick="setStreamQuality('sd')">SD</button>
+            </div>
+
+            <!-- Acciones Táctiles -->
+            <div class="action-buttons-row">
+                <button class="action-touch-btn accent" onclick="copyVlcLink()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    <span>Copiar VLC</span>
+                </button>
+                <button class="action-touch-btn" onclick="openManualIdModal()">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                    </svg>
+                    <span>ID Manual</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 4. Lista Inferior de Favoritos -->
+        <section class="favorites-section">
+            <div class="favorites-header">
+                <div class="favorites-title">
+                    <span>⭐ Favoritos</span>
+                    <span id="fav-count" style="font-size: 11px; color: var(--accent);">(0)</span>
+                </div>
+            </div>
+
+            <div class="favorites-search">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="search-favs" placeholder="Buscar canal favorito..." oninput="filterFavorites(this.value)">
+            </div>
+
+            <div id="favorites-container" class="favorites-list">
+                <!-- Se inyectan dinámicamente las filas de favoritos -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal Bottom Sheet: ID Manual -->
+    <div id="manual-modal" class="modal-backdrop" onclick="closeManualIdModal(event)">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <div class="sheet-title">Reproducir Content ID</div>
+                <button class="sheet-close-btn" onclick="closeManualIdModal()">✕</button>
+            </div>
+            <div class="modal-input-group">
+                <label class="modal-input-label">Content ID AceStream (40 caracteres)</label>
+                <input type="text" id="manual-cid-input" class="modal-input" placeholder="Pega el hash aquí..." maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn-secondary" onclick="pasteFromClipboard()">📋 Pegar</button>
+                <button class="modal-btn-primary" onclick="playManualContentId()">▶ Reproducir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="mobile-toast" class="mobile-toast">
+        <span id="toast-text">Notificación</span>
+    </div>
+
+    <script>
+        // --- ESTADO GLOBAL MOBILE ---
+        let currentActiveChannel = null;
+        let selectedQuality = 'auto'; // 'auto', '1080p', '720p', 'sd'
+        let favoriteChannels = [];
+        let epgCache = {};
+        let channelKeyMap = {};
+        let mpegtsPlayer = null;
+        let hlsPlayer = null;
+        let currentPlayingCid = '';
+        let epgSyncTimer = null;
+
+        // Normalización canónica para emparejar EPG y diales
+        function toCanonicalSlug(name) {
+            if (!name) return 'channel';
+            let n = name.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/^\s*\d+[\.\s_–-]+/g, ' ')
+                .replace(/[\(\[\{]\s*(?:mirror|replica|m|opt|alt)?\s*\d+\s*[\)\]\}]/gi, ' ')
+                .replace(/\b(1080p|1080i|1080|720p|720i|720|576p|576i|480p|4k|uhd|fhda?|720a?|hd|sd|hevc|h265|h264|back|backup|opt|alt|directo|live|envivo|castellano|spanish|spain|espana|acestream)\b/gi, ' ')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return n || 'channel';
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await Promise.all([
+                loadFavorites(),
+                loadEPGData()
+            ]);
+            epgSyncTimer = setInterval(updateActiveProgramCard, 30000);
+        });
+
+        // --- CARGA DE FAVORITOS ---
+        async function loadFavorites() {
+            const container = document.getElementById('favorites-container');
+            container.innerHTML = '<div style="padding: 30px 10px; text-align: center; color: var(--text-muted);">Cargando favoritos...</div>';
+
+            try {
+                // Primero intentamos la playlist directa /channels/favoritos.m3u
+                const res = await fetch('/channels/favoritos.m3u');
+                if (res.ok) {
+                    const text = await res.text();
+                    favoriteChannels = parseFavoritesM3U(text);
+                }
+            } catch (err) {
+                console.warn('Error leyendo /channels/favoritos.m3u:', err);
+            }
+
+            // Si vino vacío, fallback a lista de EPG
+            if (favoriteChannels.length === 0) {
+                try {
+                    const epgFavsRes = await fetch('/epg?action=get_favorites');
+                    if (epgFavsRes.ok) {
+                        const data = await epgFavsRes.json();
+                        if (data.favorites && data.favorites.length > 0) {
+                            favoriteChannels = data.favorites.map((fav, i) => ({
+                                name: fav,
+                                slug: toCanonicalSlug(fav),
+                                dial: i + 1,
+                                logo: '',
+                                url: `/auto/${encodeURIComponent(toCanonicalSlug(fav))}`
+                            }));
+                        }
+                    }
+                } catch (e) { }
+            }
+
+            document.getElementById('fav-count').textContent = `(${favoriteChannels.length})`;
+            renderFavoritesList(favoriteChannels);
+
+            if (favoriteChannels.length > 0 && !currentActiveChannel) {
+                // Pre-seleccionar el primer canal sin forzar autoplay antes del primer toque
+                setupActiveChannelPreview(favoriteChannels[0]);
+            }
+        }
+
+        function parseFavoritesM3U(m3uText) {
+            const lines = m3uText.split('\n');
+            const list = [];
+            let currentItem = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.match(/,(.*)$/);
+                    const name = nameMatch ? nameMatch[1].trim() : 'Canal';
+                    const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
+                    const logo = logoMatch ? logoMatch[1].trim() : '';
+                    const tvgIdMatch = line.match(/tvg-id="([^"]*)"/i);
+                    const tvgId = tvgIdMatch ? tvgIdMatch[1].trim() : '';
+
+                    currentItem = {
+                        name,
+                        logo,
+                        tvgId,
+                        slug: toCanonicalSlug(name)
+                    };
+                } else if (line && !line.startsWith('#') && currentItem) {
+                    currentItem.url = line;
+                    list.push(currentItem);
+                    currentItem = null;
+                }
+            }
+            return list;
+        }
+
+        function renderFavoritesList(channels) {
+            const container = document.getElementById('favorites-container');
+            if (channels.length === 0) {
+                container.innerHTML = `
+                    <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center;">
+                        <div style="font-size: 28px; margin-bottom: 8px;">⭐</div>
+                        <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">Sin canales en Favoritos</div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Marca canales con estrella en la Guía EPG para verlos aquí.</div>
+                        <a href="/epg/" style="display: inline-block; background: var(--accent); color: #fff; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 13px;">📅 Ir a Guía EPG</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = channels.map((chan, idx) => {
+                const isActive = currentActiveChannel && (currentActiveChannel.slug === chan.slug || currentActiveChannel.name === chan.name);
+                const epgProgram = getEpgNowForChannel(chan);
+                const logoSrc = chan.logo || '/stat/img/shesterenka.png';
+
+                return `
+                    <div class="fav-row ${isActive ? 'active' : ''}" onclick="selectAndPlayChannelByIndex(${idx})">
+                        <img class="fav-logo" src="${escapeHtml(logoSrc)}" onerror="this.src='/stat/img/shesterenka.png'" alt="">
+                        <div class="fav-info">
+                            <div class="fav-name-line">
+                                <span class="fav-name">${escapeHtml(chan.name)}</span>
+                                <span class="fav-active-dot"></span>
+                            </div>
+                            <div class="fav-epg-line">
+                                ${epgProgram ? `<span class="live-tag">AHORA:</span> <span>${escapeHtml(epgProgram.title)}</span>` : `<span style="color: var(--text-muted);">En directo</span>`}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterFavorites(query) {
+            if (!query) {
+                renderFavoritesList(favoriteChannels);
+                return;
+            }
+            const q = query.toLowerCase();
+            const filtered = favoriteChannels.filter(c => c.name.toLowerCase().includes(q) || c.slug.includes(q));
+            renderFavoritesList(filtered);
+        }
+
+        function selectAndPlayChannelByIndex(idx) {
+            const chan = favoriteChannels[idx];
+            if (!chan) return;
+            playChannel(chan);
+        }
+
+        function startCurrentOrFirstChannel() {
+            if (currentActiveChannel) {
+                playChannel(currentActiveChannel);
+            } else if (favoriteChannels.length > 0) {
+                playChannel(favoriteChannels[0]);
+            }
+        }
+
+        function setupActiveChannelPreview(chan) {
+            currentActiveChannel = chan;
+            document.getElementById('active-channel-name').textContent = chan.name;
+            if (chan.logo) {
+                document.getElementById('active-channel-logo').src = chan.logo;
+            }
+            document.getElementById('idle-title').textContent = chan.name;
+            document.getElementById('idle-sub').textContent = 'Toca para iniciar reproducción';
+            updateActiveProgramCard();
+        }
+
+        // --- REPRODUCCIÓN (Mobile 16:9 Adaptativo) ---
+        async function playChannel(chan) {
+            currentActiveChannel = chan;
+            setupActiveChannelPreview(chan);
+
+            // Marcar fila activa en lista
+            renderFavoritesList(favoriteChannels);
+
+            const video = document.getElementById('mobile-video');
+            const idleCover = document.getElementById('player-idle');
+            idleCover.style.display = 'none';
+            document.getElementById('player-live-badge').style.display = 'inline-flex';
+
+            // Parar reproductores previos
+            if (mpegtsPlayer) {
+                try { mpegtsPlayer.destroy(); } catch (e) { }
+                mpegtsPlayer = null;
+            }
+            if (hlsPlayer) {
+                try { hlsPlayer.destroy(); } catch (e) { }
+                hlsPlayer = null;
+            }
+
+            // Resolver Content ID o stream URL considerando la calidad seleccionada
+            let streamUrl = chan.url;
+            const channelSlug = chan.slug || toCanonicalSlug(chan.name);
+
+            try {
+                const resolveUrl = `/auto/${encodeURIComponent(channelSlug)}?quality=${encodeURIComponent(selectedQuality)}&action=resolve`;
+                const r = await fetch(resolveUrl);
+                if (r.ok) {
+                    const data = await r.json();
+                    if (data.content_id) {
+                        currentPlayingCid = data.content_id;
+                        document.getElementById('active-cid-text').textContent = `CID: ${currentPlayingCid.substring(0, 10)}...`;
+                        streamUrl = `/content_id/${currentPlayingCid}/stream.ts`;
+                    }
+                }
+            } catch (err) {
+                console.warn('Error resolviendo calidad:', err);
+            }
+
+            if (!currentPlayingCid) {
+                const matchCid = streamUrl.match(/[a-f0-9]{40}/i);
+                if (matchCid) {
+                    currentPlayingCid = matchCid[0];
+                    document.getElementById('active-cid-text').textContent = `CID: ${currentPlayingCid.substring(0, 10)}...`;
+                }
+            }
+
+            // Reproducción con Hls.js si es m3u8 o mpegts si es TS/MSE
+            if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                hlsPlayer = new Hls({ enableWorker: true, lowLatencyMode: true });
+                hlsPlayer.loadSource(streamUrl);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => { }));
+            } else if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
+                try {
+                    mpegtsPlayer = mpegts.createPlayer({
+                        type: 'mse',
+                        isLive: true,
+                        url: streamUrl
+                    }, {
+                        enableStashBuffer: true,
+                        stashInitialSize: 256 * 1024,
+                        liveBufferLatencyChasing: false,
+                        autoCleanupSourceBuffer: true
+                    });
+                    mpegtsPlayer.attachMediaElement(video);
+                    mpegtsPlayer.load();
+                    mpegtsPlayer.play().catch(() => { });
+                } catch (e) {
+                    video.src = streamUrl;
+                    video.play().catch(() => { });
+                }
+            } else {
+                // Fallback nativo HTML5 (ej. Safari iOS con soporte HLS o directo)
+                video.src = streamUrl;
+                video.play().catch(() => { });
+            }
+
+            updateActiveProgramCard();
+            showToast(`▶ Reproduciendo: ${chan.name}`);
+        }
+
+        // --- SELECTOR DE CALIDAD ---
+        function setStreamQuality(quality) {
+            selectedQuality = quality;
+            document.querySelectorAll('.quality-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-quality') === quality);
+            });
+            showToast(`Calidad seleccionada: ${quality.toUpperCase()}`);
+
+            // Si hay un canal reproduciéndose, recargar con la nueva calidad seleccionada
+            if (currentActiveChannel) {
+                playChannel(currentActiveChannel);
+            }
+        }
+
+        // --- CARGA E ÍNDICE EPG ---
+        async function loadEPGData() {
+            try {
+                const res = await fetch('/data/epg/guiatv.xml');
+                if (res.ok) {
+                    const xml = await res.text();
+                    indexEPG(xml);
+                    updateActiveProgramCard();
+                    renderFavoritesList(favoriteChannels);
+                }
+            } catch (err) { }
+        }
+
+        function indexEPG(xmlText) {
+            epgCache = {};
+            channelKeyMap = {};
+            const now = new Date();
+            const minTime = new Date(now.getTime() - 2 * 3600000);
+            const maxTime = new Date(now.getTime() + 48 * 3600000);
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlText, 'text/xml');
+
+            const channels = doc.getElementsByTagName('channel');
+            for (let i = 0; i < channels.length; i++) {
+                const node = channels[i];
+                const id = node.getAttribute('id');
+                if (!id) continue;
+                channelKeyMap[toCanonicalSlug(id)] = id;
+                channelKeyMap[id.toLowerCase()] = id;
+
+                const dNames = node.getElementsByTagName('display-name');
+                for (let j = 0; j < dNames.length; j++) {
+                    const txt = dNames[j].textContent.trim();
+                    channelKeyMap[toCanonicalSlug(txt)] = id;
+                    channelKeyMap[txt.toLowerCase()] = id;
+                }
+            }
+
+            const progs = doc.getElementsByTagName('programme');
+            for (let i = 0; i < progs.length; i++) {
+                const p = progs[i];
+                const chanId = p.getAttribute('channel');
+                const startStr = p.getAttribute('start');
+                const stopStr = p.getAttribute('stop');
+                const titleNode = p.getElementsByTagName('title')[0];
+                const descNode = p.getElementsByTagName('desc')[0];
+
+                if (chanId && startStr && stopStr && titleNode) {
+                    const start = parseXMLTVDate(startStr);
+                    const stop = parseXMLTVDate(stopStr);
+                    if (stop >= minTime && start <= maxTime) {
+                        if (!epgCache[chanId]) epgCache[chanId] = [];
+                        epgCache[chanId].push({
+                            title: titleNode.textContent.trim(),
+                            desc: descNode ? descNode.textContent.trim() : '',
+                            start,
+                            stop
+                        });
+                    }
+                }
+            }
+        }
+
+        function getEpgNowForChannel(chan) {
+            if (!chan) return null;
+            const candidates = [
+                toCanonicalSlug(chan.name),
+                toCanonicalSlug(chan.tvgId),
+                (chan.name || '').toLowerCase()
+            ].filter(Boolean);
+
+            let targetId = null;
+            for (const c of candidates) {
+                if (channelKeyMap[c]) {
+                    targetId = channelKeyMap[c];
+                    break;
+                }
+            }
+
+            if (!targetId || !epgCache[targetId]) return null;
+            const now = new Date();
+            return epgCache[targetId].find(p => now >= p.start && now < p.stop) || null;
+        }
+
+        function updateActiveProgramCard() {
+            if (!currentActiveChannel) return;
+            const prog = getEpgNowForChannel(currentActiveChannel);
+
+            const titleEl = document.getElementById('epg-show-title');
+            const timeEl = document.getElementById('epg-show-time');
+            const barEl = document.getElementById('epg-progress-fill');
+            const remEl = document.getElementById('epg-rem-time');
+            const descEl = document.getElementById('epg-show-desc');
+
+            if (prog) {
+                const now = new Date();
+                const format = { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hour12: false };
+                const sStr = prog.start.toLocaleTimeString('es-ES', format);
+                const eStr = prog.stop.toLocaleTimeString('es-ES', format);
+                const total = prog.stop - prog.start;
+                const elapsed = Math.max(0, now - prog.start);
+                const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+                const remMin = Math.max(0, Math.round((prog.stop - now) / 60000));
+
+                titleEl.textContent = prog.title;
+                timeEl.textContent = `${sStr} - ${eStr}`;
+                barEl.style.width = `${pct}%`;
+                remEl.textContent = `${remMin} min restantes`;
+                descEl.textContent = prog.desc || 'Sin sinopsis disponible.';
+            } else {
+                titleEl.textContent = currentActiveChannel.name;
+                timeEl.textContent = 'En directo';
+                barEl.style.width = '100%';
+                remEl.textContent = 'EN VIVO';
+                descEl.textContent = 'Guía EPG en tiempo real. Programa emitido en directo.';
+            }
+        }
+
+        function parseXMLTVDate(dateStr) {
+            if (!dateStr) return new Date();
+            const m = dateStr.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-]\d{2}):?(\d{2}))?/);
+            if (m) {
+                const utc = Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5]), parseInt(m[6]));
+                if (m[7] !== undefined) {
+                    const offset = (parseInt(m[7]) * 60 + parseInt(m[8] || '0')) * 60000;
+                    return new Date(utc - offset);
+                }
+                return new Date(utc);
+            }
+            return new Date();
+        }
+
+        // --- ACCIONES RÁPIDAS ---
+        function copyVlcLink() {
+            if (!currentActiveChannel) {
+                showToast('Selecciona un canal primero');
+                return;
+            }
+            const host = window.location.host || '127.0.0.1:8888';
+            const slug = currentActiveChannel.slug || toCanonicalSlug(currentActiveChannel.name);
+            const streamUrl = `http://${host}/auto/${encodeURIComponent(slug)}?quality=${encodeURIComponent(selectedQuality)}`;
+
+            copyToClipboard(streamUrl, `📋 Enlace VLC copiado: ${slug}`);
+        }
+
+        function copyActiveContentId() {
+            if (!currentPlayingCid) {
+                showToast('Sin Content ID activo');
+                return;
+            }
+            copyToClipboard(currentPlayingCid, `✓ Content ID copiado: ${currentPlayingCid}`);
+        }
+
+        // --- MODAL ID MANUAL ---
+        function openManualIdModal() {
+            document.getElementById('manual-modal').classList.add('open');
+            setTimeout(() => document.getElementById('manual-cid-input').focus(), 150);
+        }
+
+        function closeManualIdModal() {
+            document.getElementById('manual-modal').classList.remove('open');
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        const match = text.match(/[a-f0-9]{40}/i);
+                        document.getElementById('manual-cid-input').value = match ? match[0].toLowerCase() : text.trim();
+                        showToast('✓ ID pegado desde portapapeles');
+                    }
+                }
+            } catch (err) {
+                showToast('Pega manualmente en la casilla');
+            }
+        }
+
+        function playManualContentId() {
+            const raw = document.getElementById('manual-cid-input').value.trim();
+            const match = raw.match(/[a-f0-9]{40}/i);
+            if (!match) {
+                showToast('Error: Ingresa un hash válido de 40 caracteres');
+                return;
+            }
+            const cid = match[0].toLowerCase();
+            closeManualIdModal();
+
+            const customChannel = {
+                name: `AceStream ${cid.substring(0, 8)}...`,
+                slug: `manual-${cid.substring(0, 8)}`,
+                url: `/content_id/${cid}/stream.ts`,
+                logo: '/stat/img/shesterenka.png'
+            };
+            playChannel(customChannel);
+        }
+
+        // --- UTILIDADES ---
+        function copyToClipboard(text, successMsg) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast(successMsg)).catch(() => fallbackCopy(text, successMsg));
+            } else {
+                fallbackCopy(text, successMsg);
+            }
+        }
+
+        function fallbackCopy(text, msg) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast(msg);
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const toast = document.getElementById('mobile-toast');
+            document.getElementById('toast-text').textContent = msg;
+            toast.classList.add('visible');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('visible'), 2800);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+
+</html>
