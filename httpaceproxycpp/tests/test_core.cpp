@@ -712,8 +712,8 @@ void test_v09_08_01_mobile_and_quality_filter() {
 }
 
 void test_v09_08_02_mobile_epg_and_quality_pills() {
-    // 1. Verificación estricta de versión de la aplicación v09.08.02
-    require(std::string(kAppVersion) == "09.08.02", "App version must be 09.08.02");
+    // 1. Verificación de versión previa superada por v09.08.03
+    require(!std::string(kAppVersion).empty(), "App version must not be empty");
 
     // 2. Comprobación de normalización a canales EPG canónicos (Movistar Plus, M+ LaLiga 2, M+ Deportes 8)
     require(canonical_slug("31. M+ Deportes 8") == "m-deportes-8", "Dial prefix resolves 31. M+ Deportes 8 to m-deportes-8");
@@ -749,6 +749,41 @@ void test_v09_08_02_mobile_epg_and_quality_pills() {
     require(candidates[0].peers == 50, "Top candidate has 50 peers");
 }
 
+void test_v09_08_03_two_row_navbar_and_search() {
+    // 1. Verificación de versión previa superada por v09.08.04
+    require(std::string(kAppVersion) >= "09.08.03", "App version must be at least 09.08.03");
+
+    // 2. Normalización de slugs canónicos para búsqueda deduplicada
+    require(canonical_slug("Movistar Plus+ HD") == "movistar-plus", "Normalizes Movistar Plus+ HD to movistar-plus");
+    require(canonical_slug("1. La 1 Directo 1080p (mirror 1)") == "la-1", "Normalizes dial and replica suffix to la-1");
+    require(canonical_slug("DAZN 1 Bar HD") == "dazn-1-bar", "Normalizes DAZN 1 Bar HD to dazn-1-bar");
+
+    // 3. Verificación de calidades y peers
+    require(detect_stream_quality("La 1 FHDa") == StreamQuality::FHD_1080, "FHDa detected as FHD_1080");
+}
+
+void test_v09_08_04_resolution_standardization_and_legacy_player() {
+    // 1. Verificación estricta de versión de la aplicación v09.08.04
+    require(std::string(kAppVersion) == "09.08.04", "App version must be 09.08.04");
+
+    // 2. Verificación de clasificación canónica de calidades: 1080p, 720p, SD, 4K
+    require(detect_stream_quality("DAZN 1 FHD") == StreamQuality::FHD_1080, "FHD classified as 1080p");
+    require(detect_stream_quality("DAZN 1 1080a") == StreamQuality::FHD_1080, "1080a classified as 1080p");
+    require(detect_stream_quality("DAZN 1 1080p") == StreamQuality::FHD_1080, "1080p classified as 1080p");
+    require(detect_stream_quality("DAZN 1 HD") == StreamQuality::HD_720, "HD classified as 720p");
+    require(detect_stream_quality("DAZN 1 720a") == StreamQuality::HD_720, "720a classified as 720p");
+    require(detect_stream_quality("DAZN 1 720p") == StreamQuality::HD_720, "720p classified as 720p");
+    require(detect_stream_quality("DAZN F1 4K") == StreamQuality::UHD_4K, "4K stream verified and detected");
+    require(detect_stream_quality("DAZN 1") == StreamQuality::SD, "Default stream classified as SD");
+
+    // 3. Normalización canónica de sufijos de calidad en slugs
+    require(canonical_slug("DAZN 1 1080p") == "dazn-1", "1080p stripped from slug");
+    require(canonical_slug("DAZN 1 1080a") == "dazn-1", "1080a stripped from slug");
+    require(canonical_slug("DAZN 1 720p") == "dazn-1", "720p stripped from slug");
+    require(canonical_slug("DAZN 1 720a") == "dazn-1", "720a stripped from slug");
+    require(canonical_slug("DAZN 1 FHDa") == "dazn-1", "FHDa stripped from slug");
+}
+
 } // namespace
 
 int main() {
@@ -775,6 +810,8 @@ int main() {
         test_v09_07_02_epg_and_numeric_channel_isolation();
         test_v09_08_01_mobile_and_quality_filter();
         test_v09_08_02_mobile_epg_and_quality_pills();
+        test_v09_08_03_two_row_navbar_and_search();
+        test_v09_08_04_resolution_standardization_and_legacy_player();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

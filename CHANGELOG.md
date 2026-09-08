@@ -4,6 +4,70 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.08.04] - 2026-09-08
+
+### 🎬 Estandarización Global de Resoluciones (1080p, 720p, SD, 4K) y Modernización del Reproductor Legacy
+
+#### 1. Estandarización Canónica de Resoluciones
+- **Eliminación de Redundancias**: Se resolvió la causa de la multiplicidad de píldoras de calidad (como `HD`, `1080p`, `FHD`, `SD` mostrándose a la vez para un mismo canal).
+- **Normalización a 4 Niveles Estándar**:
+  - **`1080p`**: Unifica de forma estricta todas las referencias a `1080p`, `1080i`, `1080`, `FHD`, `FHDa` y `1080a`.
+  - **`720p`**: Unifica todas las referencias a `720p`, `720i`, `720`, `HD`, `720a` y `HDa`.
+  - **`SD`**: Agrupa resoluciones estándar (`576p`, `480p`) o canales sin indicación expresa de resolución.
+  - **`4K`**: Soporte y clasificación verificada para emisiones Ultra HD (`4K`, `UHD`, `2160p`, ej: *DAZN F1 4K*).
+- **Backend (`proxy.cpp`)**:
+  - Las listas dinámicas M3U generadas para Favoritos (`/channels/favoritos.m3u`) y canales virtuales `/auto/` ahora rotulan de forma limpia `1080p` y `720p` (reemplazando `FHDa` y `720a`), con URLs canónicas `/auto/<slug>-1080p` y `/auto/<slug>-720p`.
+  - Se mantiene retrocompatibilidad transparente con clientes que soliciten `-fhda`, `-1080a`, `-720a`.
+- **Frontend Móvil (`mobile/index.html`)**:
+  - `extractCandidateQualityTag` clasifica los streams de todas las fuentes M3U en los 4 niveles canónicos.
+  - En la botonera de calidad se muestran únicamente píldoras únicas (`Auto`, `4K`, `1080p`, `720p`, `SD`) con las semillas máximas correspondientes a esa resolución.
+
+#### 2. Modernización del Reproductor Legacy (`legacy.html`)
+- **Desplegable de Fuentes**:
+  - Se sustituyeron las pestañas horizontales por un selector `<select id="source-select-legacy">` accesible y estilizado para navegadores WebKit de generaciones anteriores (iPad iOS 12.5.8).
+  - Por defecto se selecciona y carga automáticamente la lista **⭐ Favoritos** (`/channels/favoritos.m3u`).
+- **Canal Único del EPG (Deduplicación)**:
+  - Deduplicación automática de canales: cada canal aparece en una única fila/tarjeta unificada, independientemente del número de resoluciones o variantes presentes en la fuente.
+- **Selector Activo de Calidad 1080 / 720**:
+  - Cada canal incluye dos botones interactivos: `1080` (activo por defecto en azul) y `720` (en cyan).
+  - Al alternar entre `1080` y `720`, los botones de acción **Reproducir (`▶ VLC`)** y **Copiar (`📋`)** actualizan de inmediato el enlace de emisión apuntando a la variante elegida.
+- **Compatibilidad**: Código 100% ECMAScript 5 estricto para máxima estabilidad en navegadores antiguos.
+
+#### 3. Versionado
+- Actualizada la versión canónica a `09.08.04` en `config.hpp`, `footer.js`, `navbar.js`, `navbar.css`, `mobile/index.html`, `fuentes/index.html`, `statplugin/index.html`, `test_core.cpp` y `CHANGELOG.md`.
+
+## [09.08.03] - 2026-09-08
+
+### 🔍 Layout en Dos Filas, Menú Horizontal al 100% y Buscador Global Reactivo Spotlight con EPG
+
+#### 1. Reestructuración del Navbar y Menú Global
+- **Estructura en Dos Filas**:
+  - **Fila Superior (`.navbar-top`)**: Logo y marca de HTTPAceProxy a la izquierda con indicador de estado; a la derecha, Buscador Global Reactivo tipo Spotlight / ElasticSearch y botón de alternancia de tema claro/oscuro.
+  - **Fila Inferior (`.navbar-bottom`)**: Barra horizontal dedicada al 100% de ancho que aloja los enlaces de navegación principales (Dashboard, Canales, Fuentes, EPG, Reproductor, Reproductor Legacy, Móvil), garantizando visualización fluida, sin saltos de línea y con soporte táctil nativo.
+
+#### 2. Buscador Global Reactivo (Canales y Eventos EPG)
+- **Búsqueda en Vivo (Typeahead / ElasticSearch-like)**:
+  - Input reactivo integrado con icono de lupa, debounce de 200 ms, botón de limpieza rápida y atajos globales de teclado (`/` o `⌘K` / `Ctrl+K` para enfocar, `Escape` para cerrar, `Enter` y flechas para navegar).
+  - Filtro simultáneo multidimensional por nombre del canal, dial numérico, slug canónico, y título / descripción del programa en emisión activa extraído del EPG.
+- **Priorización y Deduplicación Canónica**:
+  - Deduplicación inteligente por canal canónico (`toCanonicalSlug`), eliminando repeticiones del mismo canal procedentes de distintas fuentes M3U/JSON.
+  - Prioridad de resultados: 1º Canales marcados como **Favoritos** (⭐), 2º Resto de canales.
+- **Tarjetas de Resultado Enriquecidas**:
+  - Logo oficial/personalizado del canal con avatar de iniciales como fallback.
+  - Nombre del canal, dial numérico (si existe) y badge ⭐ si pertenece a Favoritos.
+  - Evento en emisión actual con su franja horaria (ej: `🕒 14:00 - 15:30 • Nombre del programa`).
+  - Content ID activo truncado en monoespaciado (`67966...106634`).
+  - Redirección y carga directa en `/player?url=/auto/<slug>` reproduciendo el canal seleccionado de forma inmediata.
+
+#### 3. Adaptabilidad Mobile-First
+- En pantallas móviles (< 768px):
+  - El buscador se integra de forma compacta y fluida en la fila superior sin romper el header.
+  - La fila inferior dispone de soporte táctil fluido con `overflow-x: auto`, `-webkit-overflow-scrolling: touch` y espaciado optimizado.
+  - El dropdown de resultados Spotlight se expande a todo el ancho disponible de la pantalla con tarjetas de altura cómoda (>= 50px) para interacción táctil.
+
+#### 4. Versionado y Mantenimiento
+- **Actualización de Versión**: Se actualizó la versión canónica a `09.08.03` en `config.hpp`, `footer.js`, `navbar.js`, `plugins_state.json`, `test_core.cpp` y `CHANGELOG.md`.
+
 ## [09.08.02] - 2026-09-08
 
 ### ⚡ Canales EPG Canónicos en Mobile, Sintonización por Semillas, Calidades Dinámicas (FHDa/720a) y Optimización de Espacio en Cabecera

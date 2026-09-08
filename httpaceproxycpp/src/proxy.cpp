@@ -3191,6 +3191,9 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
     } else if (ends_with(clean_query, "-1080p")) {
         clean_query = clean_query.substr(0, clean_query.size() - 6);
         want_fhd_only = true;
+    } else if (ends_with(clean_query, "-1080a")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 6);
+        want_fhd_only = true;
     } else if (ends_with(clean_query, "-720a")) {
         clean_query = clean_query.substr(0, clean_query.size() - 5);
         want_hd_only = true;
@@ -3441,7 +3444,7 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
         std::string best_hd_cid;
         bool has_real_hd = false;
 
-        auto auto_cand = resolve_best_candidate(slug + "-fhda");
+        auto auto_cand = resolve_best_candidate(slug + "-1080p");
         if (!auto_cand.has_value()) {
             auto_cand = resolve_best_candidate(slug);
         }
@@ -3449,26 +3452,26 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
             best_auto_cid = auto_cand->content_id;
         }
 
-        auto hd_cand = resolve_best_candidate(slug + "-720a");
+        auto hd_cand = resolve_best_candidate(slug + "-720p");
         if (hd_cand.has_value() && !hd_cand->content_id.empty() && hd_cand->quality == StreamQuality::HD_720) {
             has_real_hd = true;
             best_hd_cid = hd_cand->content_id;
         }
 
-        // 1. [Nombre Canal] FHDa
-        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " FHDa\"";
+        // 1. [Nombre Canal] 1080p
+        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-        out << " group-title=\"" << group << "\", " << display_name << " FHDa\n";
+        out << " group-title=\"" << group << "\", " << display_name << " 1080p\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
 
-        // 2. [Nombre Canal] 720a (solo si existe fuente HD real)
+        // 2. [Nombre Canal] 720p (solo si existe fuente HD real)
         if (has_real_hd && !best_hd_cid.empty()) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720a\"";
+            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
             out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 720a\n";
-            out << "http://" << hostport << "/auto/" << slug << "-720a/stream.ts\n";
+            out << " group-title=\"" << group << "\", " << display_name << " 720p\n";
+            out << "http://" << hostport << "/auto/" << slug << "-720p/stream.ts\n";
         }
     }
 
@@ -3659,7 +3662,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         std::string best_hd_cid;
         bool has_real_hd = false;
 
-        auto auto_cand = resolve_best_candidate(slug + "-fhda");
+        auto auto_cand = resolve_best_candidate(slug + "-1080p");
         if (!auto_cand.has_value()) {
             auto_cand = resolve_best_candidate(slug);
         }
@@ -3670,28 +3673,28 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             }
         }
 
-        auto hd_cand = resolve_best_candidate(slug + "-720a");
+        auto hd_cand = resolve_best_candidate(slug + "-720p");
         if (hd_cand.has_value() && !hd_cand->content_id.empty() && hd_cand->quality == StreamQuality::HD_720) {
             has_real_hd = true;
             best_hd_cid = hd_cand->content_id;
         }
 
-        // 1. [Nombre Canal] FHDa
+        // 1. [Nombre Canal] 1080p
         out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-        out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " FHDa\n";
+        out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " 1080p\n";
         if (has_real_hd) {
-            out << "http://" << hostport << "/auto/" << slug << "-fhda\n";
+            out << "http://" << hostport << "/auto/" << slug << "-1080p\n";
         } else {
             out << "http://" << hostport << "/auto/" << slug << "\n";
         }
 
-        // 2. [Nombre Canal] 720a — Renderizar solo si existe fuente HD real
+        // 2. [Nombre Canal] 720p — Renderizar solo si existe fuente HD real
         if (has_real_hd && !best_hd_cid.empty()) {
             out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
             if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " 720a\n";
-            out << "http://" << hostport << "/auto/" << slug << "-720a\n";
+            out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " 720p\n";
+            out << "http://" << hostport << "/auto/" << slug << "-720p\n";
         }
     }
 

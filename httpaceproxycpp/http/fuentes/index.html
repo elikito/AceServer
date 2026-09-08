@@ -624,36 +624,61 @@
 <body>
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-        </button>
-        <div class="nav-links" id="nav-links">
-            <a href="/stat">Dashboard</a>
-            <a href="/statplugin/">Canales</a>
-            <a href="/fuentes/" class="active">Fuentes</a>
-            <a href="/epg/">EPG</a>
-            <a href="/player/index.html">Reproductor</a>
-            <a href="/player/legacy.html">Reproductor Legacy</a>
+        <div class="navbar-top">
+            <div class="navbar-brand-section">
+                <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+            </div>
+            <div class="navbar-actions-section">
+                <div class="global-search-container" id="global-search-container">
+                    <div class="global-search-box">
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="global-search-input" class="global-search-input"
+                            placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
+                            aria-label="Buscador global">
+                        <button type="button" id="global-search-clear" class="global-search-clear"
+                            aria-label="Limpiar búsqueda" style="display:none;">&times;</button>
+                        <span class="search-badge-kbd">/</span>
+                    </div>
+                    <div class="global-search-dropdown" id="global-search-dropdown" style="display:none;">
+                        <div class="search-results-header" id="search-results-header">Resultados</div>
+                        <div class="search-results-list" id="search-results-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="navbar-bottom">
+            <div class="nav-links" id="nav-links">
+                <a href="/stat">Dashboard</a>
+                <a href="/statplugin/">Canales</a>
+                <a href="/fuentes/" class="active">Fuentes</a>
+                <a href="/epg/">EPG</a>
+                <a href="/player/index.html">Reproductor</a>
+                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/mobile/index.html">Móvil</a>
+            </div>
         </div>
     </nav>
 
     <!-- Container -->
     <div class="container">
-        <!-- Header -->
         <div class="header-section">
             <div class="header-title">
-                <h2>Gestión de Fuentes M3U / URLs</h2>
-                <p>Administra, sincroniza y añade listas de reproducción dinámicas</p>
+                <h2>Gestión de Fuentes M3U/URL</h2>
+                <p>Administra, sincroniza y añade listas de reproducción</p>
             </div>
             <div class="fuentes-header-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <button class="btn-action btn-save"
                     style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);"
                     onclick="openInternalEditor()" title="Abrir Editor de Lista Interna (pegar nombres y hashes)">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    <span>Editor de Lista Interna</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span>Editar Lista Interna</span>
                 </button>
                 <button class="btn-action btn-copy"
                     style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
@@ -686,6 +711,7 @@
                         <path
                             d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                     </svg>
+                    <span>Actualizar todas las fuentes</span>
                 </button>
             </div>
         </div>
@@ -694,7 +720,11 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.93 19.07a10 10 0 0 1 0-14.14M2 22l5-5M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.08M8.46 15.54a5 5 0 0 1 0-7.08M12 12h.01"></path></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M4.93 19.07a10 10 0 0 1 0-14.14M2 22l5-5M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.08M8.46 15.54a5 5 0 0 1 0-7.08M12 12h.01">
+                        </path>
+                    </svg>
                 </div>
                 <div class="stat-info">
                     <div class="stat-val" id="stat-total-sources">0</div>
@@ -703,7 +733,9 @@
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(22, 163, 74, 0.15); color: #16a34a;">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
                 </div>
                 <div class="stat-info">
                     <div class="stat-val" id="stat-active-sources">0</div>
@@ -712,7 +744,10 @@
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(2, 132, 199, 0.15); color: #0284c7;">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                        <polyline points="17 2 12 7 7 2"></polyline>
+                    </svg>
                 </div>
                 <div class="stat-info">
                     <div class="stat-val" id="stat-total-channels">0</div>
@@ -721,7 +756,9 @@
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(118, 75, 162, 0.15); color: #764ba2;">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
                 </div>
                 <div class="stat-info">
                     <div class="stat-val" id="stat-total-groups">0</div>
@@ -895,8 +932,9 @@
                     <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text-color);">⬆️
                         Importar desde Archivo (.M3U / .JSON / .TXT)</div>
                     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <input type="file" id="importFileInput" name="import-file-input" class="url-input" accept=".m3u,.m3u8,.json,.txt"
-                            style="padding: 4px; font-size: 12px;" title="Seleccionar archivo de fuentes (M3U o JSON)">
+                        <input type="file" id="importFileInput" name="import-file-input" class="url-input"
+                            accept=".m3u,.m3u8,.json,.txt" style="padding: 4px; font-size: 12px;"
+                            title="Seleccionar archivo de fuentes (M3U o JSON)">
                         <select id="import-mode-select" class="url-input"
                             style="width: 110px; font-size: 12px; padding: 4px;" title="Modo de importación">
                             <option value="merge" selected>Fusionar</option>
@@ -933,7 +971,8 @@ http://servidor.com/lista.m3u"></textarea>
         <div class="section-header" id="internal-editor-header">
             <div class="section-title" style="display: flex; align-items: center; gap: 8px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="color: #10b981;">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    <path
+                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
                 </svg>
                 <span>📝 Editor de Lista Interna (Pegar Canales / Hashes Individuales)</span>
             </div>
@@ -941,10 +980,13 @@ http://servidor.com/lista.m3u"></textarea>
         <div class="config-card" id="internal-editor-card" style="border-left: 4px solid #10b981;">
             <div class="form-group" style="margin-bottom: 12px;">
                 <label for="paste-channels-text" style="font-weight: 600; color: var(--text-color);">
-                    Pega tus canales (Formatos flexibles: "Nombre - acestream://Hash", "Nombre, Hash", "acestream://Hash" o Hash directo por línea):
+                    Pega tus canales (Formatos flexibles: "Nombre - acestream://Hash", "Nombre, Hash",
+                    "acestream://Hash" o Hash directo por línea):
                 </label>
                 <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-bottom: 8px;">
-                    Esta sección compila y guarda exclusivamente la lista interna unificada (<code style="color: #10b981; font-weight: 600;">/listas/locales/interna.m3u</code>) sin alterar tus fuentes remotas dinámicas.
+                    Esta sección compila y guarda exclusivamente la lista interna unificada (<code
+                        style="color: #10b981; font-weight: 600;">/listas/locales/interna.m3u</code>) sin alterar tus
+                    fuentes remotas dinámicas.
                 </p>
                 <textarea id="paste-channels-text" class="url-input" rows="7"
                     style="width: 100%; font-family: monospace; font-size: 13px; padding: 10px; resize: vertical;"
@@ -954,11 +996,15 @@ DAZN F1 1080p * - acestream://d719181097d256073844390b3e094fbcb1bceaa4
 DAZN F1 1080p ** - acestream://b08e158ea3f5c72084f5ff8e3c30ca2e4d1ff6d1
 DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textarea>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <span style="font-size: 12px; color: var(--text-muted);">
-                    💡 Si tienes una URL de lista completa remota (HTTP/HTTPS), agrégala en <strong>"Agregar Nueva Fuente por URL"</strong>.
+                    💡 Si tienes una URL de lista completa remota (HTTP/HTTPS), agrégala en <strong>"Agregar Nueva
+                        Fuente por URL"</strong>.
                 </span>
-                <button class="btn-action btn-save" style="padding: 10px 24px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);" onclick="saveInternalList()">
+                <button class="btn-action btn-save"
+                    style="padding: 10px 24px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);"
+                    onclick="saveInternalList()">
                     💾 Guardar en Lista Interna
                 </button>
             </div>
@@ -1076,12 +1122,12 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
             }
 
             const isValidPrefix = trimmed.startsWith('http://') ||
-                                  trimmed.startsWith('https://') ||
-                                  trimmed.startsWith('ipfs://') ||
-                                  trimmed.startsWith('ipns://') ||
-                                  trimmed.startsWith('/listas/locales/') ||
-                                  trimmed.startsWith('/') ||
-                                  trimmed.startsWith('file://');
+                trimmed.startsWith('https://') ||
+                trimmed.startsWith('ipfs://') ||
+                trimmed.startsWith('ipns://') ||
+                trimmed.startsWith('/listas/locales/') ||
+                trimmed.startsWith('/') ||
+                trimmed.startsWith('file://');
 
             if (!isValidPrefix) {
                 return {
@@ -1181,7 +1227,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                     clearTimeout(timeoutId);
                     console.warn('Timeout o fallo al consultar /config?action=get_config, aplicando fallback:', err);
                     const fallbackConfig = {
-                        version: '09.08.02',
+                        version: '09.08.04',
                         aio: true,
                         urls: {},
                         custom_lists: [
@@ -1815,8 +1861,8 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                 }
 
                 const isJson = file.name.toLowerCase().endsWith('.json') ||
-                               content.trim().startsWith('{') ||
-                               content.trim().startsWith('[');
+                    content.trim().startsWith('{') ||
+                    content.trim().startsWith('[');
 
                 if (isJson) {
                     try {

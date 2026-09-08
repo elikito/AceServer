@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AceProxy Mobile">
     <meta name="theme-color" content="#0a0c10">
-    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.02">
+    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.04">
     <title>AceProxy Mobile</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1073,7 +1073,7 @@
     </div>
 
     <script>
-        // --- ESTADO GLOBAL MOBILE v09.08.02 ---
+        // --- ESTADO GLOBAL MOBILE v09.08.04 ---
         const DEFAULT_EPG_URL = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz";
         let epgChannels = [];
         let epgProgrammes = {};
@@ -1595,22 +1595,19 @@
             }
         }
 
-        // Extrae la etiqueta de versión específica (FHDa, 720a, 1080p, 720p, SD, etc.)
+        // Extrae y clasifica la etiqueta de calidad canónica estrictamente en: 4K, 1080p, 720p o SD
         function extractCandidateQualityTag(candName, qualityLabel) {
-            if (candName) {
-                const m = candName.match(/\b(FHDa|720a|1080a|1080p|720p|576p|480p|4Ka|4K|UHD|FHD|HD|SD)\b/i);
-                if (m) {
-                    const tag = m[1];
-                    if (tag.toLowerCase() === 'fhda') return 'FHDa';
-                    if (tag.toLowerCase() === '720a') return '720a';
-                    if (tag.toLowerCase() === 'fhd') return 'FHD';
-                    if (tag.toLowerCase() === 'hd') return 'HD';
-                    if (tag.toLowerCase() === '1080p') return '1080p';
-                    if (tag.toLowerCase() === '720p') return '720p';
-                    return tag.toUpperCase();
-                }
+            const str = ((candName || '') + ' ' + (qualityLabel || '')).toLowerCase();
+            if (/\b(4k|uhd|4ka|2160p)\b/i.test(str)) {
+                return '4K';
             }
-            return qualityLabel || 'SD';
+            if (/\b(1080p|1080i|1080|fhd|fhda|1080a)\b/i.test(str)) {
+                return '1080p';
+            }
+            if (/\b(720p|720i|720|hd|720a|hda)\b/i.test(str)) {
+                return '720p';
+            }
+            return 'SD';
         }
 
         async function fetchCandidatesAndBuildQualityPills(slug, shouldPlay = true) {
@@ -1632,22 +1629,31 @@
                     return;
                 }
 
-                // Extraer variantes únicas de calidad
+                // Extraer variantes únicas de calidad estandarizadas (Auto, 4K, 1080p, 720p, SD)
                 const qualityMap = new Map();
-                // Primera opción siempre Auto (que sintoniza la mejor opción por semillas)
+                // Primera opción siempre Auto (sintoniza la mejor opción por semillas)
                 qualityMap.set('auto', {
                     key: 'auto',
                     label: 'Auto',
                     candidate: data.best_candidate || activeCandidates[0]
                 });
 
+                const qualityOrder = ['4K', '1080p', '720p', 'SD'];
+                const bestCandidatePerQuality = {};
+
                 activeCandidates.forEach(cand => {
                     const tag = extractCandidateQualityTag(cand.name, cand.quality_label);
-                    if (!qualityMap.has(tag)) {
-                        qualityMap.set(tag, {
-                            key: tag,
-                            label: tag,
-                            candidate: cand
+                    if (!bestCandidatePerQuality[tag] || (cand.peers || 0) > (bestCandidatePerQuality[tag].peers || 0)) {
+                        bestCandidatePerQuality[tag] = cand;
+                    }
+                });
+
+                qualityOrder.forEach(qKey => {
+                    if (bestCandidatePerQuality[qKey]) {
+                        qualityMap.set(qKey, {
+                            key: qKey,
+                            label: qKey,
+                            candidate: bestCandidatePerQuality[qKey]
                         });
                     }
                 });
@@ -1706,11 +1712,17 @@
                 return;
             }
 
-            // Buscar el candidato que coincide con este tag de calidad
-            const matched = activeCandidates.find(c => {
+            // Buscar el mejor candidato que coincide con este tag de calidad estandarizado
+            let matched = null;
+            let maxPeers = -1;
+            activeCandidates.forEach(c => {
                 const tag = extractCandidateQualityTag(c.name, c.quality_label);
-                return tag.toLowerCase() === qualityKey.toLowerCase() ||
-                       (c.quality_label && c.quality_label.toLowerCase() === qualityKey.toLowerCase());
+                if (tag.toLowerCase() === qualityKey.toLowerCase()) {
+                    if ((c.peers || 0) > maxPeers) {
+                        maxPeers = c.peers || 0;
+                        matched = c;
+                    }
+                }
             });
 
             if (matched) {

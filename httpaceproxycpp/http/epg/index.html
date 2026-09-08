@@ -327,10 +327,25 @@
             letter-spacing: 0.5px;
         }
 
-        .health-online { background-color: #22c55e; color: #ffffff; }
-        .health-low { background-color: #eab308; color: #000000; }
-        .health-offline { background-color: #ef4444; color: #ffffff; }
-        .health-unknown { background-color: var(--border-color); color: var(--text-muted); }
+        .health-online {
+            background-color: #22c55e;
+            color: #ffffff;
+        }
+
+        .health-low {
+            background-color: #eab308;
+            color: #000000;
+        }
+
+        .health-offline {
+            background-color: #ef4444;
+            color: #ffffff;
+        }
+
+        .health-unknown {
+            background-color: var(--border-color);
+            color: var(--text-muted);
+        }
 
         /* Free Text Selection across EPG cards */
         .channel-epg-card,
@@ -350,6 +365,7 @@
             -webkit-user-select: none !important;
             touch-action: none;
         }
+
         .drag-handle:active {
             cursor: grabbing;
         }
@@ -365,15 +381,17 @@
             padding: 2px 6px;
             border-radius: 4px;
             cursor: pointer;
-            border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
             word-break: break-all;
             transition: all .15s ease;
         }
+
         .cid-copy-badge:hover {
             background: rgba(34, 197, 94, 0.15);
             color: #4ade80;
             border-color: rgba(34, 197, 94, 0.4);
         }
+
         .cid-copy-badge.copied-highlight {
             background: #22c55e !important;
             color: #ffffff !important;
@@ -388,10 +406,25 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
 
-        .quality-4k { background-color: #a855f7; color: #fff; }
-        .quality-1080p { background-color: #3b82f6; color: #fff; }
-        .quality-720p { background-color: #06b6d4; color: #fff; }
-        .quality-sd { background-color: var(--border-color); color: var(--text-muted); }
+        .quality-4k {
+            background-color: #a855f7;
+            color: #fff;
+        }
+
+        .quality-1080p {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+
+        .quality-720p {
+            background-color: #06b6d4;
+            color: #fff;
+        }
+
+        .quality-sd {
+            background-color: var(--border-color);
+            color: var(--text-muted);
+        }
 
         /* Switch Toggle */
         .switch-toggle {
@@ -410,7 +443,10 @@
         .switch-toggle .slider {
             position: absolute;
             cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: #ef4444;
             transition: .3s;
             border-radius: 18px;
@@ -428,11 +464,11 @@
             border-radius: 50%;
         }
 
-        .switch-toggle input:checked + .slider {
+        .switch-toggle input:checked+.slider {
             background-color: #22c55e;
         }
 
-        .switch-toggle input:checked + .slider:before {
+        .switch-toggle input:checked+.slider:before {
             transform: translateX(14px);
         }
 
@@ -655,7 +691,7 @@
             justify-content: center;
             opacity: 0;
             transition: opacity 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
         .channel-logo-wrap:hover .channel-logo-edit-badge {
@@ -961,6 +997,7 @@
             -webkit-appearance: none;
             margin: 0;
         }
+
         input[type=number] {
             -moz-appearance: textfield;
             appearance: textfield;
@@ -1087,6 +1124,7 @@
                 justify-content: space-between;
                 margin-top: 4px;
             }
+
             .fav-action-btn {
                 flex: 1;
                 justify-content: center;
@@ -1103,36 +1141,66 @@
 
 <body>
     <nav class="navbar">
-        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menú" aria-expanded="false">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-        </button>
-        <div class="nav-links" id="nav-links">
-            <a href="/stat">Dashboard</a>
-            <a href="/statplugin/">Canales</a>
-            <a href="/fuentes/">Fuentes</a>
-            <a href="/epg/">EPG</a>
-            <a href="/player/index.html">Reproductor</a>
-            <a href="/player/legacy.html">Reproductor Legacy</a>
+        <div class="navbar-top">
+            <div class="navbar-brand-section">
+                <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+            </div>
+            <div class="navbar-actions-section">
+                <div class="global-search-container" id="global-search-container">
+                    <div class="global-search-box">
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="global-search-input" class="global-search-input"
+                            placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
+                            aria-label="Buscador global">
+                        <button type="button" id="global-search-clear" class="global-search-clear"
+                            aria-label="Limpiar búsqueda" style="display:none;">&times;</button>
+                        <span class="search-badge-kbd">/</span>
+                    </div>
+                    <div class="global-search-dropdown" id="global-search-dropdown" style="display:none;">
+                        <div class="search-results-header" id="search-results-header">Resultados</div>
+                        <div class="search-results-list" id="search-results-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="navbar-bottom">
+            <div class="nav-links" id="nav-links">
+                <a href="/stat">Dashboard</a>
+                <a href="/statplugin/">Canales</a>
+                <a href="/fuentes/">Fuentes</a>
+                <a href="/epg/" class="active">EPG</a>
+                <a href="/player/index.html">Reproductor</a>
+                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/mobile/index.html">Móvil</a>
+            </div>
         </div>
     </nav>
 
     <div class="container">
         <div class="header-section">
             <div class="header-title">
-                <h2>Guía de Programación TV (EPG)</h2>
+                <h2>Guía de EPG</h2>
                 <p>Parrilla interactiva de canales, eventos en directo y programación</p>
             </div>
             <div class="epg-stats-bar">
-                <div class="stat-pill" style="background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.3); color: #22c55e;" title="Hora actual del sistema">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <div class="stat-pill"
+                    style="background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.3); color: #22c55e;"
+                    title="Hora actual del sistema">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                        style="display:inline-block; vertical-align:middle; margin-right:4px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
                     <strong id="live-clock" style="color: var(--text-primary); font-weight: 700;">--:--:--</strong>
                 </div>
                 <div class="stat-pill">Canales: <strong id="stat-channels-count">0</strong></div>
                 <div class="stat-pill">Programas: <strong id="stat-programmes-count">0</strong></div>
-                <div class="stat-pill">Estado: <strong id="stat-epg-status" style="color:#4CAF50;">Sincronizado</strong></div>
+                <div class="stat-pill"><strong id="stat-epg-status" style="color:#4CAF50;">Sincronizado</strong>
+                </div>
             </div>
         </div>
 
@@ -1140,7 +1208,9 @@
         <div class="epg-tabs-bar">
             <button class="epg-tab-btn active" id="tab-btn-fav" onclick="setMainTab('fav')">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="#FFD700" stroke="#FFD700" stroke-width="2">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                    </polygon>
                 </svg>
                 Favoritos <span class="tab-badge" id="fav-count-badge">0</span>
             </button>
@@ -1151,17 +1221,28 @@
                 Todos los Canales <span class="tab-badge" id="all-count-badge">0</span>
             </button>
             <div id="fav-actions-bar" class="fav-actions-bar">
-                <button class="fav-action-btn" onclick="sortFavoritesAlphabetically()" title="Reordenar automáticamente los canales favoritos de A a Z">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h7M3 12h5M3 18h3M14 6l4 8 4-8M18 10v8"></path></svg>
-                    Ordenar (A-Z)
+                <button class="fav-action-btn" onclick="sortFavoritesAlphabetically()"
+                    title="Reordenar automáticamente los canales favoritos de A a Z">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h7M3 12h5M3 18h3M14 6l4 8 4-8M18 10v8"></path>
+                    </svg>
+                    A-Z
                 </button>
-                <button class="fav-action-btn fav-save-btn" onclick="saveCurrentFavoritesOrder()" title="Guardar orden de canales favoritos en el servidor">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    Guardar Orden
+                <button class="fav-action-btn fav-save-btn" onclick="saveCurrentFavoritesOrder()"
+                    title="Guardar orden de canales favoritos en el servidor">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Guardar
                 </button>
-                <button class="fav-action-btn" onclick="copyFavoritesM3uUrl()" title="Copiar enlace directo M3U de canales favoritos">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                    📋 Copiar URL M3U
+                <button class="fav-action-btn" onclick="copyFavoritesM3uUrl()"
+                    title="Copiar enlace directo M3U de canales favoritos">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                    </svg>
                 </button>
             </div>
         </div>
@@ -1169,34 +1250,52 @@
         <div class="controls-bar">
             <div class="search-box">
                 <svg class="search-icon" viewBox="0 0 24 24">
-                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                    <path
+                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                 </svg>
-                <input type="text" id="epg-search" placeholder="Buscar programa, película o canal..." oninput="filterEpg()">
+                <input type="text" id="epg-search" placeholder="Buscar programa, película o canal..."
+                    oninput="filterEpg()">
             </div>
 
             <div class="filter-btn-group">
                 <button class="filter-btn active" id="btn-filter-now" onclick="setFilterMode('now')">
-                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e; margin-right:4px;"></span>
+                    <span
+                        style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e; margin-right:4px;"></span>
                     En Emisión
                 </button>
                 <button class="filter-btn" id="btn-filter-upcoming" onclick="setFilterMode('upcoming')">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle; margin-right:3px;"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"
+                        style="vertical-align:middle; margin-right:3px;">
+                        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                        <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line>
+                    </svg>
                     Próximos
                 </button>
                 <button class="filter-btn" id="btn-filter-all" onclick="setFilterMode('all')">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
+                        style="vertical-align:middle; margin-right:3px;">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
                     Todo el Día
                 </button>
             </div>
 
-            <button class="filter-btn" id="btn-test-health-favs" onclick="testHealthAllFavorites(this)" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25); white-space: nowrap;" title="Testear en tiempo real la salud y peers de todos los canales favoritos">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+            <button class="filter-btn" id="btn-test-health-favs" onclick="testHealthAllFavorites(this)"
+                style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25); white-space: nowrap;"
+                title="Testear en tiempo real la salud y peers de todos los canales favoritos">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                    <path d="M7 2v11h3v9l7-12h-4l4-8z" />
+                </svg>
                 <span>⚡ Testear Salud de Favoritos</span>
             </button>
 
             <button class="btn-reload" onclick="loadEpgData(true)" title="Actualizar programación EPG">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                    <path
+                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                 </svg>
             </button>
         </div>
@@ -1235,54 +1334,70 @@
             <div class="modal-header">
                 <div>
                     <h3 class="modal-title">🎨 Selector de Logo de Canal</h3>
-                    <div style="font-size: 13px; color: var(--brand-color); font-weight: 700; margin-top: 4px;" id="logo-modal-channel-name">Canal</div>
+                    <div style="font-size: 13px; color: var(--brand-color); font-weight: 700; margin-top: 4px;"
+                        id="logo-modal-channel-name">Canal</div>
                 </div>
                 <button class="modal-close" onclick="hideLogoModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Preview actual -->
-                <div style="display: flex; align-items: center; gap: 16px; background: var(--stat-bg); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px;">
-                    <img id="logo-preview-img" src="" alt="Preview" style="width: 56px; height: 56px; object-fit: contain; background: var(--stat-bg); border-radius: 8px; padding: 4px; border: 1px solid var(--border-color);">
+                <div
+                    style="display: flex; align-items: center; gap: 16px; background: var(--stat-bg); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px;">
+                    <img id="logo-preview-img" src="" alt="Preview"
+                        style="width: 56px; height: 56px; object-fit: contain; background: var(--stat-bg); border-radius: 8px; padding: 4px; border: 1px solid var(--border-color);">
                     <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 13px; font-weight: 600; color: var(--text-color);">Logo Seleccionado</div>
-                        <div id="logo-preview-url" style="font-size: 11px; color: var(--text-muted); word-break: break-all; font-family: monospace; margin-top: 2px;">-</div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-color);">Logo Seleccionado
+                        </div>
+                        <div id="logo-preview-url"
+                            style="font-size: 11px; color: var(--text-muted); word-break: break-all; font-family: monospace; margin-top: 2px;">
+                            -</div>
                     </div>
                 </div>
 
                 <!-- Sección 1: Logos encontrados en listas M3U / XMLTV -->
                 <div style="margin-bottom: 16px;">
-                    <div style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <div
+                        style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
                         Logos encontrados en Listas y Guía EPG
                     </div>
-                    <div id="logo-candidates-grid" style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 140px; overflow-y: auto; padding: 6px 2px;">
+                    <div id="logo-candidates-grid"
+                        style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 140px; overflow-y: auto; padding: 6px 2px;">
                         <div style="font-size: 12px; color: var(--text-muted);">Buscando logos disponibles...</div>
                     </div>
                 </div>
 
                 <!-- Sección 2: URL Personalizada Externa -->
                 <div style="margin-bottom: 16px;">
-                    <div style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <div
+                        style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
                         Introducir URL Externa
                     </div>
-                    <input type="text" id="logo-custom-url-input" class="search-box" style="width: 100%; height: 38px; border-radius: 6px; padding: 0 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); font-size: 13px;" placeholder="https://ejemplo.com/logo.png" oninput="onCustomLogoInput(this.value)">
+                    <input type="text" id="logo-custom-url-input" class="search-box"
+                        style="width: 100%; height: 38px; border-radius: 6px; padding: 0 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); font-size: 13px;"
+                        placeholder="https://ejemplo.com/logo.png" oninput="onCustomLogoInput(this.value)">
                 </div>
 
                 <!-- Sección 3: Subir Imagen Local -->
                 <div style="margin-bottom: 16px;">
-                    <div style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <div
+                        style="font-size: 12px; font-weight: 700; color: var(--text-color); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
                         O subir logo local desde tu equipo
                     </div>
-                    <input type="file" id="logo-file-input" accept="image/*" style="font-size: 12px; color: var(--text-muted);" onchange="onLocalLogoFileSelected(event)">
+                    <input type="file" id="logo-file-input" accept="image/*"
+                        style="font-size: 12px; color: var(--text-muted);" onchange="onLocalLogoFileSelected(event)">
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
-                <button type="button" class="fav-action-btn" onclick="resetChannelLogo()" style="color: #ff5252;" title="Restablecer al logo predeterminado">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+                <button type="button" class="fav-action-btn" onclick="resetChannelLogo()" style="color: #ff5252;"
+                    title="Restablecer al logo predeterminado">
                     🗑 Restablecer
                 </button>
                 <div style="display: flex; gap: 8px;">
                     <button type="button" class="fav-action-btn" onclick="hideLogoModal()">Cancelar</button>
-                    <button type="button" class="fav-action-btn fav-save-btn" onclick="saveSelectedChannelLogo()" style="background: var(--brand-color); color: #fff; font-weight: 700;">
+                    <button type="button" class="fav-action-btn fav-save-btn" onclick="saveSelectedChannelLogo()"
+                        style="background: var(--brand-color); color: #fff; font-weight: 700;">
                         💾 Guardar Logo
                     </button>
                 </div>
@@ -1296,46 +1411,66 @@
             <div class="modal-header">
                 <div>
                     <h3 class="modal-title">⚙ Personalizar Filtros Regex</h3>
-                    <div style="font-size: 13px; color: var(--brand-color); font-weight: 700; margin-top: 4px;" id="filter-modal-channel-name">Canal</div>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Slug: <code id="filter-modal-slug" style="color:var(--brand-color);">-</code></div>
+                    <div style="font-size: 13px; color: var(--brand-color); font-weight: 700; margin-top: 4px;"
+                        id="filter-modal-channel-name">Canal</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Slug: <code
+                            id="filter-modal-slug" style="color:var(--brand-color);">-</code></div>
                 </div>
                 <button class="modal-close" onclick="hideChannelFilterModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-                    Define una expresión regular o palabras clave para asociar automáticamente streams M3U/JSON/IPFS/IPNS a este canal:
+                    Define una expresión regular o palabras clave para asociar automáticamente streams
+                    M3U/JSON/IPFS/IPNS a este canal:
                 </p>
 
                 <!-- Input / Textarea de la regla Regex -->
                 <div style="margin-bottom: 14px;">
-                    <label style="display:block; font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <label
+                        style="display:block; font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
                         Expresión Regular o Palabras Clave
                     </label>
-                    <textarea id="filter-modal-regex-input" class="search-box" rows="3" style="width: 100%; border-radius: 8px; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-family: monospace; font-size: 13px; resize: vertical;" placeholder="Ej: (?i)(m\+|m\.|movistar)[\s_]*deportes(?![\s_]*[2-8])"></textarea>
+                    <textarea id="filter-modal-regex-input" class="search-box" rows="3"
+                        style="width: 100%; border-radius: 8px; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-family: monospace; font-size: 13px; resize: vertical;"
+                        placeholder="Ej: (?i)(m\+|m\.|movistar)[\s_]*deportes(?![\s_]*[2-8])"></textarea>
                 </div>
 
                 <!-- Botonera de utilidades: Copiar / Pegar -->
                 <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
-                    <button type="button" class="action-btn-sm" onclick="copyFilterRule()" style="flex:1; justify-content:center;" title="Copiar patrón actual al portapapeles">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <button type="button" class="action-btn-sm" onclick="copyFilterRule()"
+                        style="flex:1; justify-content:center;" title="Copiar patrón actual al portapapeles">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-right:4px;">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
                         📋 Copiar Regla
                     </button>
-                    <button type="button" class="action-btn-sm" onclick="pasteFilterRule()" style="flex:1; justify-content:center;" title="Pegar patrón desde el portapapeles">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    <button type="button" class="action-btn-sm" onclick="pasteFilterRule()"
+                        style="flex:1; justify-content:center;" title="Pegar patrón desde el portapapeles">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-right:4px;">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
                         📥 Pegar y Aplicar
                     </button>
                 </div>
 
-                <div id="filter-modal-status" style="font-size: 12px; color: var(--text-muted); min-height: 18px; margin-bottom: 8px;"></div>
+                <div id="filter-modal-status"
+                    style="font-size: 12px; color: var(--text-muted); min-height: 18px; margin-bottom: 8px;"></div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
-                <button type="button" class="fav-action-btn" onclick="resetChannelFilter()" style="color: #ff5252;" title="Eliminar regla personalizada o restablecer">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+                <button type="button" class="fav-action-btn" onclick="resetChannelFilter()" style="color: #ff5252;"
+                    title="Eliminar regla personalizada o restablecer">
                     🗑 Restablecer
                 </button>
                 <div style="display: flex; gap: 8px;">
                     <button type="button" class="fav-action-btn" onclick="hideChannelFilterModal()">Cancelar</button>
-                    <button type="button" class="fav-action-btn fav-save-btn" onclick="saveAndReindexChannelFilter()" style="background: var(--brand-color); color: #fff; font-weight: 700;">
+                    <button type="button" class="fav-action-btn fav-save-btn" onclick="saveAndReindexChannelFilter()"
+                        style="background: var(--brand-color); color: #fff; font-weight: 700;">
                         💾 Guardar y Reindexar
                     </button>
                 </div>
@@ -1857,7 +1992,7 @@
             } catch (e) {
                 try {
                     customLogosMap = JSON.parse(localStorage.getItem('custom_logos')) || {};
-                } catch (_) {}
+                } catch (_) { }
             }
         }
 
@@ -1993,7 +2128,7 @@
             const slug = toCanonicalSlug(currentEditingChannel.name);
             try {
                 await fetch(`/epg?action=remove_custom_logo&channel=${encodeURIComponent(slug)}`, { method: 'POST' });
-            } catch (_) {}
+            } catch (_) { }
             delete customLogosMap[slug];
             delete customLogosMap[toCanonicalSlug(currentEditingChannel.id)];
             localStorage.setItem('custom_logos', JSON.stringify(customLogosMap));
@@ -2193,7 +2328,7 @@
             const host = window.location.host || '127.0.0.1:8888';
             const proto = window.location.protocol || 'http:';
             const url = `${proto}//${host}/auto/${slug}`;
-            
+
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {
                     showToast(`📋 URL Virtual copiada: ${url}`, 'success');
@@ -2278,7 +2413,7 @@
                 if (btnEl) {
                     btnEl.disabled = false;
                     btnEl.style.opacity = '1';
-                    btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>⚡ Testear Salud de Favoritos</span>`;
+                    btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar IDs</span>`;
                 }
                 return;
             }
@@ -2291,7 +2426,7 @@
                 await Promise.all(chunk.map(async slug => {
                     try {
                         await fetch(`/statplugin?action=recheck_sources&slug=${encodeURIComponent(slug)}`, { method: 'POST' });
-                    } catch (e) {}
+                    } catch (e) { }
                     completed++;
                 }));
             }
@@ -2300,7 +2435,7 @@
             if (btnEl) {
                 btnEl.disabled = false;
                 btnEl.style.opacity = '1';
-                btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>⚡ Testear Salud de Favoritos</span>`;
+                btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar IDs</span>`;
             }
 
             // Actualizar drawers abiertos si los hay
@@ -2521,9 +2656,9 @@
                 if (searchVal) {
                     const matchChannel = chan.name.toLowerCase().includes(searchVal) || (chan.id && chan.id.toLowerCase().includes(searchVal));
                     const allProgsForChan = epgProgrammes[chan.id] || [];
-                    const hasAnyProgMatch = allProgsForChan.some(p => 
-                        (p.title && p.title.toLowerCase().includes(searchVal)) || 
-                        (p.desc && p.desc.toLowerCase().includes(searchVal)) || 
+                    const hasAnyProgMatch = allProgsForChan.some(p =>
+                        (p.title && p.title.toLowerCase().includes(searchVal)) ||
+                        (p.desc && p.desc.toLowerCase().includes(searchVal)) ||
                         (p.category && p.category.toLowerCase().includes(searchVal))
                     );
                     if (!matchChannel && !hasAnyProgMatch) return;
@@ -2615,8 +2750,7 @@
                         </div>
                         <div class="channel-actions-group">
                             <button class="action-btn-sm" onclick="copyChannelVirtualUrl('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Copiar enlace M3U / stream virtual">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                Copiar URL
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>                                <
                             </button>
                             <button class="action-btn-sm" onclick="playChannelInPlayer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Reproducir stream automático en Web Player">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle; margin-right:3px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -2628,7 +2762,7 @@
                             </button>
                             <button class="action-btn-sm" onclick="openChannelFilterModal('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Personalizar filtros Regex y palabras clave para este canal">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                ⚙ Personalizar
+                                Personalizar
                             </button>
                             <button class="btn-fav-star ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="${isFav ? '#FFD700' : 'none'}" stroke="${isFav ? '#FFD700' : 'var(--text-muted)'}" stroke-width="2">
@@ -2653,7 +2787,7 @@
                             </svg>
                             <h3 style="font-size: 18px; margin-bottom: 8px;">No tienes canales en Favoritos</h3>
                             <p style="max-width: 480px; margin: 0 auto 16px auto; color: var(--text-muted);">
-                                Para añadir tus canales preferidos, haz clic en la pestaña <strong>"Todos los Canales"</strong> y selecciona la estrella en los canales que deseas ver aquí.
+                                Puedes añadirlos en <strong>"Todos los Canales"</strong> marcando la estrella en los canales que deseas ver aquí.
                             </p>
                             <button class="epg-tab-btn active" onclick="setMainTab('all')">Ver Todos los Canales</button>
                         </div>

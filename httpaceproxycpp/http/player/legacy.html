@@ -73,17 +73,20 @@
             .navbar {
                 padding: 10px;
             }
+
             .nav-brand {
                 width: 100%;
                 margin-bottom: 6px;
                 text-align: center;
             }
+
             .nav-links {
                 width: 100%;
                 -webkit-box-pack: center;
                 -webkit-justify-content: center;
                 justify-content: center;
             }
+
             .nav-links a {
                 padding: 6px 8px;
                 font-size: 12px;
@@ -112,41 +115,65 @@
             margin: 0;
         }
 
-        .source-select-legacy {
-            display: none;
-        }
-
-        /* Tabs de Fuentes Legacy */
-        .tabs-container-legacy {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
+        .source-select-container-legacy {
             margin-bottom: 12px;
-            padding-bottom: 4px;
-            -webkit-overflow-scrolling: touch;
         }
 
-        .tab-btn-legacy {
+        .source-select-legacy {
+            display: block;
+            width: 100%;
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
-            color: #a8a8b2;
-            padding: 8px 14px;
+            color: #ffffff;
+            padding: 10px 14px;
             border-radius: 6px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
-            cursor: pointer;
-            white-space: nowrap;
             outline: none;
+            cursor: pointer;
+            box-sizing: border-box;
+            -webkit-appearance: menulist;
+            appearance: menulist;
         }
 
-        .tab-btn-legacy:hover {
-            background-color: #2d2d34;
+        .source-select-legacy:focus {
+            border-color: #4cd964;
+        }
+
+        /* Selector de Calidad 1080 / 720 */
+        .quality-toggle-legacy {
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .quality-btn-legacy {
+            background-color: #25252b;
+            border: 1px solid #3a3a44;
+            color: #a8a8b2;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+            margin-right: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .quality-btn-legacy:hover {
+            color: #ffffff;
+            border-color: #555562;
+        }
+
+        .quality-btn-legacy.quality-1080.active {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
             color: #ffffff;
         }
 
-        .tab-btn-legacy.active {
-            background-color: #4cd964;
-            border-color: #4cd964;
+        .quality-btn-legacy.quality-720.active {
+            background-color: #06b6d4;
+            border-color: #06b6d4;
             color: #ffffff;
         }
 
@@ -286,7 +313,7 @@
             font-size: 16px;
             font-weight: bold;
             color: #ffffff;
-            padding-top: 14px;
+            padding-top: 4px;
             line-height: 1.3;
         }
 
@@ -331,6 +358,7 @@
                 grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
                 gap: 12px !important;
             }
+
             .channel-item {
                 margin-bottom: 0 !important;
             }
@@ -371,16 +399,22 @@
 
     <!-- Container -->
     <div class="container">
-        <div class="header-section" style="display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between; -webkit-box-align: center; -webkit-align-items: center; align-items: center; -webkit-flex-wrap: wrap; flex-wrap: wrap; gap: 10px;">
+        <div class="header-section"
+            style="display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between; -webkit-box-align: center; -webkit-align-items: center; align-items: center; -webkit-flex-wrap: wrap; flex-wrap: wrap; gap: 10px;">
             <div>
                 <h2>Reproductor IPTV (Ligero)</h2>
                 <p id="loading-status">Cargando canales para WebKit ES5...</p>
             </div>
-            <div id="live-clock-legacy" style="font-weight: bold; color: #4CAF50; font-size: 14px; padding: 4px 10px; background: #1a1a1e; border: 1px solid #2d2d34; border-radius: 6px;">--:--:--</div>
+            <div id="live-clock-legacy"
+                style="font-weight: bold; color: #4CAF50; font-size: 14px; padding: 4px 10px; background: #1a1a1e; border: 1px solid #2d2d34; border-radius: 6px;">
+                --:--:--</div>
         </div>
 
-        <!-- Pestañas Horizontales de Fuentes -->
-        <div id="tabs-container-legacy" class="tabs-container-legacy"></div>
+        <!-- Desplegable de Fuentes Legacy -->
+        <div class="source-select-container-legacy">
+            <select id="source-select-legacy" class="source-select-legacy" onchange="switchSourceLegacy(this.value)">
+            </select>
+        </div>
 
         <!-- Buscador Legacy -->
         <div class="search-container-legacy">
@@ -532,46 +566,140 @@
                     sources.unshift({ key: 'favoritos', label: '⭐ Favoritos', url: '/channels/favoritos.m3u' });
 
                     activeSourcesListLegacy = sources;
-                    renderTabsLegacy();
-                    switchTabLegacy(sources[0].url);
+                    renderSourceSelectLegacy();
+                    switchSourceLegacy(sources[0].url);
                 }
             };
             xhr.send();
         }
 
-        function renderTabsLegacy() {
-            var tabsContainer = document.getElementById('tabs-container-legacy');
-            if (!tabsContainer) return;
-            tabsContainer.innerHTML = '';
+        function renderSourceSelectLegacy() {
+            var selectEl = document.getElementById('source-select-legacy');
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
 
             for (var k = 0; k < activeSourcesListLegacy.length; k++) {
                 var src = activeSourcesListLegacy[k];
-                var btn = document.createElement('button');
-                btn.className = 'tab-btn-legacy' + (src.url === currentSourceLegacy ? ' active' : '');
-                btn.setAttribute('data-url', src.url);
-                btn.innerHTML = src.label;
-                btn.onclick = (function (targetUrl) {
-                    return function () {
-                        switchTabLegacy(targetUrl);
-                    };
-                })(src.url);
-                tabsContainer.appendChild(btn);
+                var opt = document.createElement('option');
+                opt.value = src.url;
+                opt.text = src.label;
+                if (src.url === currentSourceLegacy) {
+                    opt.selected = true;
+                }
+                selectEl.appendChild(opt);
             }
         }
 
-        function switchTabLegacy(url) {
+        function switchSourceLegacy(url) {
             if (!url) return;
             currentSourceLegacy = url;
             currentPageLegacy = 1;
 
+            var selectEl = document.getElementById('source-select-legacy');
+            if (selectEl && selectEl.value !== url) {
+                selectEl.value = url;
+            }
+
             var searchEl = document.getElementById('search-legacy');
             if (searchEl) searchEl.value = '';
-
-            renderTabsLegacy();
 
             document.getElementById('loading-indicator').style.display = 'block';
             document.getElementById('loading-status').innerHTML = 'Cargando canales de la fuente seleccionada...';
             loadLegacyData(url);
+        }
+
+        function stripQualityFromChannelName(name) {
+            if (!name) return '';
+            var n = name;
+            // Quitar sufijos de procedencia (flechas)
+            n = n.replace(/\s*(?:[-=]>|→|➔|➜|➡|⇒)\s*.*$/i, '');
+            // Quitar sufijos de réplica tipo (2), (3)
+            n = n.replace(/\s*[\(\[]\s*\d+\s*[\)\]]/g, '');
+            // Quitar asteriscos tipo * o **
+            n = n.replace(/\s*[*#]+\s*/g, ' ');
+            // Quitar tokens de calidad
+            n = n.replace(/\b(1080p|1080i|1080|720p|720i|720|576p|576i|480p|4k|uhd|fhda?|720a?|1080a|hd|sd|hevc|h265|h264)\b/gi, '');
+            return n.replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+        }
+
+        function groupChannelsLegacy(rawItems) {
+            var groupedMap = {};
+            var groupedList = [];
+
+            for (var i = 0; i < rawItems.length; i++) {
+                var item = rawItems[i];
+                var rawName = item.name || '';
+                var baseName = stripQualityFromChannelName(rawName);
+                if (!baseName) baseName = rawName || 'Canal';
+
+                // Detectar si el stream es 1080p o 720p
+                var is720 = false;
+                var is1080 = false;
+                var nameAndUrl = (rawName + ' ' + item.url).toLowerCase();
+
+                if (/\b(720p|720i|720|hd|720a)\b/i.test(nameAndUrl)) {
+                    is720 = true;
+                } else if (/\b(1080p|1080i|1080|fhd|fhda|1080a)\b/i.test(nameAndUrl)) {
+                    is1080 = true;
+                } else {
+                    is1080 = true;
+                }
+
+                var key = (item.group || '') + '___' + baseName.toLowerCase();
+
+                if (groupedMap[key]) {
+                    var existing = groupedMap[key];
+                    if (is720 && !existing.urls['720']) {
+                        existing.urls['720'] = item.url;
+                    } else if (is1080 && !existing.urls['1080']) {
+                        existing.urls['1080'] = item.url;
+                    }
+                    if (!existing.logo && item.logo) {
+                        existing.logo = item.logo;
+                    }
+                } else {
+                    var chanObj = {
+                        name: baseName,
+                        fullName: rawName,
+                        logo: item.logo || '',
+                        group: item.group || 'Otros',
+                        urls: {
+                            '1080': is1080 ? item.url : '',
+                            '720': is720 ? item.url : ''
+                        },
+                        selectedQuality: '1080'
+                    };
+
+                    // Si es una URL /auto/<slug>, derivar automáticamente 1080p y 720p
+                    var autoIdx = item.url.indexOf('/auto/');
+                    if (autoIdx !== -1) {
+                        var rest = item.url.substring(autoIdx + 6);
+                        var slashSub = rest.indexOf('/');
+                        var rawSlug = (slashSub !== -1) ? rest.substring(0, slashSub) : rest;
+                        var queryIdx = rawSlug.indexOf('?');
+                        if (queryIdx !== -1) rawSlug = rawSlug.substring(0, queryIdx);
+                        var extIdx = rawSlug.indexOf('.');
+                        if (extIdx !== -1) rawSlug = rawSlug.substring(0, extIdx);
+
+                        var cleanSlug = rawSlug.replace(/-(?:1080p|1080a|fhda?|720p|720a|hd|fhd)$/i, '');
+                        var origin = item.url.substring(0, autoIdx + 6);
+                        chanObj.urls['1080'] = origin + cleanSlug + '-1080p';
+                        chanObj.urls['720'] = origin + cleanSlug + '-720p';
+                    }
+
+                    groupedMap[key] = chanObj;
+                    groupedList.push(chanObj);
+                }
+            }
+
+            // Fallback: Si un canal solo tiene una resolución disponible, rellenar la otra
+            for (var j = 0; j < groupedList.length; j++) {
+                var c = groupedList[j];
+                if (!c.urls['1080'] && c.urls['720']) c.urls['1080'] = c.urls['720'];
+                if (!c.urls['720'] && c.urls['1080']) c.urls['720'] = c.urls['1080'];
+            }
+
+            return groupedList;
         }
 
         function loadLegacyData(sourceUrl) {
@@ -583,10 +711,11 @@
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         var m3uText = xhr.responseText;
-                        allChannelsLegacy = parseM3ULegacy(m3uText);
+                        var rawList = parseM3ULegacy(m3uText);
+                        allChannelsLegacy = groupChannelsLegacy(rawList);
                         filteredChannelsLegacy = allChannelsLegacy;
                         currentPageLegacy = 1;
-                        document.getElementById('loading-status').innerHTML = allChannelsLegacy.length + ' canales cargados.';
+                        document.getElementById('loading-status').innerHTML = allChannelsLegacy.length + ' canales disponibles.';
                         renderCurrentPageLegacy();
                     } else {
                         document.getElementById('loading-status').innerHTML = 'Error al cargar canales (HTTP ' + xhr.status + ')';
@@ -655,7 +784,7 @@
             var filtered = [];
             for (var i = 0; i < allChannelsLegacy.length; i++) {
                 var chan = allChannelsLegacy[i];
-                if (!query || chan.name.toLowerCase().indexOf(query) !== -1 || chan.group.toLowerCase().indexOf(query) !== -1) {
+                if (!query || chan.name.toLowerCase().indexOf(query) !== -1 || (chan.fullName && chan.fullName.toLowerCase().indexOf(query) !== -1) || chan.group.toLowerCase().indexOf(query) !== -1) {
                     filtered.push(chan);
                 }
             }
@@ -717,7 +846,7 @@
             if (btnPrev) btnPrev.disabled = (currentPageLegacy <= 1);
             if (btnNext) btnNext.disabled = (currentPageLegacy >= totalPages);
 
-            renderChannelsLegacy(pageSlice);
+            renderChannelsLegacy(pageSlice, startIndex);
         }
 
         function getExactStreamUrlLegacy(originalUrl) {
@@ -786,12 +915,22 @@
             document.body.removeChild(textarea);
         }
 
-        function renderChannelsLegacy(channels) {
+        function escapeHtmlLegacy(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderChannelsLegacy(channels, startIndex) {
             var container = document.getElementById('channels-container');
             document.getElementById('loading-indicator').style.display = 'none';
             container.innerHTML = '';
 
-            if (channels.length === 0) {
+            if (!channels || channels.length === 0) {
                 if (currentSourceLegacy === '/channels/favoritos.m3u') {
                     container.innerHTML = '<div class="loading-screen" style="padding: 40px 20px;">' +
                         '<div style="font-size: 36px; margin-bottom: 8px;">⭐</div>' +
@@ -810,6 +949,7 @@
             var groups = [];
             for (var i = 0; i < channels.length; i++) {
                 var chan = channels[i];
+                chan._listIdx = (startIndex || 0) + i;
                 if (!grouped[chan.group]) {
                     grouped[chan.group] = [];
                     groups.push(chan.group);
@@ -817,20 +957,17 @@
                 grouped[chan.group].push(chan);
             }
 
-            // Ordenar grupos alfabéticamente
             groups.sort();
 
             for (var g = 0; g < groups.length; g++) {
                 var groupName = groups[g];
                 var groupChannels = grouped[groupName];
 
-                // Crear cabecera de categoría
                 var catHeader = document.createElement('div');
                 catHeader.className = 'category-header';
-                catHeader.innerHTML = groupName + ' (' + groupChannels.length + ')';
+                catHeader.innerHTML = escapeHtmlLegacy(groupName) + ' (' + groupChannels.length + ')';
                 container.appendChild(catHeader);
 
-                // Crear lista de canales
                 var list = document.createElement('ul');
                 list.className = 'channel-list';
 
@@ -844,18 +981,64 @@
                     var logoUrl = channel.logo || fallbackLogo;
                     var copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
 
+                    var q = channel.selectedQuality || '1080';
+                    var selectedUrl = channel.urls[q] || channel.urls['1080'] || channel.urls['720'] || '';
+                    var vlcUrl = getVlcUrl(selectedUrl);
+                    var listIdx = channel._listIdx;
+
+                    var is1080Active = (q === '1080') ? ' active' : '';
+                    var is720Active = (q === '720') ? ' active' : '';
+
                     item.innerHTML =
-                        '<a href="' + getVlcUrl(channel.url) + '" class="btn-play-legacy" target="_blank" title="Abrir en VLC">&#9654;</a>' +
-                        '<button class="btn-copy-legacy" onclick="copyUrlLegacy(\'' + getExactStreamUrlLegacy(channel.url) + '\', this)" title="Copiar enlace del canal">' + copyIcon + '</button>' +
+                        '<a id="btn-play-' + listIdx + '" href="' + vlcUrl + '" class="btn-play-legacy" target="_blank" title="Abrir en VLC">&#9654;</a>' +
+                        '<button id="btn-copy-' + listIdx + '" class="btn-copy-legacy" onclick="copyChannelUrlLegacy(' + listIdx + ', this)" title="Copiar enlace del canal">' + copyIcon + '</button>' +
                         '<div class="channel-logo-container">' +
                         '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
                         '</div>' +
-                        '<div class="channel-name">' + channel.name + '</div>';
+                        '<div class="channel-details">' +
+                        '<div class="channel-name">' + escapeHtmlLegacy(channel.name) + '</div>' +
+                        '<div class="quality-toggle-legacy">' +
+                        '<button type="button" id="btn-q1080-' + listIdx + '" class="quality-btn-legacy quality-1080' + is1080Active + '" onclick="toggleChannelQualityLegacy(' + listIdx + ', \'1080\')">1080</button>' +
+                        '<button type="button" id="btn-q720-' + listIdx + '" class="quality-btn-legacy quality-720' + is720Active + '" onclick="toggleChannelQualityLegacy(' + listIdx + ', \'720\')">720</button>' +
+                        '</div>' +
+                        '</div>';
 
                     list.appendChild(item);
                 }
                 container.appendChild(list);
             }
+        }
+
+        function toggleChannelQualityLegacy(listIdx, quality) {
+            var chan = filteredChannelsLegacy[listIdx];
+            if (!chan) return;
+            chan.selectedQuality = quality;
+
+            var btn1080 = document.getElementById('btn-q1080-' + listIdx);
+            var btn720 = document.getElementById('btn-q720-' + listIdx);
+            var btnPlay = document.getElementById('btn-play-' + listIdx);
+
+            if (btn1080) {
+                if (quality === '1080') btn1080.className = 'quality-btn-legacy quality-1080 active';
+                else btn1080.className = 'quality-btn-legacy quality-1080';
+            }
+            if (btn720) {
+                if (quality === '720') btn720.className = 'quality-btn-legacy quality-720 active';
+                else btn720.className = 'quality-btn-legacy quality-720';
+            }
+
+            var selectedUrl = chan.urls[quality] || chan.urls['1080'] || chan.urls['720'] || '';
+            if (btnPlay) {
+                btnPlay.href = getVlcUrl(selectedUrl);
+            }
+        }
+
+        function copyChannelUrlLegacy(listIdx, btn) {
+            var chan = filteredChannelsLegacy[listIdx];
+            if (!chan) return;
+            var quality = chan.selectedQuality || '1080';
+            var selectedUrl = chan.urls[quality] || chan.urls['1080'] || chan.urls['720'] || '';
+            copyUrlLegacy(getExactStreamUrlLegacy(selectedUrl), btn);
         }
     </script>
 </body>
