@@ -60,7 +60,7 @@
                 canonicalHostname = data.server_info?.hostname || data.sys_info?.hostname || '';
                 const ver = data.version || data.server_info?.version || '';
                 if (serverIpEl && !ipResetTimer) {
-                    serverIpEl.textContent = canonicalHostname ? `${canonicalIp} (${canonicalHostname})` : canonicalIp;
+                    serverIpEl.textContent = canonicalIp;
                 }
                 if (ver) {
                     canonicalVersion = ver;
@@ -96,7 +96,7 @@
                     }
                     ipResetTimer = setTimeout(() => {
                         if (serverIpEl) {
-                            serverIpEl.textContent = canonicalHostname ? `${canonicalIp} (${canonicalHostname})` : canonicalIp;
+                            serverIpEl.textContent = canonicalIp;
                             serverIpEl.classList.remove('copied');
                         }
                         ipResetTimer = null;

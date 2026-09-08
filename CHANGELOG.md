@@ -22,26 +22,33 @@ El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.co
     - Reproductor Móvil PWA (`mobile/index.html`).
   - Configurado con `fill="currentColor"` para garantizar sincronización cromática perfecta con los estados de foco (`:focus-within`), acentos de marca y temas claro/oscuro.
 
-#### 2. Auditoría y Estandarización del Sistema de Diseño (Botones y Badges)
+#### 2. Guía EPG (/epg): Botón de Favorito a la Derecha de "Personalizar"
+- Reincorporado el botón interactivo de estrella `[⭐ Favorito]` situado directamente a la derecha de `Personalizar` en la barra de acciones de cada tarjeta de canal.
+- Resaltado con color ámbar (#eab308) y fondo translúcido cuando el canal ya forma parte de favoritos.
+- En vista móvil responsive (`<= 768px`), el botón se expande de manera natural a ancho completo en una fila inferior propia, manteniendo la cuadrícula 2x2 simétrica para las cuatro acciones superiores.
+
+#### 3. Rediseño del Footer Universal: IP Limpia, Modo Oscuro Centrado y Un Solo Contenedor
+- **Eliminación del Nombre de Máquina**: Ahora el pie de página muestra exclusivamente la dirección IP canónica (`192.168.1.198`), prescindiendo del hostname entre paréntesis `(hostname)`.
+- **Centrado Geométrico del Modo Oscuro**: El botón de alternar tema claro/oscuro ahora está estrictamente centrado en el medio de la pantalla mediante una distribución en cuadrícula CSS Grid de 3 columnas (`1fr auto 1fr`).
+- **Un Solo Contenedor para Versión**: Eliminado el anidamiento redundante de cajas (contenedor dentro de otro contenedor). Ahora la insignia de versión es un elemento único, limpio y estilizado con feedback de copiado instantáneo (`✓ Copiado!`).
+
+#### 4. Reproductor Móvil (/mobile): Logos Ampliados, Carrusel EPG Horizontal y Calidades 1080p/720p
+- **Logos de Canal Destacados**: Aumentado el tamaño de `.channel-logo` y `.channel-thumb` a `48px` x `48px` (con radio de 8px-10px y ajuste proporcional `object-fit: contain`), haciéndolos claros, legibles y nítidos.
+- **Normalización Estricta de Calidades**: Supresión definitiva de la opción redundante `SD`. Ahora únicamente se ofrecen `Auto`, `1080p` y `720p`, tanto en las píldoras estáticas como en el mapeo dinámico de streams.
+- **Aprovechamiento Óptimo de Márgenes**: Reducción de paddings laterales a `8px 10px` en tarjetas y listas de canales, eliminando espacios vacíos en pantallas estrechas.
+- **Carrusel EPG Horizontal en Canal Activo**: La ficha de programación ahora incorpora un carrusel deslizable ligero con:
+  - Programa anterior (`past`, indicando que ha finalizado).
+  - Programa en emisión (`live`, con barra de progreso interactiva y minutos restantes).
+  - Próximos 4 programas posteriores (`future`, con tiempo de inicio estimado).
+  - Desplazamiento automático para centrar el programa en vivo sin saturar la memoria del dispositivo móvil.
+
+#### 5. Auditoría y Estandarización del Sistema de Diseño (Botones y Badges)
 - **Consistencia Visual en Escritorio y Móvil**:
   - Eliminación de discrepancias de estilos, radios de curvatura arbitrarios y variantes dispersas.
   - **Botones**: Radio estandarizado a `8px`, tipografía `Inter` semi-bold (`font-weight: 600`), alturas normalizadas (`36px` y `40px`), padding calibrado (`8px 14px`) y micro-interacciones táctiles refinadas (`translateY(-1px)` en `:hover` y escala `0.98` en `:active`).
   - **Badges**: Radio unificado a `6px`, tipografía condensada monoespaciada/sans de `11px-12px`, padding compacto (`3px 8px`) y paleta funcional unificada (Verde Marca `#22c55e`, Amarillo Advertencia `#eab308`, Rojo Peligro `#ef4444`, Cyan Informativo `#06b6d4`).
 
-#### 3. Optimización Responsive Móvil Profunda (Dashboard & Canales)
-- **Corrección de Márgenes Laterales Excesivos**:
-  - Reducción sustancial de los márgenes en pantallas pequeñas (de `16px-24px` a `8px-10px`), permitiendo que las tarjetas del dashboard, estado de motores, túnel WARP y listados aprovechen al máximo el ancho útil del dispositivo.
-- **Reorganización de Botones de Acción sin Huérfanos**:
-  - Corrección de botones sueltos o desalineados en las tarjetas de canal mediante una cuadrícula 2x2 simétrica para las acciones principales (*Ver*, *Copiar*, *Fuentes*, *Personalizar*).
-- **Content ID en Fila Independiente a Ancho Completo**:
-  - Reubicación del identificador de 40 caracteres en su propia línea dedicada con estilo chip monoespaciado (`.cid-full-chip`), eliminando recortes visuales e integrando un botón táctil rápido con feedback de copiado instantáneo.
-- **Consolidación de Métricas en `.ch-meta-row`**:
-  - Reestructuración de la fila de metadatos del canal en móvil (resolución, formato, estado y fecha de verificación), preservando `display: contents` en escritorio para garantizar total fidelidad con la interfaz de sobremesa.
-
-#### 4. Depuración y Minimalismo en Pie de Página Móvil
-- Supresión de los textos literales redundantes `"VERSIÓN:"` e `"IP:"` en el pie de página móvil, visualizando directamente los valores esenciales y badges interactivos para maximizar el área útil de pantalla.
-
-#### 5. Sincronización Canónica de Versión a `09.08.06`
+#### 6. Sincronización Canónica de Versión a `09.08.06`
 - Actualización coordinada en backend y frontend:
   - Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.08.06"`).
   - Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (aserto estricto para `09.08.06`).

@@ -240,10 +240,10 @@
         .current-program-card {
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border);
-            padding: 10px 14px;
+            padding: 8px 10px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 7px;
         }
 
         .channel-info-row {
@@ -262,9 +262,11 @@
         }
 
         .channel-thumb {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            min-height: 48px;
+            border-radius: 10px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             object-fit: contain;
@@ -314,8 +316,41 @@
             line-height: 1.35;
         }
 
-        /* Ficha EPG Dinámica */
+        /* Ficha EPG Dinámica con Scroll Horizontal */
+        .epg-carousel-wrap {
+            width: 100%;
+            overflow: hidden;
+            margin: 2px 0;
+        }
+
+        .epg-carousel-track {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 2px 0 6px 0;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+
+        .epg-carousel-track::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .epg-carousel-track::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .epg-carousel-track::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
         .epg-program-box {
+            flex: 0 0 88%;
+            min-width: 260px;
+            max-width: 360px;
+            scroll-snap-align: start;
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
             border-radius: 10px;
@@ -323,6 +358,22 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .epg-program-box.is-live {
+            border-color: rgba(34, 197, 94, 0.45);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(255, 255, 255, 0.02));
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.12);
+        }
+
+        .epg-program-box.is-past {
+            opacity: 0.65;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .epg-program-box.is-future {
+            opacity: 0.92;
         }
 
         .epg-title-row {
@@ -467,8 +518,8 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 12px 14px;
-            gap: 10px;
+            padding: 8px 10px;
+            gap: 8px;
         }
 
         .channel-tabs-bar {
@@ -583,9 +634,11 @@
         }
 
         .channel-logo {
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            min-height: 48px;
+            border-radius: 8px;
             background: var(--bg-card);
             object-fit: contain;
             border: 1px solid var(--border);
@@ -919,34 +972,34 @@
                 </div>
             </div>
 
-            <!-- Ficha EPG Dinámica -->
-            <div class="epg-program-box">
-                <div class="epg-title-row">
-                    <div id="epg-show-title" class="epg-show-title">Programación en directo</div>
-                    <div id="epg-show-time" class="epg-time-badge">--:-- - --:--</div>
-                </div>
-                <div class="epg-progress-container">
-                    <div class="epg-progress-track">
-                        <div id="epg-progress-fill" class="epg-progress-fill" style="width: 0%;"></div>
+            <!-- Ficha EPG Dinámica con Scroll Horizontal (Programa anterior, actual y posteriores) -->
+            <div class="epg-carousel-wrap">
+                <div id="epg-carousel-track" class="epg-carousel-track">
+                    <div class="epg-program-box is-live">
+                        <div class="epg-title-row">
+                            <div class="epg-show-title">Programación en directo</div>
+                            <div class="epg-time-badge">--:-- - --:--</div>
+                        </div>
+                        <div class="epg-progress-container">
+                            <div class="epg-progress-track">
+                                <div class="epg-progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <div class="epg-progress-labels">
+                                <span class="epg-pct-text">--%</span>
+                                <span class="epg-rem-badge">⏱️ Quedan -- min</span>
+                            </div>
+                        </div>
+                        <div class="epg-desc-preview">Sincronizando guía de eventos...</div>
                     </div>
-                    <div class="epg-progress-labels">
-                        <span id="epg-pct-text" class="epg-pct-text">--%</span>
-                        <span id="epg-rem-time" class="epg-rem-badge">⏱️ Quedan -- min</span>
-                    </div>
-                </div>
-                <div id="epg-show-desc" class="epg-desc-preview" onclick="this.classList.toggle('expanded')"
-                    title="Toca para expandir sinopsis">
-                    Sincronizando guía de eventos...
                 </div>
             </div>
 
-            <!-- Cajitas de Texto / Pills para Calidades y Variantes (FHDa, 720a, etc.) -->
+            <!-- Cajitas de Texto / Pills para Calidades y Variantes (Auto, 1080p, 720p) -->
             <div id="qualities-container" class="qualities-pills-bar">
                 <button class="quality-pill active" data-quality="auto"
                     onclick="selectQualityOption('auto')">Auto</button>
                 <button class="quality-pill" data-quality="1080p" onclick="selectQualityOption('1080p')">1080p</button>
                 <button class="quality-pill" data-quality="720p" onclick="selectQualityOption('720p')">720p</button>
-                <button class="quality-pill" data-quality="sd" onclick="selectQualityOption('sd')">SD</button>
             </div>
         </section>
 
@@ -1469,39 +1522,141 @@
 
         function updateActiveProgramCard() {
             if (!activeChannel) return;
-            const prog = getLiveProgramForChannel(activeChannel);
+            const track = document.getElementById('epg-carousel-track');
+            if (!track) return;
 
-            const titleEl = document.getElementById('epg-show-title');
-            const timeEl = document.getElementById('epg-show-time');
-            const fillEl = document.getElementById('epg-progress-fill');
-            const pctEl = document.getElementById('epg-pct-text');
-            const remEl = document.getElementById('epg-rem-time');
-            const descEl = document.getElementById('epg-show-desc');
-
-            if (prog) {
-                const now = new Date();
-                const format = { hour: '2-digit', minute: '2-digit', hour12: false };
-                const sStr = prog.start.toLocaleTimeString('es-ES', format);
-                const eStr = prog.stop.toLocaleTimeString('es-ES', format);
-                const total = prog.stop - prog.start;
-                const elapsed = Math.max(0, now - prog.start);
-                const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-                const remMin = Math.max(0, Math.round((prog.stop - now) / 60000));
-
-                titleEl.textContent = prog.title;
-                timeEl.textContent = `${sStr} - ${eStr}`;
-                fillEl.style.width = `${pct}%`;
-                pctEl.textContent = `${pct}% transcurrido`;
-                remEl.textContent = `⏱️ Quedan ${remMin} min`;
-                descEl.textContent = prog.desc || 'Sin sinopsis disponible.';
-            } else {
-                titleEl.textContent = activeChannel.name;
-                timeEl.textContent = 'En directo';
-                fillEl.style.width = '100%';
-                pctEl.textContent = 'En vivo';
-                remEl.textContent = '🔴 EN DIRECTO';
-                descEl.textContent = 'Guía EPG en tiempo real. Programa emitido en directo.';
+            const progList = epgProgrammes[activeChannel.id] || epgProgrammes[activeChannel.slug] || [];
+            if (!progList || progList.length === 0) {
+                track.innerHTML = `
+                    <div class="epg-program-box is-live">
+                        <div class="epg-title-row">
+                            <div class="epg-show-title">${escapeHtml(activeChannel.name)}</div>
+                            <div class="epg-time-badge">En directo</div>
+                        </div>
+                        <div class="epg-progress-container">
+                            <div class="epg-progress-track">
+                                <div class="epg-progress-fill" style="width: 100%;"></div>
+                            </div>
+                            <div class="epg-progress-labels">
+                                <span class="epg-pct-text">En vivo</span>
+                                <span class="epg-rem-badge">🔴 EN DIRECTO</span>
+                            </div>
+                        </div>
+                        <div class="epg-desc-preview">Guía EPG en tiempo real. Programa emitido en directo.</div>
+                    </div>
+                `;
+                return;
             }
+
+            const now = new Date();
+            const format = { hour: '2-digit', minute: '2-digit', hour12: false };
+            const currentIdx = progList.findIndex(p => now >= p.start && now < p.stop);
+
+            let progsToShow = [];
+            if (currentIdx !== -1) {
+                // Programa anterior (1 previo para no saturar)
+                if (currentIdx > 0) {
+                    progsToShow.push({ prog: progList[currentIdx - 1], type: 'past' });
+                }
+                // Programa actual en emisión
+                progsToShow.push({ prog: progList[currentIdx], type: 'live' });
+                // Programas posteriores (hasta 4 siguientes para no saturar)
+                for (let i = currentIdx + 1; i < Math.min(progList.length, currentIdx + 5); i++) {
+                    progsToShow.push({ prog: progList[i], type: 'future' });
+                }
+            } else {
+                // Si ningún programa coincide exactamente, buscar el próximo a emitirse
+                const nextIdx = progList.findIndex(p => p.start > now);
+                if (nextIdx !== -1) {
+                    if (nextIdx > 0) {
+                        progsToShow.push({ prog: progList[nextIdx - 1], type: 'past' });
+                    }
+                    for (let i = nextIdx; i < Math.min(progList.length, nextIdx + 5); i++) {
+                        progsToShow.push({ prog: progList[i], type: i === nextIdx ? 'live' : 'future' });
+                    }
+                } else {
+                    // Si terminaron los eventos del día, mostrar los últimos 3
+                    const slice = progList.slice(-3);
+                    slice.forEach(p => progsToShow.push({ prog: p, type: 'past' }));
+                }
+            }
+
+            let cardsHtml = '';
+            progsToShow.forEach(item => {
+                const p = item.prog;
+                const sStr = p.start.toLocaleTimeString('es-ES', format);
+                const eStr = p.stop.toLocaleTimeString('es-ES', format);
+
+                if (item.type === 'live') {
+                    const total = p.stop - p.start;
+                    const elapsed = Math.max(0, now - p.start);
+                    const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+                    const remMin = Math.max(0, Math.round((p.stop - now) / 60000));
+                    cardsHtml += `
+                        <div class="epg-program-box is-live" id="epg-card-current">
+                            <div class="epg-title-row">
+                                <div class="epg-show-title">${escapeHtml(p.title)}</div>
+                                <div class="epg-time-badge">${sStr} - ${eStr}</div>
+                            </div>
+                            <div class="epg-progress-container">
+                                <div class="epg-progress-track">
+                                    <div class="epg-progress-fill" style="width: ${pct}%;"></div>
+                                </div>
+                                <div class="epg-progress-labels">
+                                    <span class="epg-pct-text">${pct}% transcurrido</span>
+                                    <span class="epg-rem-badge">⏱️ Quedan ${remMin} min</span>
+                                </div>
+                            </div>
+                            <div class="epg-desc-preview" onclick="this.classList.toggle('expanded')" title="Toca para expandir sinopsis">
+                                ${escapeHtml(p.desc || 'Sin sinopsis disponible.')}
+                            </div>
+                        </div>
+                    `;
+                } else if (item.type === 'past') {
+                    cardsHtml += `
+                        <div class="epg-program-box is-past">
+                            <div class="epg-title-row">
+                                <div class="epg-show-title">${escapeHtml(p.title)}</div>
+                                <div class="epg-time-badge">${sStr} - ${eStr}</div>
+                            </div>
+                            <div class="epg-progress-labels" style="margin: 2px 0;">
+                                <span style="font-size: 10px; color: var(--text-muted); font-weight: 600;">⏮️ Programa anterior</span>
+                                <span style="font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px;">Finalizado</span>
+                            </div>
+                            <div class="epg-desc-preview" onclick="this.classList.toggle('expanded')" title="Toca para expandir sinopsis">
+                                ${escapeHtml(p.desc || 'Sin sinopsis disponible.')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const startInMin = Math.max(0, Math.round((p.start - now) / 60000));
+                    const whenText = startInMin > 60 ? `En ${Math.round(startInMin/60)}h` : `En ${startInMin} min`;
+                    cardsHtml += `
+                        <div class="epg-program-box is-future">
+                            <div class="epg-title-row">
+                                <div class="epg-show-title">${escapeHtml(p.title)}</div>
+                                <div class="epg-time-badge">${sStr} - ${eStr}</div>
+                            </div>
+                            <div class="epg-progress-labels" style="margin: 2px 0;">
+                                <span style="font-size: 10px; color: var(--text-secondary); font-weight: 600;">⏭️ A continuación</span>
+                                <span style="font-size: 10px; color: #60a5fa; background: rgba(96, 165, 250, 0.12); border: 1px solid rgba(96, 165, 250, 0.25); padding: 1px 5px; border-radius: 4px; font-weight: 700;">${whenText}</span>
+                            </div>
+                            <div class="epg-desc-preview" onclick="this.classList.toggle('expanded')" title="Toca para expandir sinopsis">
+                                ${escapeHtml(p.desc || 'Sin sinopsis disponible.')}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            track.innerHTML = cardsHtml;
+
+            setTimeout(() => {
+                const liveCard = document.getElementById('epg-card-current');
+                if (liveCard) {
+                    liveCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, 80);
         }
 
         // --- SINTONIZACIÓN Y SELECCIÓN AUTOMÁTICA POR SEMILLAS ---
@@ -1543,19 +1698,13 @@
             }
         }
 
-        // Extrae y clasifica la etiqueta de calidad canónica estrictamente en: 4K, 1080p, 720p o SD
+        // Extrae y clasifica la etiqueta de calidad estrictamente en 1080p o 720p (normalizado, sin SD)
         function extractCandidateQualityTag(candName, qualityLabel) {
             const str = ((candName || '') + ' ' + (qualityLabel || '')).toLowerCase();
-            if (/\b(4k|uhd|4ka|2160p)\b/i.test(str)) {
-                return '4K';
-            }
-            if (/\b(1080p|1080i|1080|fhd|fhda|1080a)\b/i.test(str)) {
+            if (/\b(1080p|1080i|1080|fhd|fhda|1080a|4k|uhd|4ka|2160p)\b/i.test(str)) {
                 return '1080p';
             }
-            if (/\b(720p|720i|720|hd|720a|hda)\b/i.test(str)) {
-                return '720p';
-            }
-            return 'SD';
+            return '720p';
         }
 
         async function fetchCandidatesAndBuildQualityPills(slug, shouldPlay = true) {
@@ -1577,7 +1726,7 @@
                     return;
                 }
 
-                // Extraer variantes únicas de calidad estandarizadas (Auto, 4K, 1080p, 720p, SD)
+                // Extraer variantes únicas de calidad estandarizadas (Auto, 1080p, 720p)
                 const qualityMap = new Map();
                 // Primera opción siempre Auto (sintoniza la mejor opción por semillas)
                 qualityMap.set('auto', {
@@ -1586,7 +1735,7 @@
                     candidate: data.best_candidate || activeCandidates[0]
                 });
 
-                const qualityOrder = ['4K', '1080p', '720p', 'SD'];
+                const qualityOrder = ['1080p', '720p'];
                 const bestCandidatePerQuality = {};
 
                 activeCandidates.forEach(cand => {
