@@ -477,29 +477,33 @@
         }
 
         .engine-select:focus {
-            border-color: #2196F3;
+            border-color: var(--brand-color, #22c55e);
         }
 
         .save-engine-btn {
             flex-shrink: 0;
-            padding: 6px 14px;
-            background-color: #2196F3;
+            padding: 7px 16px;
+            background-color: var(--brand-color, #22c55e);
             color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            border-radius: 8px;
+            font-size: 12.5px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         .save-engine-btn:hover {
-            opacity: 0.9;
+            background-color: #16a34a;
+            border-color: #16a34a;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+            transform: translateY(-1px);
         }
 
         .save-engine-btn.saved {
-            background-color: #4CAF50 !important;
+            background-color: #16a34a !important;
         }
 
         /* Consola de Eventos del Búnker */
@@ -534,18 +538,20 @@
 
         .clear-logs-btn {
             background-color: transparent;
-            border: 1px solid #2d303e;
-            color: #a8a8b2;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
             font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 4px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .clear-logs-btn:hover {
-            color: #fff;
-            border-color: #00e5ff;
+            color: var(--text-color);
+            border-color: var(--brand-color, #22c55e);
+            background: rgba(34, 197, 94, 0.08);
         }
 
         .bunker-console-body {
@@ -743,7 +749,7 @@
         }
 
         .handler-refresh-btn:hover {
-            background-color: #2196F3;
+            background-color: var(--brand-color, #22c55e);
             color: white;
         }
 
@@ -1164,8 +1170,40 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            .container {
+                padding: 12px 8px;
+            }
+
+            .stats {
+                padding: 12px 10px;
+                margin-bottom: 16px;
+                border-radius: 8px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .stat-box {
+                padding: 12px 10px;
+            }
+
+            .grid-container {
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .card {
+                padding: 14px 10px;
+            }
+
+            .engine-control-group {
+                flex-wrap: wrap;
+            }
+
             .header h1 {
-                font-size: 28px;
+                font-size: 24px;
             }
 
             .clients-table {
@@ -1174,12 +1212,32 @@
 
             .clients-table th,
             .clients-table td {
-                padding: 10px 12px;
+                padding: 8px 10px;
             }
 
             .channel-icon {
                 width: 30px;
                 height: 22px;
+            }
+
+            .footer-bar .label,
+            .footer-left .label,
+            .footer-right .label {
+                display: none !important;
+            }
+
+            .footer-bar {
+                padding: 0 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats {
+                padding: 10px 8px;
+            }
+
+            .stat-box {
+                padding: 10px 8px;
             }
         }
 
@@ -1373,10 +1431,8 @@
             <div class="navbar-actions-section">
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input"
                             placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
@@ -1399,7 +1455,7 @@
                 <a href="/fuentes/">Fuentes</a>
                 <a href="/epg/">EPG</a>
                 <a href="/player/index.html">Reproductor</a>
-                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/player/legacy.html">Legacy</a>
                 <a href="/mobile/index.html">Móvil</a>
             </div>
         </div>
@@ -1583,43 +1639,37 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="text" id="test-acestream-id"
                             placeholder="Ingresa Content ID o enlace acestream:// (ej: 97df5b7824948972d041d8ca2a4d29c90b641bc9)"
-                            style="flex: 1; min-width: 280px; background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 8px 12px; font-size: 13px; font-family: monospace; outline: none;">
-                        <button onclick="generateTsLink()"
-                            style="background-color: #00e5ff; color: #000; border: none; border-radius: 4px; padding: 8px 16px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s;">
+                            style="flex: 1; min-width: 280px; background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: monospace; outline: none;">
+                        <button class="btn btn-primary" onclick="generateTsLink()">
                             Generar Enlace .TS
                         </button>
-                        <button onclick="checkEnginePeers()" id="btn-check-peers"
-                            style="background-color: #2196F3; color: #fff; border: none; border-radius: 4px; padding: 8px 16px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s;">
+                        <button class="btn btn-secondary" onclick="checkEnginePeers()" id="btn-check-peers">
                             Comprobar Semillas / Peers
                         </button>
                     </div>
 
                     <!-- Enlace Generado y Acciones -->
                     <div id="ts-result-panel"
-                        style="display: none; background-color: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 6px; padding: 14px; flex-direction: column; gap: 10px;">
+                        style="display: none; background-color: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 8px; padding: 14px; flex-direction: column; gap: 10px;">
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                             <span
-                                style="font-size: 11px; text-transform: uppercase; color: #00e5ff; font-weight: 700; letter-spacing: 0.5px;">Enlace
+                                style="font-size: 11px; text-transform: uppercase; color: var(--brand-color, #22c55e); font-weight: 700; letter-spacing: 0.5px;">Enlace
                                 Stream .TS Generado</span>
                             <span id="peers-status-badge"
-                                style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: #333; color: #fff;">Esperando
+                                style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-muted);">Esperando
                                 comprobación</span>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <input type="text" id="generated-ts-url" readonly
-                                style="flex: 1; min-width: 250px; background: #0c0d10; border: 1px solid #1e2029; color: #00e5ff; font-family: monospace; font-size: 13px; padding: 8px 12px; border-radius: 4px;">
-                            <button onclick="copyTsLink()"
-                                style="background: #2d303e; color: #fff; border: 1px solid #3d4052; border-radius: 4px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer;">Copiar</button>
-                            <button onclick="openInVlc()"
-                                style="background: #ff9800; color: #000; border: none; border-radius: 4px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;">Abrir
-                                en VLC</button>
-                            <button onclick="downloadM3u()"
-                                style="background: #4caf50; color: #fff; border: none; border-radius: 4px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;">Descargar
-                                .m3u</button>
+                                style="flex: 1; min-width: 250px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--brand-color, #22c55e); font-family: monospace; font-size: 13px; padding: 8px 12px; border-radius: 8px;">
+                            <button class="btn btn-secondary btn-sm" onclick="copyTsLink()">Copiar</button>
+                            <button class="btn btn-secondary btn-sm" onclick="openInVlc()"
+                                style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.35);">Abrir en VLC</button>
+                            <button class="btn btn-primary btn-sm" onclick="downloadM3u()">Descargar .m3u</button>
                         </div>
                         <div id="engine-peers-output"
-                            style="font-size: 12px; font-family: monospace; color: #a8a8b2; margin-top: 4px; line-height: 1.5;">
+                            style="font-size: 12px; font-family: monospace; color: var(--text-muted); margin-top: 4px; line-height: 1.5;">
                         </div>
                     </div>
                 </div>
@@ -2047,7 +2097,7 @@
                             ? `<span style="background: #4CAF50; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">ONLINE (${totalPeers} Peers)</span>`
                             : `<span style="background: #f44336; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;">0 Peers (OFFLINE)</span>`;
 
-                        const switchBtn = `<button onclick="switchEngineTo('${eng.id}')" style="background: #2196F3; color: #fff; border: none; border-radius: 3px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 8px;">Usar este motor</button>`;
+                        const switchBtn = `<button class="btn btn-primary btn-sm" onclick="switchEngineTo('${eng.id}')" style="margin-left: 8px;">Usar este motor</button>`;
 
                         resultsHtml += `
                             <div style="background: rgba(0,0,0,0.3); border: 1px solid #1e2029; border-radius: 4px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
@@ -2245,7 +2295,7 @@
                             <div class="status-indicator error" style="display: flex; flex-direction: column; gap: 4px;">
                                 <div style="display: flex; align-items: center; gap: 6px;">
                                     <span class="status-dot"></span>
-                                    <span>Desconectado</span>
+                                    <span>Offline</span>
                                 </div>
                                 <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-top: 2px;">
                                     <code>API: ${apiPort}</code> &bull; <code>HTTP: ${httpPort}</code>

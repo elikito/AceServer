@@ -4,6 +4,54 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.08.06] - 2026-09-08
+
+### 🔍 Unificación Global de Iconografía de Búsqueda, Auditoría de Botones/Badges y Optimización Móvil
+
+#### 1. Unificación Global de Iconografía de Búsqueda (Lupa Material Design)
+- **Sustitución Sistemática del Icono de Búsqueda**:
+  - Reemplazados todos los iconos lineales y circulares tipo boceto (`<circle cx="11"...>`) por el icono vectorial sólido de **Material Design** (`M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z`).
+  - Aplicado de manera uniforme y sin excepciones en:
+    - Barra de navegación global desktop y móvil (`navbar.js` y `navbar.css`).
+    - Gestor de Estadísticas y Motores (`statplugin/index.html`).
+    - Gestor de Fuentes de Contenido (`fuentes/index.html`).
+    - Guía de Programación TV / EPG (`epg/index.html`).
+    - Gestor de Listas IPTV (`listas/index.html`).
+    - Reproductor Web Moderno (`player/index.html`).
+    - Portal Principal del Servidor (`index.html`).
+    - Reproductor Móvil PWA (`mobile/index.html`).
+  - Configurado con `fill="currentColor"` para garantizar sincronización cromática perfecta con los estados de foco (`:focus-within`), acentos de marca y temas claro/oscuro.
+
+#### 2. Auditoría y Estandarización del Sistema de Diseño (Botones y Badges)
+- **Consistencia Visual en Escritorio y Móvil**:
+  - Eliminación de discrepancias de estilos, radios de curvatura arbitrarios y variantes dispersas.
+  - **Botones**: Radio estandarizado a `8px`, tipografía `Inter` semi-bold (`font-weight: 600`), alturas normalizadas (`36px` y `40px`), padding calibrado (`8px 14px`) y micro-interacciones táctiles refinadas (`translateY(-1px)` en `:hover` y escala `0.98` en `:active`).
+  - **Badges**: Radio unificado a `6px`, tipografía condensada monoespaciada/sans de `11px-12px`, padding compacto (`3px 8px`) y paleta funcional unificada (Verde Marca `#22c55e`, Amarillo Advertencia `#eab308`, Rojo Peligro `#ef4444`, Cyan Informativo `#06b6d4`).
+
+#### 3. Optimización Responsive Móvil Profunda (Dashboard & Canales)
+- **Corrección de Márgenes Laterales Excesivos**:
+  - Reducción sustancial de los márgenes en pantallas pequeñas (de `16px-24px` a `8px-10px`), permitiendo que las tarjetas del dashboard, estado de motores, túnel WARP y listados aprovechen al máximo el ancho útil del dispositivo.
+- **Reorganización de Botones de Acción sin Huérfanos**:
+  - Corrección de botones sueltos o desalineados en las tarjetas de canal mediante una cuadrícula 2x2 simétrica para las acciones principales (*Ver*, *Copiar*, *Fuentes*, *Personalizar*).
+- **Content ID en Fila Independiente a Ancho Completo**:
+  - Reubicación del identificador de 40 caracteres en su propia línea dedicada con estilo chip monoespaciado (`.cid-full-chip`), eliminando recortes visuales e integrando un botón táctil rápido con feedback de copiado instantáneo.
+- **Consolidación de Métricas en `.ch-meta-row`**:
+  - Reestructuración de la fila de metadatos del canal en móvil (resolución, formato, estado y fecha de verificación), preservando `display: contents` en escritorio para garantizar total fidelidad con la interfaz de sobremesa.
+
+#### 4. Depuración y Minimalismo en Pie de Página Móvil
+- Supresión de los textos literales redundantes `"VERSIÓN:"` e `"IP:"` en el pie de página móvil, visualizando directamente los valores esenciales y badges interactivos para maximizar el área útil de pantalla.
+
+#### 5. Sincronización Canónica de Versión a `09.08.06`
+- Actualización coordinada en backend y frontend:
+  - Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.08.06"`).
+  - Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (aserto estricto para `09.08.06`).
+  - Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.08.06'`).
+  - Barra de navegación: `httpaceproxycpp/http/js/navbar.js` y `httpaceproxycpp/http/css/navbar.css`.
+  - Frontend móvil: `httpaceproxycpp/http/mobile/index.html`.
+  - Gestor de fuentes: `httpaceproxycpp/http/fuentes/index.html`.
+  - Gestor de estadísticas: `httpaceproxycpp/http/statplugin/index.html`.
+  - Registro de plugins: `httpaceproxycpp/http/plugins_state.json`.
+
 ## [09.08.05] - 2026-09-08
 
 ### ⚡ Arquitectura de Sondeo en Background y Resolución Instantánea para Canales Favoritos
@@ -394,7 +442,7 @@ El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.co
   - `ONLINE` ➔ **`ACTIVO`**
   - `OFFLINE` ➔ **`CAÍDO`**
   - `BLOCKED` ➔ **`BLOQUEADO`**
-  - `LOW_PEERS` ➔ **`ENJAMBRE LENTO`**
+  - `LOW_PEERS` ➔ **`LENTO`**
   - `UNKNOWN` ➔ **`SIN VERIFICAR`**
   - `CHECKING` / `PENDING` ➔ **`VERIFICANDO`**
 

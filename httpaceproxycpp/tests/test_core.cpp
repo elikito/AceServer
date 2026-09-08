@@ -785,8 +785,8 @@ void test_v09_08_04_resolution_standardization_and_legacy_player() {
 }
 
 void test_v09_08_05_instant_resolution_and_favorites_worker() {
-    // 1. Verificación estricta de versión v09.08.05
-    require(std::string(kAppVersion) == "09.08.05", "App version must be 09.08.05");
+    // 1. Verificación estricta de versión v09.08.06
+    require(std::string(kAppVersion) == "09.08.06", "App version must be 09.08.06");
 
     // 2. Configuración de FavoritesHealthWorker
     Config cfg;

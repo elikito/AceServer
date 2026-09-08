@@ -43,7 +43,7 @@
             --violet: #8b5cf6;
             --gray-dim: rgba(136, 136, 160, .1);
             --radius: 8px;
-            --radius-sm: 5px;
+            --radius-sm: 6px;
             --shadow: 0 4px 20px rgba(0, 0, 0, .45);
         }
 
@@ -318,7 +318,7 @@
             gap: 6px;
             padding: 7px 14px;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
@@ -381,11 +381,13 @@
         .btn-sm {
             padding: 5px 10px;
             font-size: 12px;
+            border-radius: var(--radius-sm);
         }
 
         .btn-xs {
             padding: 4px 8px;
             font-size: 11px;
+            border-radius: var(--radius-sm);
         }
 
         /* Spinner */
@@ -799,6 +801,10 @@
             transition: background .12s, opacity .2s;
         }
 
+        .ch-meta-row {
+            display: contents;
+        }
+
         .ch-row:last-child {
             border-bottom: none;
         }
@@ -872,15 +878,31 @@
             font-size: 11px;
             color: var(--muted);
             white-space: nowrap;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             background: rgba(255, 255, 255, 0.04);
             padding: 3px 8px;
-            border-radius: 4px;
+            border-radius: 6px;
             border: 1px solid var(--border);
             cursor: pointer;
             transition: all .15s;
             user-select: all;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ch-id .cid-val {
+            user-select: all;
+        }
+
+        .ch-id .cid-copy-badge {
+            font-size: 9.5px;
+            font-family: system-ui, sans-serif;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.07);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 600;
         }
 
         .ch-id:hover,
@@ -888,6 +910,11 @@
             background: var(--brand-dim);
             color: var(--brand);
             border-color: var(--brand);
+        }
+
+        .ch-id.copied .cid-copy-badge {
+            color: var(--brand);
+            background: rgba(34, 197, 94, 0.15);
         }
 
         .copy-id-btn {
@@ -1265,23 +1292,250 @@
         }
 
         @media (max-width: 768px) {
+            .container {
+                padding: 12px 8px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+
+            .summary-card.total {
+                grid-column: 1 / -1;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 14px 16px;
+            }
+
+            .summary-card.total .sc-label {
+                margin-bottom: 0;
+            }
+
+            .summary-card {
+                padding: 12px 10px;
+            }
+
+            .summary-card .sc-val {
+                font-size: 20px;
+            }
+
+            .network-protection-card {
+                padding: 12px 10px;
+            }
+
+            .net-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .engine-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                width: 100%;
+            }
+
+            .engine-btn {
+                width: 100%;
+                padding: 8px 6px;
+                font-size: 11.5px;
+                justify-content: center;
+            }
+
+            .engine-actions .engine-btn:last-child:nth-child(odd) {
+                grid-column: 1 / -1;
+            }
+
+            .toolbar {
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .toolbar-left {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .toolbar-left .btn {
+                width: 100%;
+                justify-content: center;
+                padding: 8px 10px;
+                font-size: 12.5px;
+            }
+
+            .toolbar-right {
+                width: 100%;
+                margin-left: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .filter-tabs {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+
+            .filter-tab {
+                width: 100%;
+                padding: 7px 6px;
+                font-size: 11.5px;
+                text-align: center;
+                justify-content: center;
+                border-radius: 6px;
+                white-space: nowrap;
+                box-sizing: border-box;
+            }
+
+            .search-wrap {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .search-input {
+                font-size: 12.5px;
+                padding: 8px 12px 8px 34px;
+            }
+
+            /* Channel Rows on Mobile */
             .ch-table-head {
                 display: none;
             }
 
             .ch-row {
-                grid-template-columns: 44px 1fr;
-                grid-template-rows: auto;
-                gap: 8px;
-                padding: 12px 16px;
+                display: grid;
+                grid-template-columns: 40px 1fr auto;
+                align-items: center;
+                gap: 8px 10px;
+                padding: 12px 10px;
             }
 
-            .ch-row>*:not(.ch-logo-wrap):not(.ch-info) {
-                grid-column: 1 / -1;
+            .ch-logo-wrap {
+                grid-column: 1;
+                grid-row: 1;
+                width: 40px;
+                height: 40px;
+            }
+
+            .ch-info {
+                display: contents;
+            }
+
+            .ch-name {
+                grid-column: 2;
+                grid-row: 1;
+                font-size: 13.5px;
+                font-weight: 700;
+                margin-bottom: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
             .ch-actions {
-                justify-content: flex-start;
+                grid-column: 3;
+                grid-row: 1;
+                display: flex;
+                gap: 4px;
+                align-items: center;
+                justify-content: flex-end;
+            }
+
+            .ch-actions .btn {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+
+            /* Content ID on its own independent line */
+            .ch-id-wrap {
+                grid-column: 1 / -1;
+                width: 100%;
+                margin: 2px 0 4px 0;
+            }
+
+            .ch-id {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 6px;
+                padding: 5px 8px;
+                font-size: 10.5px;
+                letter-spacing: 0;
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--border);
+                box-sizing: border-box;
+            }
+
+            .ch-id .cid-val {
+                flex: 1;
+                user-select: all;
+                overflow-x: auto;
+                white-space: nowrap;
+                font-family: 'JetBrains Mono', SFMono-Regular, Consolas, monospace;
+            }
+
+            .ch-id .cid-copy-badge {
+                font-size: 9.5px;
+                font-family: system-ui, sans-serif;
+                color: var(--muted);
+                background: rgba(255, 255, 255, 0.07);
+                padding: 2px 6px;
+                border-radius: 4px;
+                flex-shrink: 0;
+                font-weight: 600;
+            }
+
+            /* Diagnostic Meta Row */
+            .ch-meta-row {
+                grid-column: 1 / -1;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 6px 10px;
+                padding-top: 6px;
+                margin-top: 2px;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                font-size: 11.5px;
+            }
+
+            .ch-peers::before {
+                content: 'Peers: ';
+                font-size: 10px;
+                font-weight: 500;
+                color: var(--muted);
+            }
+
+            .ch-bitrate::before {
+                content: 'Bitrate: ';
+                font-size: 10px;
+                font-weight: 500;
+                color: var(--muted);
+            }
+
+            .footer-bar .label,
+            .footer-left .label,
+            .footer-right .label {
+                display: none !important;
+            }
+
+            .footer-bar {
+                padding: 0 10px;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            .filter-tabs {
+                grid-template-columns: repeat(4, 1fr);
             }
         }
 
@@ -1326,10 +1580,8 @@
             <div class="navbar-actions-section">
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input"
                             placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
@@ -1352,7 +1604,7 @@
                 <a href="/fuentes/">Fuentes</a>
                 <a href="/epg/">EPG</a>
                 <a href="/player/index.html">Reproductor</a>
-                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/player/legacy.html">Legacy</a>
                 <a href="/mobile/index.html">Móvil</a>
             </div>
         </div>
@@ -1365,7 +1617,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Diagnóstico de Canales</h2>
-                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.08.05</span></p>
+                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.08.06</span></p>
             </div>
         </div>
 
@@ -1470,7 +1722,7 @@
                 <div class="sc-value" id="sc-online">—</div>
             </div>
             <div class="summary-card low">
-                <div class="sc-label">🟡 Enjambre Lento</div>
+                <div class="sc-label">🟡 Lento</div>
                 <div class="sc-value" id="sc-low">—</div>
             </div>
             <div class="summary-card offline">
@@ -1549,7 +1801,7 @@
     <!-- ================================================================== -->
     <div class="footer-bar">
         <div class="footer-left" id="footer-ip-block" title="Copiar IP">
-            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">IP:</span>
+            <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">IP:</span>
             <span id="server-ip" class="val">—</span>
         </div>
         <div class="footer-center">
@@ -1561,8 +1813,8 @@
             </button>
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
-            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.08.05</span>
+            <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
+            <span class="val version-badge app-version">09.08.06</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -1608,7 +1860,7 @@
                         const isConn = eng.status === 'connected';
                         const isStandby = eng.status === 'standby';
                         const statusClass = isConn ? 'connected' : (isStandby ? 'standby' : 'disconnected');
-                        const statusLabel = isConn ? '🟢 Activo / Conectado' : (isStandby ? '🟡 En Reposo' : '🔴 Desconectado');
+                        const statusLabel = isConn ? '🟢 Activo' : (isStandby ? '🟡 En Reposo' : '🔴 Offline');
 
                         const displayVer = (eng.version && eng.version !== 'unknown') ? eng.version : (isConn ? 'unknown' : 'Inactivo');
 
@@ -1772,7 +2024,7 @@
                         if (btnWarp) btnWarp.textContent = '🔌 Desconectar WARP';
                     } else {
                         warpBadge.className = 'net-badge disconnected';
-                        warpText.textContent = 'Desconectado';
+                        warpText.textContent = 'Offline';
                         if (btnWarp) btnWarp.textContent = '⚡ Conectar WARP';
                     }
                 }
@@ -1964,13 +2216,18 @@
             <div class="ch-info">
                 <div class="ch-name" title="${esc(ch.name)}">${esc(ch.name)}</div>
                 <div class="ch-id-wrap">
-                    <span class="ch-id" id="cid-${cid}" onclick="copyCid('${cid}',this)" title="Clic para copiar Content ID completo: ${cid}">${cid}</span>
+                    <span class="ch-id" id="cid-${cid}" onclick="copyCid('${cid}',this)" title="Clic para copiar Content ID completo: ${cid}">
+                        <span class="cid-val">${cid}</span>
+                        <span class="cid-copy-badge">📋 Copiar</span>
+                    </span>
                 </div>
             </div>
-            <div id="health-${cid}">${renderHealthBadge(health)}</div>
-            <div class="ch-peers${peersClass(peers)}" id="peers-${cid}">${formatPeers(peers)}</div>
-            <div class="ch-bitrate${speed && speed > 0 ? ' active' : ''}" id="bitrate-${cid}">${formatBitrate(speed)}</div>
-            <div class="ch-phase" id="phase-${cid}">${renderPhase(phase)}</div>
+            <div class="ch-meta-row">
+                <div id="health-${cid}">${renderHealthBadge(health)}</div>
+                <div class="ch-peers${peersClass(peers)}" id="peers-${cid}">${formatPeers(peers)}</div>
+                <div class="ch-bitrate${speed && speed > 0 ? ' active' : ''}" id="bitrate-${cid}">${formatBitrate(speed)}</div>
+                <div class="ch-phase" id="phase-${cid}">${renderPhase(phase)}</div>
+            </div>
             <div class="ch-actions">
                 <button class="btn btn-icon btn-sm" id="test-${cid}"
                         onclick="verifySingle('${cid}',this)"
@@ -2348,12 +2605,22 @@
                 showToast(msg || '✓ Copiado', 'success');
                 if (el) {
                     el.classList.add('copied');
-                    const orig = el.textContent;
-                    el.textContent = '✓ ID Copiado';
-                    setTimeout(() => {
-                        el.textContent = orig;
-                        el.classList.remove('copied');
-                    }, 1500);
+                    const badge = el.querySelector('.cid-copy-badge');
+                    if (badge) {
+                        const orig = badge.textContent;
+                        badge.textContent = '✓ Copiado';
+                        setTimeout(() => {
+                            badge.textContent = orig;
+                            el.classList.remove('copied');
+                        }, 1500);
+                    } else {
+                        const orig = el.textContent;
+                        el.textContent = '✓ ID Copiado';
+                        setTimeout(() => {
+                            el.textContent = orig;
+                            el.classList.remove('copied');
+                        }, 1500);
+                    }
                 }
             };
             if (navigator.clipboard?.writeText) {

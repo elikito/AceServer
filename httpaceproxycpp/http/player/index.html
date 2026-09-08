@@ -122,13 +122,13 @@
             border: 1px solid var(--border-color);
             color: var(--text-muted);
             padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             outline: none;
             white-space: nowrap;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
             display: inline-flex;
             align-items: center;
@@ -137,17 +137,17 @@
 
         .source-tab-btn:hover {
             color: var(--text-color);
-            border-color: #4CAF50;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15);
+            border-color: var(--brand-color, #22c55e);
+            background-color: rgba(34, 197, 94, 0.08);
+            transform: translateY(-1px);
         }
 
         .source-tab-btn.active {
-            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            background: var(--brand-color, #22c55e);
             color: #ffffff;
-            border-color: #4CAF50;
-            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.4);
-            transform: translateY(-2px);
+            border-color: var(--brand-color, #22c55e);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+            transform: translateY(-1px);
         }
 
         /* Container Fade Animation */
@@ -498,9 +498,9 @@
         }
 
         .view-toggle-btn.active {
-            background: var(--brand-color, #4CAF50);
+            background: var(--brand-color, #22c55e);
             color: #ffffff;
-            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         /* Rows View (Compact Legacy Style) */
@@ -1555,27 +1555,31 @@
         }
 
         .btn-direct-play {
-            background: var(--brand-color, #4CAF50);
+            background: var(--brand-color, #22c55e);
             color: #ffffff;
-            border: none;
+            border: 1px solid rgba(34, 197, 94, 0.4);
             padding: 9px 16px;
             border-radius: 8px;
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
             white-space: nowrap;
-            transition: background-color 0.2s, transform 0.1s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             gap: 6px;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         .btn-direct-play:hover {
-            filter: brightness(1.1);
+            background: #16a34a;
+            border-color: #16a34a;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+            transform: translateY(-1px);
         }
 
         .btn-direct-play:active {
-            transform: scale(0.98);
+            transform: translateY(0);
         }
 
         @media (max-width: 768px) {
@@ -1591,6 +1595,16 @@
 
             .search-input {
                 width: 100%;
+            }
+
+            .footer-bar .label,
+            .footer-left .label,
+            .footer-right .label {
+                display: none !important;
+            }
+
+            .footer-bar {
+                padding: 0 10px;
             }
         }
 
@@ -1634,10 +1648,8 @@
             <div class="navbar-actions-section">
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input"
                             placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
@@ -1660,7 +1672,7 @@
                 <a href="/fuentes/">Fuentes</a>
                 <a href="/epg/">EPG</a>
                 <a href="/player/index.html" class="active">Reproductor</a>
-                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/player/legacy.html">Legacy</a>
                 <a href="/mobile/index.html">Móvil</a>
             </div>
         </div>
@@ -1671,7 +1683,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Reproductor IPTV</h2>
-                <p>Reproducción web Bento en directo y por Content ID — <span id="live-clock"
+                <p>Reproducción web en directo y por CID: <span id="live-clock"
                         style="font-weight: 600; color: #22c55e;">--:--:--</span></p>
             </div>
             <!-- Entrada Directa de Content ID a Mano -->
@@ -2469,7 +2481,7 @@
                     badge.innerHTML = `<span class="dot"></span> En Línea${peersStr}`;
                 } else if (health === 'LOW_PEERS') {
                     badge.className = 'health-badge badge-low';
-                    badge.innerHTML = `<span class="dot"></span> Enjambre Lento${peersStr}`;
+                    badge.innerHTML = `<span class="dot"></span> Lento${peersStr}`;
                 } else if (health === 'OFFLINE') {
                     badge.className = 'health-badge badge-offline';
                     badge.innerHTML = `<span class="dot"></span> Sin Fuentes${peersStr}`;

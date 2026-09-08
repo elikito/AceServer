@@ -12,7 +12,7 @@
 
     let canonicalIp = window.location.hostname || '127.0.0.1';
     let canonicalHostname = '';
-    let canonicalVersion = '09.08.05';
+    let canonicalVersion = '09.08.06';
     let ipResetTimer = null;
     let verResetTimer = null;
 

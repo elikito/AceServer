@@ -291,57 +291,69 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: none;
-            font-size: 13px;
+            padding: 7px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-size: 12.5px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            touch-action: manipulation;
         }
 
-        .btn-refresh {
-            background-color: #0284c7;
-            color: #ffffff;
+        .btn-action:hover {
+            transform: translateY(-1px);
         }
 
         .btn-refresh:hover {
-            background-color: #0369a1;
-        }
-
-        .btn-copy {
-            background-color: #6366f1;
-            color: #ffffff;
+            border-color: #0284c7;
+            color: #0284c7;
+            background: rgba(2, 132, 199, 0.1);
         }
 
         .btn-copy:hover {
-            background-color: #4f46e5;
+            border-color: var(--brand-color, #22c55e);
+            color: var(--brand-color, #22c55e);
+            background: rgba(34, 197, 94, 0.1);
         }
 
         .btn-save {
-            background-color: #16a34a;
+            background-color: var(--brand-color, #22c55e);
+            border-color: rgba(34, 197, 94, 0.4);
             color: #ffffff;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         .btn-save:hover {
-            background-color: #15803d;
+            background-color: #16a34a;
+            border-color: #16a34a;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
         }
 
         .btn-delete {
-            background-color: #dc2626;
-            color: #ffffff;
+            background-color: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
         }
 
         .btn-delete:hover {
-            background-color: #b91c1c;
+            background-color: #ef4444;
+            border-color: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .btn-disabled {
-            background-color: #27272a;
-            color: #71717a;
+            background-color: var(--card-bg);
+            color: var(--text-muted);
             cursor: not-allowed;
-            opacity: 0.6;
+            opacity: 0.4;
             border: 1px solid var(--border-color);
+            transform: none !important;
         }
 
         /* Card Form */
@@ -618,6 +630,18 @@
                 justify-content: center;
             }
         }
+
+        @media (max-width: 768px) {
+            .footer-bar .label,
+            .footer-left .label,
+            .footer-right .label {
+                display: none !important;
+            }
+
+            .footer-bar {
+                padding: 0 10px;
+            }
+        }
     </style>
 </head>
 
@@ -631,10 +655,8 @@
             <div class="navbar-actions-section">
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input"
                             placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
@@ -657,7 +679,7 @@
                 <a href="/fuentes/" class="active">Fuentes</a>
                 <a href="/epg/">EPG</a>
                 <a href="/player/index.html">Reproductor</a>
-                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/player/legacy.html">Legacy</a>
                 <a href="/mobile/index.html">Móvil</a>
             </div>
         </div>
@@ -672,7 +694,7 @@
             </div>
             <div class="fuentes-header-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <button class="btn-action btn-save"
-                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);"
+                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 600;"
                     onclick="openInternalEditor()" title="Abrir Editor de Lista Interna (pegar nombres y hashes)">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -690,14 +712,14 @@
                     <span>Exportar M3U</span>
                 </button>
                 <button class="btn-action btn-copy"
-                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; background: #667eea; font-weight: 500;"
+                    style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
                     onclick="exportSources('json')" title="Exportar copia de seguridad en formato JSON">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                         <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                     </svg>
                     <span>Exportar JSON</span>
                 </button>
-                <button class="btn-action btn-save" id="btn-import-sources-top"
+                <button class="btn-action btn-copy" id="btn-import-sources-top"
                     style="padding: 9px 16px; display: flex; align-items: center; gap: 6px; font-weight: 500;"
                     onclick="triggerImportSources()" title="Importar paquete de fuentes (M3U, M3U8, JSON, TXT)">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -782,7 +804,7 @@
                     <tr>
                         <th style="width: 7%; text-align: center;">Estado</th>
                         <th style="width: 13%;">Plugin</th>
-                        <th style="width: 42%;">Dirección URL</th>
+                        <th style="width: 42%;">URL</th>
                         <th style="width: 20%;">Canales / Grupos</th>
                         <th style="width: 18%; text-align: center;">Acciones</th>
                     </tr>
@@ -812,7 +834,7 @@
                     <tr>
                         <th style="width: 7%; text-align: center;">Estado</th>
                         <th style="width: 13%;">ID / Nombre</th>
-                        <th style="width: 42%;">Dirección URL</th>
+                        <th style="width: 42%;">URL</th>
                         <th style="width: 20%;">Canales / Grupos</th>
                         <th style="width: 18%; text-align: center;">Acciones</th>
                     </tr>
@@ -848,7 +870,7 @@
                     <input type="text" id="new-source-title" class="url-input" placeholder="ej: Deportes M3U Premium">
                 </div>
                 <div class="form-group">
-                    <label for="new-source-url">Dirección URL (M3U / M3U8 / TXT)</label>
+                    <label for="new-source-url">URL (M3U / M3U8 / TXT)</label>
                     <input type="text" id="new-source-url" class="url-input"
                         placeholder="http://servidor.com/lista.m3u">
                 </div>
@@ -920,7 +942,7 @@
                             📄 Descargar M3U
                         </button>
                         <button class="btn-action btn-copy"
-                            style="padding: 8px 14px; font-size: 13px; background: #667eea; font-weight: 500;"
+                            style="padding: 8px 14px; font-size: 13px; font-weight: 500;"
                             onclick="exportSources('json')">
                             ⚙️ Backup JSON
                         </button>
@@ -1002,8 +1024,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                     💡 Si tienes una URL de lista completa remota (HTTP/HTTPS), agrégala en <strong>"Agregar Nueva
                         Fuente por URL"</strong>.
                 </span>
-                <button class="btn-action btn-save"
-                    style="padding: 10px 24px; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669);"
+                <button class="btn-action btn-save" style="padding: 10px 24px; font-weight: 600;"
                     onclick="saveInternalList()">
                     💾 Guardar en Lista Interna
                 </button>
@@ -1227,7 +1248,7 @@ DAZN F1 720p * - acestream://f16d68fa5ff64f3894a45062ca28e4e66f142c6a"></textare
                     clearTimeout(timeoutId);
                     console.warn('Timeout o fallo al consultar /config?action=get_config, aplicando fallback:', err);
                     const fallbackConfig = {
-                        version: '09.08.05',
+                        version: '09.08.06',
                         aio: true,
                         urls: {},
                         custom_lists: [

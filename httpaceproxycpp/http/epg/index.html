@@ -81,12 +81,12 @@
         .stat-pill {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            padding: 6px 14px;
-            border-radius: 20px;
+            padding: 5px 12px;
+            border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
             color: var(--text-muted);
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
         }
@@ -159,28 +159,33 @@
         }
 
         .filter-btn.active {
-            background-color: #4CAF50;
+            background-color: var(--brand-color, #22c55e);
             color: #ffffff;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         .btn-reload {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            padding: 9px 16px;
+            padding: 8px 12px;
             border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             transition: all 0.2s;
+            min-height: 35px;
         }
 
         .btn-reload:hover {
-            border-color: #4CAF50;
-            color: #4CAF50;
+            border-color: var(--brand-color, #22c55e);
+            color: var(--brand-color, #22c55e);
+            background: rgba(34, 197, 94, 0.08);
+            transform: translateY(-1px);
         }
 
         /* EPG Grid & Channel Cards */
@@ -955,9 +960,10 @@
         }
 
         .epg-tab-btn.active {
-            background-color: #4CAF50;
+            background-color: var(--brand-color, #22c55e);
             color: #ffffff;
-            border-color: #4CAF50;
+            border-color: var(--brand-color, #22c55e);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         .epg-tab-btn.active svg {
@@ -967,9 +973,10 @@
         .tab-badge {
             background: rgba(255, 255, 255, 0.2);
             color: inherit;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
         }
 
         .epg-tab-btn:not(.active) .tab-badge {
@@ -1138,23 +1145,55 @@
         }
 
         .fav-action-btn:hover {
-            border-color: #4CAF50;
-            color: #ffffff;
-            background: rgba(76, 175, 80, 0.15);
+            border-color: var(--brand-color, #22c55e);
+            color: var(--brand-color, #22c55e);
+            background: rgba(34, 197, 94, 0.08);
             transform: translateY(-1px);
         }
 
         .fav-save-btn {
-            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
-            border-color: #4CAF50;
+            background: var(--brand-color, #22c55e);
+            border-color: rgba(34, 197, 94, 0.4);
             color: #ffffff;
-            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
         }
 
         .fav-save-btn:hover {
-            background: linear-gradient(135deg, #45a049 0%, #2e7d32 100%);
-            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.45);
-            transform: translateY(-2px);
+            background: #16a34a;
+            border-color: #16a34a;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .btn-test-health {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            min-height: 35px;
+            white-space: nowrap;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .btn-test-health:hover {
+            border-color: #f59e0b;
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .btn-test-health svg {
+            color: #f59e0b;
         }
 
         @media (max-width: 768px) {
@@ -1203,6 +1242,16 @@
                 padding: 7px 8px;
                 font-size: 12px;
             }
+
+            .footer-bar .label,
+            .footer-left .label,
+            .footer-right .label {
+                display: none !important;
+            }
+
+            .footer-bar {
+                padding: 0 10px;
+            }
         }
 
         @media (max-width: 640px) {
@@ -1230,10 +1279,8 @@
             <div class="navbar-actions-section">
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input"
                             placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
@@ -1256,7 +1303,7 @@
                 <a href="/fuentes/">Fuentes</a>
                 <a href="/epg/" class="active">EPG</a>
                 <a href="/player/index.html">Reproductor</a>
-                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/player/legacy.html">Legacy</a>
                 <a href="/mobile/index.html">Móvil</a>
             </div>
         </div>
@@ -1365,24 +1412,21 @@
                     Todo el Día
                 </button>
             </div>
-
-            <button class="filter-btn" id="btn-test-health-favs" onclick="testHealthAllFavorites(this)"
-                style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25); white-space: nowrap;"
+            <button class="btn-reload" onclick="loadEpgData(true)" title="Actualizar programación EPG">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path
+                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                </svg>
+                <span>Actualizar</span>
+            </button>
+            <button class="btn-test-health" id="btn-test-health-favs" onclick="testHealthAllFavorites(this)"
                 title="Testear en tiempo real la salud y peers de todos los canales favoritos">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                     <path d="M7 2v11h3v9l7-12h-4l4-8z" />
                 </svg>
                 <span>Probar</span>
             </button>
-
-            <button class="btn-reload" onclick="loadEpgData(true)" title="Actualizar programación EPG">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <path
-                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
-                </svg>
-            </button>
         </div>
-
         <div id="epg-container" class="epg-grid">
             <div class="loading-state">
                 <div class="loading-spinner"></div>
@@ -2484,7 +2528,7 @@
             if (btnEl) {
                 btnEl.disabled = true;
                 btnEl.style.opacity = '0.75';
-                btnEl.innerHTML = `<span style="display:inline-block; animation:spin 1s linear infinite; margin-right:4px;">⚡</span> Testeando Favoritos...`;
+                btnEl.innerHTML = `<span style="display:inline-block; animation:spin 1s linear infinite; margin-right:4px;">⚡</span> Probando Favoritos...`;
             }
 
             const cards = Array.from(document.querySelectorAll('.channel-epg-card'));
@@ -2496,7 +2540,7 @@
                 if (btnEl) {
                     btnEl.disabled = false;
                     btnEl.style.opacity = '1';
-                    btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar IDs</span>`;
+                    btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar</span>`;
                 }
                 return;
             }
@@ -2518,7 +2562,7 @@
             if (btnEl) {
                 btnEl.disabled = false;
                 btnEl.style.opacity = '1';
-                btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar IDs</span>`;
+                btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar</span>`;
             }
 
             // Actualizar drawers abiertos si los hay

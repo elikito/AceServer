@@ -194,14 +194,15 @@
             border: 1px solid var(--border-color);
             color: var(--text-color);
             padding: 8px 12px;
-            border-radius: 4px;
+            border-radius: 8px;
             font-size: 13px;
             font-family: monospace;
             outline: none;
+            transition: border-color 0.2s;
         }
 
         .url-input:focus {
-            border-color: #4CAF50;
+            border-color: var(--brand-color, #22c55e);
         }
 
         .action-cell {
@@ -215,9 +216,9 @@
         .btn-check,
         .btn-delete {
             color: #ffffff;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 10px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 6px 11px;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
@@ -225,7 +226,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            transition: background-color 0.2s, opacity 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .btn-save svg,
@@ -238,27 +239,40 @@
         }
 
         .btn-save {
-            background-color: #4CAF50;
+            background-color: var(--brand-color, #22c55e);
+            border-color: rgba(34, 197, 94, 0.4);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
         }
 
         .btn-save:hover {
-            background-color: #45a049;
+            background-color: #16a34a;
+            border-color: #16a34a;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
         }
 
         .btn-check {
-            background-color: #2196F3;
+            background-color: var(--card-bg, #1a1e29);
+            border-color: var(--border-color, #2d3748);
+            color: var(--text-color, #e2e8f0);
         }
 
         .btn-check:hover {
-            background-color: #1976D2;
+            border-color: #0284c7;
+            color: #0284c7;
+            background: rgba(2, 132, 199, 0.1);
         }
 
         .btn-delete {
-            background-color: #ff3b30;
+            background-color: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
         }
 
         .btn-delete:hover {
-            background-color: #e02d22;
+            background-color: #ef4444;
+            border-color: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .btn-save:disabled,
@@ -464,6 +478,16 @@
             .add-form-grid {
                 grid-template-columns: 1fr;
             }
+
+            .footer-bar .label,
+            .footer-left .label,
+            .footer-right .label {
+                display: none !important;
+            }
+
+            .footer-bar {
+                padding: 0 10px;
+            }
         }
     </style>
 </head>
@@ -477,10 +501,8 @@
             <div class="navbar-actions-section">
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input"
                             placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false"
@@ -503,7 +525,7 @@
                 <a href="/fuentes/">Fuentes</a>
                 <a href="/epg/">EPG</a>
                 <a href="/player/index.html">Reproductor</a>
-                <a href="/player/legacy.html">Reproductor Legacy</a>
+                <a href="/player/legacy.html">Legacy</a>
                 <a href="/mobile/index.html">Móvil</a>
             </div>
         </div>
@@ -525,7 +547,7 @@
                 <thead>
                     <tr>
                         <th style="width: 15%;">Plugin</th>
-                        <th style="width: 55%;">Dirección URL / IPFS</th>
+                        <th style="width: 55%;">URL / IPFS</th>
                         <th style="width: 30%; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -547,7 +569,7 @@
                     <tr>
                         <th style="width: 15%;">Identificador</th>
                         <th style="width: 25%;">Nombre Visible</th>
-                        <th style="width: 35%;">Dirección URL</th>
+                        <th style="width: 35%;">URL</th>
                         <th style="width: 25%; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -575,7 +597,7 @@
                     <input type="text" id="new-list-title" class="url-input" placeholder="ej: Mi Fuente TV Deportes">
                 </div>
                 <div class="form-group">
-                    <label for="new-list-url">Dirección URL</label>
+                    <label for="new-list-url">URL</label>
                     <input type="text" id="new-list-url" class="url-input"
                         placeholder="http://example.com/playlist.m3u">
                 </div>
@@ -639,7 +661,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
                     <tr>
                         <th style="width: 8%; text-align: center;">Estado</th>
                         <th style="width: 17%;">Identificador</th>
-                        <th style="width: 48%;">Dirección URL / Archivo XMLTV</th>
+                        <th style="width: 48%;">URL / Archivo XMLTV</th>
                         <th style="width: 27%; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -663,7 +685,7 @@ acestream://1234567890abcdef1234567890abcdef12345678
                         oninput="sanitizeName(this)">
                 </div>
                 <div class="form-group">
-                    <label for="new-epg-url">Dirección URL de EPG (XML / XML.GZ)</label>
+                    <label for="new-epg-url">URL de EPG (XML / XML.GZ)</label>
                     <input type="text" id="new-epg-url" class="url-input"
                         placeholder="https://raw.githubusercontent.com/.../guiatv_sincolor0.xml.gz">
                 </div>

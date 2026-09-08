@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v09.08.05)
+ * HTTPAceProxy — Unified Navigation Component (v09.08.06)
  * Provides two-row layout, 100% responsive navigation menu,
  * and Spotlight/ElasticSearch-like reactive channel/EPG search.
  */
@@ -502,9 +502,8 @@
             actionsSection.innerHTML = `
                 <div class="global-search-container" id="global-search-container">
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input" placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false" aria-label="Buscador global">
                         <button type="button" id="global-search-clear" class="global-search-clear" aria-label="Limpiar búsqueda" style="display:none;">&times;</button>
@@ -536,9 +535,8 @@
                 searchWrapper.id = 'global-search-container';
                 searchWrapper.innerHTML = `
                     <div class="global-search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
                         <input type="text" id="global-search-input" class="global-search-input" placeholder="Buscar canal o evento..." autocomplete="off" spellcheck="false" aria-label="Buscador global">
                         <button type="button" id="global-search-clear" class="global-search-clear" aria-label="Limpiar búsqueda" style="display:none;">&times;</button>
@@ -562,7 +560,7 @@
                 { href: '/fuentes/', text: 'Fuentes', key: 'fuentes' },
                 { href: '/epg/', text: 'EPG', key: 'epg' },
                 { href: '/player/index.html', text: 'Reproductor', key: 'player' },
-                { href: '/player/legacy.html', text: 'Reproductor Legacy', key: 'legacy' },
+                { href: '/player/legacy.html', text: 'Legacy', key: 'legacy' },
                 { href: '/mobile/index.html', text: 'Móvil', key: 'mobile' }
             ];
 

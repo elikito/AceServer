@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AceProxy Mobile">
     <meta name="theme-color" content="#0a0c10">
-    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.05">
+    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.06">
     <title>AceProxy Mobile</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -112,7 +112,7 @@
             font-size: 9px;
             font-weight: 800;
             padding: 2px 6px;
-            border-radius: 10px;
+            border-radius: 6px;
             background: rgba(34, 197, 94, 0.15);
             color: var(--accent);
             border: 1px solid rgba(34, 197, 94, 0.3);
@@ -796,7 +796,7 @@
             min-height: 42px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 8px;
             color: var(--text-secondary);
             font-size: 13px;
             font-weight: 600;
@@ -805,9 +805,9 @@
 
         .modal-btn-primary {
             min-height: 42px;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
+            background: var(--accent);
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             color: #fff;
             font-size: 13px;
             font-weight: 700;
@@ -857,10 +857,8 @@
                 <button id="btn-header-sort-alpha" class="header-icon-btn" onclick="toggleAlphabeticalSort()"
                     title="Ordenar alfabéticamente (A-Z)">
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-                        <path
-                            d="M19 17h3l-4 4-4-4h3V3h2v14zM2 17h7v2H2v-2zm0-7h11v2H2v-2zm0-7h15v2H2V3z" />
+                        <path d="M19 17h3l-4 4-4-4h3V3h2v14zM2 17h7v2H2v-2zm0-7h11v2H2v-2zm0-7h15v2H2V3z" />
                     </svg>
-                    <span>A-Z</span>
                 </button>
                 <!-- Botón Copiar Canal (VLC / stream virtual) -->
                 <button id="btn-header-copy-vlc" class="header-icon-btn accent" onclick="copyActiveChannelUrl()"
@@ -876,7 +874,6 @@
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                         <path d="M7 2v11h3v9l7-12h-4l4-8z" />
                     </svg>
-                    <span>Reproducir ID</span>
                 </button>
                 <!-- Botón Versión Escritorio -->
                 <a href="/player/" class="header-icon-btn" title="Versión Escritorio Bento">
@@ -1010,7 +1007,7 @@
     </div>
 
     <script>
-        // --- ESTADO GLOBAL MOBILE v09.08.05 ---
+        // --- ESTADO GLOBAL MOBILE v09.08.06 ---
         const DEFAULT_EPG_URL = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz";
         let epgChannels = [];
         let epgProgrammes = {};
