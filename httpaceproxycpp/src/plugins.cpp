@@ -1,5 +1,6 @@
 #include "httpaceproxycpp/plugins.hpp"
 #include "httpaceproxycpp/proxy.hpp"
+#include "httpaceproxycpp/favorites_worker.hpp"
 #include "httpaceproxycpp/util.hpp"
 
 #include <algorithm>
@@ -1119,11 +1120,31 @@ public:
             for (const auto& f : favs) arr.push_back(f);
             Json::array dis_arr;
             for (const auto& d : disabled) dis_arr.push_back(d);
+            auto worker = proxy_.get_favorites_worker();
             Json res = Json::object{
                 {"status", "success"},
                 {"count", static_cast<double>(favs.size())},
                 {"favorites", Json(arr)},
-                {"disabled_cids", Json(dis_arr)}
+                {"disabled_cids", Json(dis_arr)},
+                {"worker_running", worker ? worker->is_running() : false},
+                {"last_probe_time", worker ? static_cast<double>(worker->get_last_probe_time()) : 0.0}
+            };
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "add_favorite") {
+            auto ch = query_get(ctx.query, "channel");
+            if (ch.empty()) ch = query_get(ctx.query, "slug");
+            if (!ch.empty()) {
+                proxy_.add_epg_favorite(ch);
+            }
+            auto favs = proxy_.get_epg_favorites();
+            Json::array arr;
+            for (const auto& f : favs) arr.push_back(f);
+            Json res = Json::object{
+                {"status", "success"},
+                {"action", "add_favorite"},
+                {"count", static_cast<double>(favs.size())},
+                {"favorites", Json(arr)}
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;

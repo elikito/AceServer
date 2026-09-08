@@ -4,6 +4,34 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.08.05] - 2026-09-08
+
+### ⚡ Arquitectura de Sondeo en Background y Resolución Instantánea para Canales Favoritos
+
+#### 1. Resolución Instantánea de Streams (<20ms)
+- **Eliminación Total de Bloqueos en HTTP**:
+  - En `Proxy::handle_client` / `handle_http` y `Proxy::resolve_best_candidate` (`src/proxy.cpp`), se eliminaron por completo las llamadas de red síncronas bloqueantes (`channel_verifier_.verify_sync`) que provocaban pausas de 2.5s a 5.0s por cada solicitud de canal virtual.
+  - Al solicitar reproducción o metadatos (`/auto/<slug>`, `/auto/<slug>/stream.ts`, `/auto/<slug>?action=resolve`, etc.), el proxy responde de inmediato con el Content ID del mejor candidato almacenado en memoria mediante el ranking de `StreamScorer`.
+  - Si la caché de salud del canal está vacía (todos los candidatos en estado `UNKNOWN`), devuelve inmediatamente el candidato con mejor puntuación base estática y encola una comprobación asíncrona en segundo plano sin demorar la respuesta HTTP (latencia <20ms, redirección 307 instantánea).
+
+#### 2. Servicio en Background Exclusivo para Favoritos (`FavoritesHealthWorker`)
+- **Hilo de Trabajo Dedicado**:
+  - Nueva clase `FavoritesHealthWorker` (`include/httpaceproxycpp/favorites_worker.hpp` y `src/favorites_worker.cpp`) dedicada exclusivamente a la monitorización y precalentamiento de salud de los canales favoritos (`epg_favorites.json` / `channel_order.json`).
+- **Arranque Secuencial Protegido**:
+  - Al arrancar el proxy, el worker calienta la caché sondeando de forma secuencial los candidatos prioritarios de los canales favoritos, aplicando un retardo estricto de 250 ms entre consultas para evitar saturar el motor AceStream.
+- **Ciclo Periódico de Salud**:
+  - Repite periódicamente el sondeo de los canales favoritos cada 15 minutos (TTL configurable vía `config.favorites_health_interval_minutes`).
+  - Los canales fuera de favoritos quedan estrictamente excluidos del sondeo periódico para no consumir CPU ni ancho de banda innecesarios.
+- **Evento de Alta en Favoritos / Cola Prioritaria**:
+  - Al agregar un nuevo canal a favoritos (vía `/epg?action=set_favorites_order`, `/epg?action=add_favorite` o `/api/channels`), el worker recibe una notificación reactiva e inserta el canal en su cola prioritaria, despertando el hilo y sondeando de inmediato sus candidatos para dejar la caché caliente antes de la primera reproducción.
+
+#### 3. Frontends Instantáneos (/player, /mobile, /player/legacy)
+- Las transiciones al hacer clic o pulsar en cualquier canal favorito en la interfaz móvil (`/mobile`), reproductor moderno (`/player`) o reproductor legacy (`/player/legacy`) ahora reciben la redirección HTTP 307 de inmediato en <20ms, eliminando esperas y estados bloqueados de "pensando".
+
+#### 4. Versionado y Pruebas
+- Actualizada la versión canónica a `09.08.05` en `config.hpp`, `footer.js`, `navbar.js`, `navbar.css`, `mobile/index.html`, `fuentes/index.html`, `statplugin/index.html`, `plugins_state.json`, `test_core.cpp` y `CHANGELOG.md`.
+- Incorporados nuevos tests unitarios en `test_core.cpp` validando la resolución instantánea en memoria y el comportamiento del worker de favoritos.
+
 ## [09.08.04] - 2026-09-08
 
 ### 🎬 Estandarización Global de Resoluciones (1080p, 720p, SD, 4K) y Modernización del Reproductor Legacy

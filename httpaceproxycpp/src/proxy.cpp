@@ -1,4 +1,5 @@
 #include "httpaceproxycpp/proxy.hpp"
+#include "httpaceproxycpp/favorites_worker.hpp"
 #include "httpaceproxycpp/util.hpp"
 
 #include <algorithm>
@@ -378,11 +379,17 @@ Proxy::Proxy(Config config)
     load_channel_filters();
     auto plugins = create_plugins(config_, http_client_, *this);
     for (auto& plugin : plugins) plugins_.add(plugin);
+
+    // v09.08.05 — Inicializar worker de salud de favoritos
+    favorites_worker_ = std::make_unique<FavoritesHealthWorker>(*this, channel_verifier_, config_.favorites_health_interval_minutes);
 }
 
 Proxy::~Proxy() { stop(); }
 
 void Proxy::start() {
+    if (favorites_worker_) {
+        favorites_worker_->start();
+    }
     server_ = std::make_unique<HttpServer>(config_.http_host, config_.http_port,
         [this](const HttpRequest& request, ClientConnection& connection) { handle_http(request, connection); });
     server_->set_client_send_timeout(config_.client_write_timeout);
@@ -392,6 +399,7 @@ void Proxy::start() {
 }
 
 void Proxy::stop() {
+    if (favorites_worker_) favorites_worker_->stop();
     broadcasts_.stop_all();
     if (server_) server_->stop();
 }
@@ -498,6 +506,22 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             auto candidates = find_candidates_for_channel(slug);
             StreamScorer::rank_candidates(candidates);
 
+            // v09.08.05: Si la caché para el canal está vacía, encolar comprobación asíncrona sin bloquear
+            bool all_unknown = true;
+            for (const auto& c : candidates) {
+                if (!c.is_disabled && (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS)) {
+                    all_unknown = false;
+                    break;
+                }
+            }
+            if (all_unknown && !candidates.empty()) {
+                if (favorites_worker_) {
+                    favorites_worker_->request_channel_probe(slug, /*priority=*/true);
+                } else {
+                    channel_verifier_.enqueue(candidates.front().content_id);
+                }
+            }
+
             if (!req_quality.empty() && req_quality != "auto") {
                 std::vector<ChannelCandidate> filtered;
                 for (const auto& c : candidates) {
@@ -554,6 +578,22 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         auto candidates = find_candidates_for_channel(slug);
         StreamScorer::rank_candidates(candidates);
 
+        // v09.08.05: Si la caché está vacía, encolar comprobación asíncrona sin bloquear (<20ms)
+        bool all_unknown = true;
+        for (const auto& c : candidates) {
+            if (!c.is_disabled && (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS)) {
+                all_unknown = false;
+                break;
+            }
+        }
+        if (all_unknown && !candidates.empty()) {
+            if (favorites_worker_) {
+                favorites_worker_->request_channel_probe(slug, /*priority=*/true);
+            } else {
+                channel_verifier_.enqueue(candidates.front().content_id);
+            }
+        }
+
         if (!req_quality.empty() && req_quality != "auto") {
             std::vector<ChannelCandidate> filtered;
             for (const auto& c : candidates) {
@@ -595,6 +635,51 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             {"Connection", "close"}
         });
         return;
+    }
+
+    // -----------------------------------------------------------------------
+    // v09.08.05 — Endpoints REST: /api/channels y /api/favorites
+    // -----------------------------------------------------------------------
+    if ((ctx.parts.size() > 1 && ctx.parts[1] == "api" && ctx.parts.size() > 2 && (ctx.parts[2] == "channels" || ctx.parts[2] == "favorites")) ||
+        (ctx.parts.size() > 1 && (ctx.parts[1] == "api_channels" || ctx.parts[1] == "favorites_api"))) {
+        std::map<std::string, std::string> headers = {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
+            {"Access-Control-Allow-Headers", "Content-Type"},
+            {"Content-Type", "application/json; charset=utf-8"},
+            {"Connection", "close"}
+        };
+        if (request.method == "OPTIONS") {
+            connection.send_response_headers(204, "No Content", headers);
+            return;
+        }
+        auto action = query_get(ctx.query, "action");
+        if (action == "add_favorite" || action == "add_fav" || action == "add") {
+            auto ch = query_get(ctx.query, "channel");
+            if (ch.empty()) ch = query_get(ctx.query, "slug");
+            if (!ch.empty()) {
+                add_epg_favorite(ch);
+            }
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text("{\"status\":\"success\",\"action\":\"add_favorite\"}");
+            return;
+        } else if (action == "get_favorites" || action == "favorites" || (ctx.parts.size() > 2 && ctx.parts[2] == "favorites")) {
+            auto favs = get_epg_favorites();
+            Json::array arr;
+            for (const auto& f : favs) arr.push_back(f);
+            Json res = Json::object{
+                {"status", "success"},
+                {"count", static_cast<double>(favs.size())},
+                {"favorites", Json(arr)},
+                {"worker_running", favorites_worker_ ? favorites_worker_->is_running() : false},
+                {"last_probe_time", favorites_worker_ ? static_cast<double>(favorites_worker_->get_last_probe_time()) : 0.0}
+            };
+            auto body_str = res.dump(2);
+            headers["Content-Length"] = std::to_string(body_str.size());
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(body_str);
+            return;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -3335,8 +3420,10 @@ std::optional<ChannelCandidate> Proxy::resolve_best_candidate(const std::string&
 
     StreamScorer::rank_candidates(candidates);
 
-    // v08.25.07: Si todos los candidatos están en estado UNKNOWN y no hay ningún stream activo ni online confirmado,
-    // disparamos una verificación ligera (2.5s) sobre los candidatos prioritarios antes de redirigir a ciegas a 0 KB/s.
+    // v09.08.05: Resolución Instantánea (<20ms).
+    // Jamás realizar llamadas de red bloqueantes al motor AceStream.
+    // Devolver inmediatamente el Content ID del mejor candidato almacenado en memoria.
+    // Si la caché está vacía, encolar una comprobación asíncrona en segundo plano sin esperar.
     bool all_unknown = true;
     for (const auto& c : candidates) {
         if (!c.is_disabled && (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS)) {
@@ -3346,25 +3433,14 @@ std::optional<ChannelCandidate> Proxy::resolve_best_candidate(const std::string&
     }
 
     if (all_unknown && !candidates.empty()) {
-        auto top_cid = candidates.front().content_id;
-        channel_verifier_.verify_sync(top_cid, 2500);
-
-        auto cached1 = channel_verifier_.get_cached(top_cid);
-        if ((cached1.health == ChannelHealth::OFFLINE || cached1.health == ChannelHealth::ERROR || cached1.health == ChannelHealth::BLOCKED) && candidates.size() > 1) {
-            auto second_cid = candidates[1].content_id;
-            channel_verifier_.verify_sync(second_cid, 2500);
+        if (favorites_worker_) {
+            favorites_worker_->request_channel_probe(query_or_slug, /*priority=*/true);
+        } else {
+            channel_verifier_.enqueue(candidates.front().content_id);
         }
-
-        for (auto& c : candidates) {
-            auto cached = channel_verifier_.get_cached(c.content_id);
-            c.peers = cached.peers;
-            c.speed_down = cached.speed_down;
-            c.health = cached.health;
-        }
-        StreamScorer::rank_candidates(candidates);
     }
 
-    // Retornar el primer candidato no deshabilitado
+    // Retornar el primer candidato no deshabilitado de inmediato
     for (const auto& c : candidates) {
         if (!c.is_disabled) return c;
     }
@@ -3853,11 +3929,38 @@ std::vector<std::string> Proxy::get_epg_favorites() const {
 }
 
 void Proxy::set_epg_favorites(const std::vector<std::string>& favs) {
+    std::vector<std::string> newly_added;
     {
         std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
+        std::unordered_set<std::string> old_set;
+        for (const auto& f : epg_favorites_) old_set.insert(canonical_slug(f));
+        for (const auto& f : favs) {
+            if (!f.empty() && old_set.find(canonical_slug(f)) == old_set.end()) {
+                newly_added.push_back(f);
+            }
+        }
         epg_favorites_ = favs;
     }
     save_epg_favorites();
+
+    // v09.08.05: Notificar al worker para sondeo prioritario inmediato de nuevos favoritos
+    if (favorites_worker_ && !newly_added.empty()) {
+        favorites_worker_->notify_favorites_changed(newly_added);
+    }
+}
+
+void Proxy::add_epg_favorite(const std::string& channel) {
+    if (channel.empty()) return;
+    std::vector<std::string> current_favs;
+    {
+        std::lock_guard<std::mutex> lock(epg_favorites_mutex_);
+        current_favs = epg_favorites_;
+        for (const auto& f : current_favs) {
+            if (canonical_slug(f) == canonical_slug(channel)) return;
+        }
+        current_favs.push_back(channel);
+    }
+    set_epg_favorites(current_favs);
 }
 
 // ---------------------------------------------------------------------------

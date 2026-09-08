@@ -763,8 +763,8 @@ void test_v09_08_03_two_row_navbar_and_search() {
 }
 
 void test_v09_08_04_resolution_standardization_and_legacy_player() {
-    // 1. Verificación estricta de versión de la aplicación v09.08.04
-    require(std::string(kAppVersion) == "09.08.04", "App version must be 09.08.04");
+    // 1. Verificación de versión previa superada por v09.08.05
+    require(std::string(kAppVersion) >= "09.08.04", "App version must be at least 09.08.04");
 
     // 2. Verificación de clasificación canónica de calidades: 1080p, 720p, SD, 4K
     require(detect_stream_quality("DAZN 1 FHD") == StreamQuality::FHD_1080, "FHD classified as 1080p");
@@ -782,6 +782,54 @@ void test_v09_08_04_resolution_standardization_and_legacy_player() {
     require(canonical_slug("DAZN 1 720p") == "dazn-1", "720p stripped from slug");
     require(canonical_slug("DAZN 1 720a") == "dazn-1", "720a stripped from slug");
     require(canonical_slug("DAZN 1 FHDa") == "dazn-1", "FHDa stripped from slug");
+}
+
+void test_v09_08_05_instant_resolution_and_favorites_worker() {
+    // 1. Verificación estricta de versión v09.08.05
+    require(std::string(kAppVersion) == "09.08.05", "App version must be 09.08.05");
+
+    // 2. Configuración de FavoritesHealthWorker
+    Config cfg;
+    require(cfg.favorites_health_interval_minutes == 15, "default interval is 15 minutes");
+
+    // 3. Verificación de ranking instantáneo en memoria sin red
+    std::vector<ChannelCandidate> candidates;
+    ChannelCandidate c1;
+    c1.name = "DAZN 1 1080p";
+    c1.content_id = "cid1_1080p";
+    c1.quality = StreamQuality::FHD_1080;
+    c1.quality_bonus = 100;
+    c1.health = ChannelHealth::UNKNOWN; // Cache vacía
+    c1.peers = 0;
+
+    ChannelCandidate c2;
+    c2.name = "DAZN 1 720p";
+    c2.content_id = "cid2_720p";
+    c2.quality = StreamQuality::HD_720;
+    c2.quality_bonus = 60;
+    c2.health = ChannelHealth::ONLINE;
+    c2.peers = 12;
+    c2.speed_down = 250000;
+
+    candidates.push_back(c1);
+    candidates.push_back(c2);
+
+    StreamScorer::rank_candidates(candidates);
+
+    // Con candidato ONLINE conocido en memoria, este supera al UNKNOWN inmediatamente
+    require(candidates.front().content_id == "cid2_720p", "Online candidate ranked highest instantly");
+
+    // Si ambos son UNKNOWN, el candidato de mayor calidad base es devuelto de inmediato (<1ms)
+    std::vector<ChannelCandidate> unknown_candidates;
+    ChannelCandidate u1 = c1;
+    ChannelCandidate u2 = c2;
+    u2.health = ChannelHealth::UNKNOWN;
+    u2.peers = 0;
+    u2.speed_down = 0;
+    unknown_candidates.push_back(u2);
+    unknown_candidates.push_back(u1);
+    StreamScorer::rank_candidates(unknown_candidates);
+    require(unknown_candidates.front().content_id == "cid1_1080p", "Top static quality candidate returned instantly when cache is empty");
 }
 
 } // namespace
@@ -812,6 +860,7 @@ int main() {
         test_v09_08_02_mobile_epg_and_quality_pills();
         test_v09_08_03_two_row_navbar_and_search();
         test_v09_08_04_resolution_standardization_and_legacy_player();
+        test_v09_08_05_instant_resolution_and_favorites_worker();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

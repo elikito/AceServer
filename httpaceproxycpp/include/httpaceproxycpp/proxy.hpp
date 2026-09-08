@@ -18,6 +18,8 @@
 
 namespace httpace {
 
+class FavoritesHealthWorker;
+
 class Proxy {
 public:
     explicit Proxy(Config config);
@@ -71,11 +73,14 @@ public:
     // v08.25.07 & v08.25.08 — Favoritos EPG persistidos y candidatos deshabilitados
     std::vector<std::string> get_epg_favorites() const;
     void set_epg_favorites(const std::vector<std::string>& favs);
+    void add_epg_favorite(const std::string& channel);
     void load_epg_favorites();
     void save_epg_favorites();
     bool toggle_disabled_candidate(const std::string& content_id, bool disabled);
     bool is_candidate_disabled(const std::string& content_id) const;
     std::vector<std::string> get_disabled_candidates() const;
+    const Config& get_config() const { return config_; }
+    FavoritesHealthWorker* get_favorites_worker() { return favorites_worker_.get(); }
 
     // Logos personalizados persistentes (custom_logos.json)
     std::map<std::string, std::string> get_custom_logos() const;
@@ -167,6 +172,9 @@ private:
     // v09.02.01 — Filtros Regex Personalizados por Canal
     mutable std::mutex channel_filters_mutex_;
     std::map<std::string, std::vector<std::string>> channel_filters_;
+
+    // v09.08.05 — Servicio en background exclusivo para Favoritos
+    std::unique_ptr<FavoritesHealthWorker> favorites_worker_;
 };
 
 } // namespace httpace

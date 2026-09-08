@@ -1,5 +1,5 @@
 /**
- * HTTPAceProxy — Unified Navigation Component (v09.08.04)
+ * HTTPAceProxy — Unified Navigation Component (v09.08.05)
  * Provides two-row layout, 100% responsive navigation menu,
  * and Spotlight/ElasticSearch-like reactive channel/EPG search.
  */

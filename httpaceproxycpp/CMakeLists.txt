@@ -16,6 +16,7 @@ add_library(httpaceproxycpp_core
   src/broadcast.cpp
   src/channel_verifier.cpp
   src/config.cpp
+  src/favorites_worker.cpp
   src/http_client.cpp
   src/http_server.cpp
   src/json.cpp
