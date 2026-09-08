@@ -1377,7 +1377,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 struct Predef { std::string id; std::string name; std::string fallback; };
                 std::vector<Predef> predefined = {
                     {"newera", "NewEra", "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"},
-                    {"elcano", "Elcano.top by @Lucas_m_o_o_m ... Vacaciones en el Mar", "https://k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs.ipns.inbrowser.link/hashes.json"},
+                    {"elcano", "Elcano.top", "https://k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs.ipns.inbrowser.link/hashes.json"},
                     {"af1c1onados", "Af1c1onados", "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM%20iDs.w3u"},
                     {"acepl", "Acepl", "https://api.acestream.me/all?api_version=1.0&api_key=test_api_key"}
                 };

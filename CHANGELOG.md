@@ -28,9 +28,32 @@ El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.co
 #### 3. Frontends Instantáneos (/player, /mobile, /player/legacy)
 - Las transiciones al hacer clic o pulsar en cualquier canal favorito en la interfaz móvil (`/mobile`), reproductor moderno (`/player`) o reproductor legacy (`/player/legacy`) ahora reciben la redirección HTTP 307 de inmediato en <20ms, eliminando esperas y estados bloqueados de "pensando".
 
-#### 4. Versionado y Pruebas
-- Actualizada la versión canónica a `09.08.05` en `config.hpp`, `footer.js`, `navbar.js`, `navbar.css`, `mobile/index.html`, `fuentes/index.html`, `statplugin/index.html`, `plugins_state.json`, `test_core.cpp` y `CHANGELOG.md`.
-- Incorporados nuevos tests unitarios en `test_core.cpp` validando la resolución instantánea en memoria y el comportamiento del worker de favoritos.
+#### 4. Pulido de la Interfaz Móvil (`/mobile`)
+- **Limpieza Visual de Tarjetas**:
+  - Eliminados los badges superpuestos (*overlays*) de "EN DIRECTO" y "AUTO ENGINE" que tapaban los logos de los canales.
+  - Eliminada la estrella redundante en las tarjetas de canal.
+  - Visualización del Content ID completo (40 caracteres) en lugar de la versión truncada.
+- **Ordenación Alfabética**:
+  - Añadido botón interactivo para ordenar canales alfabéticamente (A-Z) situado a la izquierda del botón de copiar en la cabecera.
+
+#### 5. Reestructuración y Corrección Responsive de la Guía TV (`/epg`)
+- **Alineación de Tarjetas y Barra de Acciones**:
+  - Reubicada la barra de acciones (*Copiar*, *Ver*, *Fuentes*, *Personalizar*) a una fila dedicada situada justo encima del programa en emisión (`.programmes-list`), eliminando el desbordamiento horizontal en pantallas pequeñas.
+  - Eliminado el botón de la estrella (`btn-fav-star`) de las tarjetas de canal.
+- **Optimización Mobile-First**:
+  - Ocultados el dial numérico de posición (`.dial-controls`) y el tirador de arrastre (`.drag-handle`) en vista móvil (`@media (max-width: 768px)`).
+  - Distribución adaptativa 2x2 simétrica para los botones de acción en móviles.
+- **Tabla de Fuentes / Candidatos**:
+  - Ocultada la insignia con el Content ID completo de 40 caracteres en móvil para evitar filas excesivamente altas.
+  - Copia interactiva directa: al pulsar sobre el nombre del canal/candidato, se copia su Content ID automáticamente al portapapeles, con confirmación visual (*highlight* verde) y notificación flotante (*Toast*).
+  - Normalización y síntesis de etiquetas: "Todos", botón "Copiar", estados "LENTO", "NS/NC" y botón "⟳ Re-comprobar".
+
+#### 6. Limpieza Canónica de Fuentes Predefinidas
+- Normalización del nombre del plugin `Elcano.top` (eliminando coletillas redundantes) en el generador M3U de `proxy.cpp`, reproductor web (`player/index.html`) y gestor de fuentes (`fuentes/index.html`).
+
+#### 7. Versionado y Pruebas
+- Versión canónica `09.08.05` en backend y frontends (`config.hpp`, `footer.js`, `navbar.js`, `navbar.css`, `mobile/index.html`, `fuentes/index.html`, `statplugin/index.html`, `plugins_state.json`, `test_core.cpp` y `CHANGELOG.md`).
+- Tests unitarios en `test_core.cpp` verificando resolución en memoria <20ms y cola prioritaria de `FavoritesHealthWorker`.
 
 ## [09.08.04] - 2026-09-08
 

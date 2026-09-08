@@ -248,6 +248,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
         }
 
         .action-btn-sm {
@@ -395,6 +397,44 @@
         .cid-copy-badge.copied-highlight {
             background: #22c55e !important;
             color: #ffffff !important;
+        }
+
+        .candidate-name-link {
+            cursor: pointer;
+            user-select: text;
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            padding: 2px 5px;
+            margin: -2px -5px;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .candidate-name-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .candidate-name-link:hover {
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.12);
+        }
+
+        .candidate-name-link:hover .candidate-copy-icon {
+            opacity: 1;
+            stroke: #4CAF50;
+        }
+
+        .candidate-name-link.copied-highlight {
+            background: #22c55e !important;
+            color: #ffffff !important;
+        }
+
+        .candidate-name-link.copied-highlight .candidate-copy-icon {
+            stroke: #ffffff !important;
+            opacity: 1;
         }
 
         .quality-badge {
@@ -1117,6 +1157,54 @@
             transform: translateY(-2px);
         }
 
+        @media (max-width: 768px) {
+
+            .drag-handle,
+            .dial-controls,
+            .candidate-cid-wrap,
+            .cid-copy-badge {
+                display: none !important;
+            }
+
+            .channel-epg-card {
+                padding: 14px;
+            }
+
+            .channel-epg-header {
+                margin-bottom: 10px;
+                padding-bottom: 8px;
+            }
+
+            .channel-epg-identity {
+                gap: 10px;
+            }
+
+            .channel-logo {
+                width: 48px;
+                height: 48px;
+            }
+
+            .channel-name {
+                font-size: 15px;
+            }
+
+            .channel-actions-group {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-bottom: 12px;
+            }
+
+            .channel-actions-group .action-btn-sm {
+                flex: 1 1 calc(50% - 6px);
+                min-width: 0;
+                justify-content: center;
+                padding: 7px 8px;
+                font-size: 12px;
+            }
+        }
+
         @media (max-width: 640px) {
             .fav-actions-bar {
                 width: 100%;
@@ -1129,12 +1217,6 @@
                 flex: 1;
                 justify-content: center;
             }
-        }
-
-        .channel-epg-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
     </style>
 </head>
@@ -1218,7 +1300,7 @@
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 6h16M4 12h16M4 18h16"></path>
                 </svg>
-                Todos los Canales <span class="tab-badge" id="all-count-badge">0</span>
+                Todos <span class="tab-badge" id="all-count-badge">0</span>
             </button>
             <div id="fav-actions-bar" class="fav-actions-bar">
                 <button class="fav-action-btn" onclick="sortFavoritesAlphabetically()"
@@ -1243,6 +1325,7 @@
                         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                     </svg>
+                    Copiar
                 </button>
             </div>
         </div>
@@ -1289,7 +1372,7 @@
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                     <path d="M7 2v11h3v9l7-12h-4l4-8z" />
                 </svg>
-                <span>⚡ Testear Salud de Favoritos</span>
+                <span>Probar</span>
             </button>
 
             <button class="btn-reload" onclick="loadEpgData(true)" title="Actualizar programación EPG">
@@ -1810,8 +1893,8 @@
             const h = (rawHealth || 'UNKNOWN').toUpperCase();
             if (h === 'ONLINE' || h === 'ACTIVO') {
                 return { cls: 'health-online', text: 'ACTIVO' };
-            } else if (h === 'LOW_PEERS' || h === 'POCOS PEERS' || h === 'ENJAMBRE LENTO') {
-                return { cls: 'health-low', text: 'ENJAMBRE LENTO' };
+            } else if (h === 'LOW_PEERS' || h === 'POCOS PEERS' || h === 'LENTO') {
+                return { cls: 'health-low', text: 'LENTO' };
             } else if (h === 'OFFLINE' || h === 'CAÍDO' || h === 'CAIDO') {
                 return { cls: 'health-offline', text: 'CAÍDO' };
             } else if (h === 'BLOCKED' || h === 'BLOQUEADO') {
@@ -1819,7 +1902,7 @@
             } else if (h === 'CHECKING' || h === 'TESTING' || h === 'PENDING' || h === 'VERIFICANDO') {
                 return { cls: 'health-low', text: 'VERIFICANDO' };
             } else {
-                return { cls: 'health-unknown', text: 'SIN VERIFICAR' };
+                return { cls: 'health-unknown', text: 'NS/NC' };
             }
         }
 
@@ -1927,14 +2010,14 @@
 
             cards.forEach(card => container.appendChild(card));
             recalculateDialsFromDOM(true);
-            showToast('🔤 Favoritos ordenados alfabéticamente (A-Z)', 'success');
+            showToast('🔤 Ordenados alfabéticamente (A-Z)', 'success');
         }
 
         function saveCurrentFavoritesOrder() {
             recalculateDialsFromDOM(false);
             const favs = getFavoriteChannels();
             syncFavoritesWithServer(favs);
-            showToast('💾 Orden de favoritos guardado con éxito', 'success');
+            showToast('💾 Orden guardado con éxito', 'success');
         }
 
         function showToast(msg, type = 'info') {
@@ -2392,7 +2475,7 @@
                 showToast('Error al re-comprobar: ' + err.message, 'error');
                 if (btnEl && btnEl.innerHTML) {
                     btnEl.disabled = false;
-                    btnEl.innerHTML = `⟳ Re-comprobar Fuentes`;
+                    btnEl.innerHTML = `⟳ Re-comprobar`;
                 }
             }
         }
@@ -2479,8 +2562,13 @@
                 </div>
                 <div class="candidates-loading" style="font-size:12px; color:var(--text-muted); padding:8px 0;">Consultando candidatos y salud del enjambre...</div>
             `;
-            const header = card.querySelector('.channel-epg-header');
-            header.after(drawer);
+            const actionsGroup = card.querySelector('.channel-actions-group');
+            if (actionsGroup) {
+                actionsGroup.after(drawer);
+            } else {
+                const header = card.querySelector('.channel-epg-header');
+                if (header) header.after(drawer);
+            }
 
             try {
                 const res = await fetch(`/auto/${slug}?action=list`);
@@ -2501,7 +2589,7 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <button class="action-btn-sm" onclick="recheckChannelSources('${escapeJs(slug)}', this, event)" style="background:var(--brand-color); color:#fff; font-weight:700; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Re-comprobar en tiempo real el estado y peers de todas las fuentes">
-                                ⟳ Re-comprobar Fuentes
+                                ⟳ Re-comprobar
                             </button>
                             <div style="font-size:11px; color:var(--text-muted);">URL Virtual: <code style="color:#4CAF50;">/auto/${slug}</code></div>
                         </div>
@@ -2511,11 +2599,11 @@
                             <thead>
                                 <tr>
                                     <th>Estado</th>
-                                    <th>Nombre Original</th>
+                                    <th>Original</th>
                                     <th>Calidad</th>
                                     <th>Peers</th>
-                                    <th>Puntuación</th>
-                                    <th>Lista / Plugin</th>
+                                    <th>0-100</th>
+                                    <th>Origen</th>
                                     <th>Activo</th>
                                 </tr>
                             </thead>
@@ -2529,9 +2617,12 @@
                     candHtml += `
                         <tr class="${isDis ? 'candidate-disabled' : ''}">
                             <td><span class="health-pill ${badge.cls}">${badge.text}</span></td>
-                            <td style="font-weight:600; max-width:320px;" title="${c.name}">
-                                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name}</div>
-                                <div style="margin-top:3px;">
+                            <td style="font-weight:600; max-width:320px;">
+                                <div class="candidate-name-link" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID: ${c.content_id}">
+                                    <span class="candidate-name-text">${c.name}</span>
+                                    <svg class="candidate-copy-icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5; flex-shrink:0; margin-left:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </div>
+                                <div class="candidate-cid-wrap" style="margin-top:3px;">
                                     <code class="cid-copy-badge" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID completo (40 caracteres)">
                                         <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                                         ${c.content_id}
@@ -2748,28 +2839,24 @@
                                 <div style="font-size:12px; color:var(--text-muted);">${progs.length} programas</div>
                             </div>
                         </div>
-                        <div class="channel-actions-group">
-                            <button class="action-btn-sm" onclick="copyChannelVirtualUrl('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Copiar enlace M3U / stream virtual">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>                                <
-                            </button>
-                            <button class="action-btn-sm" onclick="playChannelInPlayer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Reproducir stream automático en Web Player">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle; margin-right:3px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                Ver
-                            </button>
-                            <button class="action-btn-sm" onclick="toggleCandidatesDrawer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', this, event)" title="Ver y gestionar fuentes / candidatos asignados">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                Fuentes
-                            </button>
-                            <button class="action-btn-sm" onclick="openChannelFilterModal('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Personalizar filtros Regex y palabras clave para este canal">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                Personalizar
-                            </button>
-                            <button class="btn-fav-star ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
-                                <svg viewBox="0 0 24 24" width="22" height="22" fill="${isFav ? '#FFD700' : 'none'}" stroke="${isFav ? '#FFD700' : 'var(--text-muted)'}" stroke-width="2">
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                </svg>
-                            </button>
-                        </div>
+                    </div>
+                    <div class="channel-actions-group">
+                        <button class="action-btn-sm" onclick="copyChannelVirtualUrl('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Copiar enlace M3U / stream virtual">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copiar</span>
+                        </button>
+                        <button class="action-btn-sm" onclick="playChannelInPlayer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Reproducir stream automático en Web Player">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle; margin-right:3px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <span>Ver</span>
+                        </button>
+                        <button class="action-btn-sm" onclick="toggleCandidatesDrawer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', this, event)" title="Ver y gestionar fuentes / candidatos asignados">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            <span>Fuentes</span>
+                        </button>
+                        <button class="action-btn-sm" onclick="openChannelFilterModal('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', event)" title="Personalizar filtros Regex y palabras clave para este canal">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            <span>Personalizar</span>
+                        </button>
                     </div>
                     <div class="programmes-list">
                         ${listHtml}
