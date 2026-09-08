@@ -4,6 +4,39 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.08.07] - 2026-09-08
+
+### 📱 Optimización 100% de Ancho en EPG Móvil y Rediseño Completo del Reproductor Legacy (WebKit / iPad)
+
+#### 1. Reproductor Móvil (/mobile/index.html): Programa Actual al 100% del Ancho
+- **Ajuste de Visualización de Tarjetas EPG**:
+  - La tarjeta del programa actual en el carrusel horizontal (`.epg-program-box`) ahora ocupa de manera estricta el **100% del ancho del contenedor** (`flex: 0 0 100%; width: 100%; min-width: 100%; max-width: 100%; box-sizing: border-box;`).
+  - Se mantiene íntegro y suave el desplazamiento horizontal (`overflow-x: auto`, `scroll-snap-type: x mandatory`, `scroll-snap-align: center`) permitiendo deslizar cómodamente para consultar programas anteriores y posteriores.
+
+#### 2. Reproductor Legacy (/player/legacy.html): Rediseño para Navegadores Antiguos (WebKit ES5 / iPad)
+- **Igualación Dimensional de Botones de Acción**:
+  - Unificadas estrictamente las dimensiones de los botones de Reproducir (`.btn-play-legacy`) y Copiar Enlace (`.btn-copy-legacy`) mediante la clase base `.btn-action-legacy` (`36px` x `36px` con iconos vectoriales centrados de `16px`), eliminando discrepancias de tamaño causadas por estilos nativos de botones y enlaces en WebKit.
+- **Sustitución de Desplegable por Listado de Pestañas (Pills)**:
+  - Sustituido el desplegable `<select>` por una barra horizontal deslizable de fuentes de contenido (`#tabs-container-legacy`), permitiendo alternar de forma inmediata entre Favoritos, AIO y demás listas con botones táctiles reactivos.
+- **Integración de Buscador y Reloj en la Misma Línea**:
+  - El reloj en vivo (`#live-clock-legacy`) y el campo de búsqueda rápida con icono Material Design (`.search-bar-row-legacy`) se integran en una única fila compacta y armónica.
+- **Paginador Mejorado**:
+  - Controles completos de navegación de páginas: Botón primera página (`««`), página anterior (`« Ant`), indicador numérico (`Pág. X/Y`), página siguiente (`Sig »`) y última página (`»»`), junto a selector de canales por página (12, 24, 48, 96).
+- **Selector de Vista: Cuadrícula y Lista**:
+  - Incorporado selector interactivo de visualización:
+    - **Cuadrícula (`grid`)**: Tarjetas individuales con logo, título truncado, acciones y toggle 1080p/720p.
+    - **Lista (`list`)**: Filas compactas con logo, nombre, toggle de calidad y acciones alineadas a la derecha.
+  - Persistencia de la preferencia de vista en `localStorage` (`legacy_view_mode`).
+- **Compatibilidad Total WebKit ES5 (iPad iOS 9+)**:
+  - Empleo riguroso de sintaxis ES5 (sin arrow functions, sin template strings, sin promesas no soportadas), sustituyendo `fetch` por `XMLHttpRequest` nativo y prefijos `-webkit-flex` y `-webkit-box`.
+
+#### 3. Sincronización Canónica de Versión a `09.08.07`
+  - Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.08.07"`).
+  - Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (aserto estricto para `09.08.07`).
+  - Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.08.07'`).
+  - Barra de navegación y hojas de estilo: `navbar.js` y `navbar.css`.
+  - Interfaces web: `mobile/index.html`, `fuentes/index.html`, `statplugin/index.html`, `player/legacy.html`.
+
 ## [09.08.06] - 2026-09-08
 
 ### 🔍 Unificación Global de Iconografía de Búsqueda, Auditoría de Botones/Badges y Optimización Móvil
@@ -38,11 +71,23 @@ El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.co
 - **Aprovechamiento Óptimo de Márgenes**: Reducción de paddings laterales a `8px 10px` en tarjetas y listas de canales, eliminando espacios vacíos en pantallas estrechas.
 - **Carrusel EPG Horizontal en Canal Activo**: La ficha de programación ahora incorpora un carrusel deslizable ligero con:
   - Programa anterior (`past`, indicando que ha finalizado).
-  - Programa en emisión (`live`, con barra de progreso interactiva y minutos restantes).
-  - Próximos 4 programas posteriores (`future`, con tiempo de inicio estimado).
-  - Desplazamiento automático para centrar el programa en vivo sin saturar la memoria del dispositivo móvil.
+  - Programa en emisión (`current`, badge `En Vivo`).
+  - Próximos programas (`next`, hasta 4 eventos adicionales).
 
-#### 5. Auditoría y Estandarización del Sistema de Diseño (Botones y Badges)
+#### 5. Persistencia de Favoritos en /epg/ y Flujo Unificado de Calidades
+- **Persistencia Robusta en /epg/**:
+  - Corregido el paso de argumentos en `toggleFavoriteChannel` para almacenar y sincronizar siempre el slug canónico del canal (`toCanonicalSlug(chan.name || chan.id)`), evitando desfases con los IDs XMLTV (`DaznF1.es` vs `dazn-f1`).
+  - La reordenación de diales mediante `recalculateDialsFromDOM()` persiste de forma segura los slugs canónicos tanto en localStorage como en `config/epg_favorites.json`.
+- **Descarte Estricto de Fuentes 4K**:
+  - Exclusión completa de candidatos `StreamQuality::UHD_4K` en el motor de resolución y en las interfaces de reproducción móvil y EPG.
+- **Un Solo Enlace por Canal en Favoritos M3U**:
+  - En `/channels/favoritos.m3u` y `/auto/playlist.m3u`, cada canal genera exactamente **una entrada única** (`/auto/<slug>/stream.ts`), eliminando la duplicación artificial de entradas 1080p y 720p.
+  - Los reproductores (`/player/`, `/mobile/`) disponen de sus propios botones y badges selectores para alternar en vivo entre las calidades disponibles (`Auto`, `1080p`, `720p`, `SD`).
+- **Resolución Directa Virtual (`/auto/<slug>`)**:
+  - El enlace puro resuelve de forma transparente al mejor Content ID disponible en memoria según puntuación (peers activos, velocidad y salud). Si la versión 720p cuenta con 5 peers y la 1080p con 1 peer, la conexión automática despacha la opción con mayor estabilidad (720p).
+  - Las variantes específicas (`/auto/<slug>-1080p`, `/auto/<slug>-720p`, `/auto/<slug>-sd`) quedan reservadas para peticiones explícitas de calidad.
+
+#### 6. Auditoría y Estandarización del Sistema de Diseño (Botones y Badges)
 - **Consistencia Visual en Escritorio y Móvil**:
   - Eliminación de discrepancias de estilos, radios de curvatura arbitrarios y variantes dispersas.
   - **Botones**: Radio estandarizado a `8px`, tipografía `Inter` semi-bold (`font-weight: 600`), alturas normalizadas (`36px` y `40px`), padding calibrado (`8px 14px`) y micro-interacciones táctiles refinadas (`translateY(-1px)` en `:hover` y escala `0.98` en `:active`).

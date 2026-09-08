@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AceProxy Mobile">
     <meta name="theme-color" content="#0a0c10">
-    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.06">
+    <meta name="description" content="HTTPAceProxy Mobile-First Web Player v09.08.07">
     <title>AceProxy Mobile</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -347,10 +347,12 @@
         }
 
         .epg-program-box {
-            flex: 0 0 88%;
-            min-width: 260px;
-            max-width: 360px;
-            scroll-snap-align: start;
+            flex: 0 0 100%;
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            scroll-snap-align: center;
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
             border-radius: 10px;
@@ -1011,7 +1013,7 @@
                     <span id="fav-count-badge" class="channel-tab-badge">(0)</span>
                 </button>
                 <button class="channel-tab-btn" id="tab-btn-all" onclick="switchChannelTab('all')">
-                    <span>📺 Canales EPG</span>
+                    <span>Canales EPG</span>
                     <span id="all-count-badge" class="channel-tab-badge">(...)</span>
                 </button>
             </div>
@@ -1060,7 +1062,7 @@
     </div>
 
     <script>
-        // --- ESTADO GLOBAL MOBILE v09.08.06 ---
+        // --- ESTADO GLOBAL MOBILE v09.08.07 ---
         const DEFAULT_EPG_URL = "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz";
         let epgChannels = [];
         let epgProgrammes = {};
@@ -1630,7 +1632,7 @@
                     `;
                 } else {
                     const startInMin = Math.max(0, Math.round((p.start - now) / 60000));
-                    const whenText = startInMin > 60 ? `En ${Math.round(startInMin/60)}h` : `En ${startInMin} min`;
+                    const whenText = startInMin > 60 ? `En ${Math.round(startInMin / 60)}h` : `En ${startInMin} min`;
                     cardsHtml += `
                         <div class="epg-program-box is-future">
                             <div class="epg-title-row">
@@ -1698,13 +1700,16 @@
             }
         }
 
-        // Extrae y clasifica la etiqueta de calidad estrictamente en 1080p o 720p (normalizado, sin SD)
+        // Extrae y clasifica la etiqueta de calidad estrictamente en 1080p, 720p o SD (4K descartado)
         function extractCandidateQualityTag(candName, qualityLabel) {
             const str = ((candName || '') + ' ' + (qualityLabel || '')).toLowerCase();
-            if (/\b(1080p|1080i|1080|fhd|fhda|1080a|4k|uhd|4ka|2160p)\b/i.test(str)) {
+            if (/\b(1080p|1080i|1080|fhd|fhda|1080a)\b/i.test(str)) {
                 return '1080p';
             }
-            return '720p';
+            if (/\b(720p|720i|720|hd|720a)\b/i.test(str)) {
+                return '720p';
+            }
+            return 'SD';
         }
 
         async function fetchCandidatesAndBuildQualityPills(slug, shouldPlay = true) {
@@ -1714,7 +1719,12 @@
             try {
                 const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=list`);
                 const data = await res.json();
-                activeCandidates = (data && Array.isArray(data.candidates)) ? data.candidates : [];
+                let rawCandidates = (data && Array.isArray(data.candidates)) ? data.candidates : [];
+                // v09.08.06: Descartar 4K por completo
+                activeCandidates = rawCandidates.filter(c => {
+                    const s = ((c.name || '') + ' ' + (c.quality_label || '')).toLowerCase();
+                    return !/\b(4k|uhd|4ka|2160p)\b/i.test(s) && c.quality !== 3;
+                });
 
                 if (activeCandidates.length === 0) {
                     qContainer.innerHTML = `
@@ -1726,7 +1736,7 @@
                     return;
                 }
 
-                // Extraer variantes únicas de calidad estandarizadas (Auto, 1080p, 720p)
+                // Extraer variantes únicas de calidad estandarizadas (Auto, 1080p, 720p, SD)
                 const qualityMap = new Map();
                 // Primera opción siempre Auto (sintoniza la mejor opción por semillas)
                 qualityMap.set('auto', {
@@ -1735,7 +1745,7 @@
                     candidate: data.best_candidate || activeCandidates[0]
                 });
 
-                const qualityOrder = ['1080p', '720p'];
+                const qualityOrder = ['1080p', '720p', 'SD'];
                 const bestCandidatePerQuality = {};
 
                 activeCandidates.forEach(cand => {

@@ -12,7 +12,7 @@
 
     let canonicalIp = window.location.hostname || '127.0.0.1';
     let canonicalHostname = '';
-    let canonicalVersion = '09.08.06';
+    let canonicalVersion = '09.08.07';
     let ipResetTimer = null;
     let verResetTimer = null;
 
@@ -69,7 +69,7 @@
                     }
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
 
         fetch('/config?action=get_config')
             .then(r => r.json())
@@ -81,7 +81,7 @@
                     }
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
 
         // 3. Copiado de IP al hacer clic en footer-left (copia siempre la IP canónica)
         if (footerLeft) {
@@ -91,7 +91,7 @@
                 copyToClipboard(canonicalIp).then(() => {
                     if (ipResetTimer) clearTimeout(ipResetTimer);
                     if (serverIpEl) {
-                        serverIpEl.textContent = '✓ Copiado!';
+                        serverIpEl.textContent = 'Copiado!';
                         serverIpEl.classList.add('copied');
                     }
                     ipResetTimer = setTimeout(() => {
@@ -114,7 +114,7 @@
                     if (verResetTimer) clearTimeout(verResetTimer);
                     const footerBadge = footerRight.querySelector('.version-badge') || footerRight.querySelector('.app-version') || footerRight;
                     if (footerBadge) {
-                        footerBadge.textContent = '✓ Copiado!';
+                        footerBadge.textContent = 'Copiado!';
                         footerBadge.classList.add('copied');
                     }
                     verResetTimer = setTimeout(() => {
@@ -150,8 +150,8 @@
                 } else {
                     if (e) { e.preventDefault(); e.stopPropagation(); }
                     const cur = document.documentElement.getAttribute('data-theme') ||
-                                (document.body && (document.body.classList.contains('light-theme') || document.body.classList.contains('light')) ? 'light' : 'dark') ||
-                                'dark';
+                        (document.body && (document.body.classList.contains('light-theme') || document.body.classList.contains('light')) ? 'light' : 'dark') ||
+                        'dark';
                     const next = cur === 'light' ? 'dark' : 'light';
                     const isLight = next === 'light';
                     document.documentElement.setAttribute('data-theme', next);

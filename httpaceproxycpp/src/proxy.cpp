@@ -3266,6 +3266,7 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
     std::string clean_query = query_or_slug;
     bool want_fhd_only = false;
     bool want_hd_only = false;
+    bool want_sd_only = false;
 
     if (ends_with(clean_query, "-fhda")) {
         clean_query = clean_query.substr(0, clean_query.size() - 5);
@@ -3288,6 +3289,12 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
     } else if (ends_with(clean_query, "-720p")) {
         clean_query = clean_query.substr(0, clean_query.size() - 5);
         want_hd_only = true;
+    } else if (ends_with(clean_query, "-sda")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 4);
+        want_sd_only = true;
+    } else if (ends_with(clean_query, "-sd")) {
+        clean_query = clean_query.substr(0, clean_query.size() - 3);
+        want_sd_only = true;
     }
 
     std::string target_slug = canonical_slug(clean_query);
@@ -3355,10 +3362,17 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 seen_cids.insert(cid);
 
                 auto quality = detect_stream_quality(item.name);
-                if (want_fhd_only && quality < StreamQuality::FHD_1080) {
+                // v09.08.06: 4K descartado por completo
+                if (quality == StreamQuality::UHD_4K) {
+                    continue;
+                }
+                if (want_fhd_only && quality != StreamQuality::FHD_1080) {
                     continue;
                 }
                 if (want_hd_only && quality != StreamQuality::HD_720) {
+                    continue;
+                }
+                if (want_sd_only && quality != StreamQuality::SD) {
                     continue;
                 }
 
@@ -3406,8 +3420,8 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
         }
     }
 
-    // Si se solicitó FHDa pero no hay streams >= 1080p, retornar el mejor candidato global
-    if (want_fhd_only && candidates.empty()) {
+    // Si se solicitó FHD/HD/SD específico pero no hay streams de esa calidad, fallback al mejor candidato global
+    if ((want_fhd_only || want_hd_only || want_sd_only) && candidates.empty()) {
         return find_candidates_for_channel(clean_query);
     }
 
@@ -3517,38 +3531,20 @@ std::string Proxy::generate_auto_playlist(const std::string& hostport, const std
         std::string tvg_id = item.tvgid.empty() ? slug : item.tvgid;
 
         std::string best_auto_cid;
-        std::string best_hd_cid;
-        bool has_real_hd = false;
-
-        auto auto_cand = resolve_best_candidate(slug + "-1080p");
-        if (!auto_cand.has_value()) {
-            auto_cand = resolve_best_candidate(slug);
-        }
+        auto auto_cand = resolve_best_candidate(slug);
         if (auto_cand.has_value()) {
             best_auto_cid = auto_cand->content_id;
+            if (!auto_cand->tvg_id.empty()) {
+                tvg_id = auto_cand->tvg_id;
+            }
         }
 
-        auto hd_cand = resolve_best_candidate(slug + "-720p");
-        if (hd_cand.has_value() && !hd_cand->content_id.empty() && hd_cand->quality == StreamQuality::HD_720) {
-            has_real_hd = true;
-            best_hd_cid = hd_cand->content_id;
-        }
-
-        // 1. [Nombre Canal] 1080p
-        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 1080p\"";
+        // v09.08.06: Un solo enlace por canal en lista auto
+        out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
         if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
-        out << " group-title=\"" << group << "\", " << display_name << " 1080p\n";
+        out << " group-title=\"" << group << "\", " << display_name << "\n";
         out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
-
-        // 2. [Nombre Canal] 720p (solo si existe fuente HD real)
-        if (has_real_hd && !best_hd_cid.empty()) {
-            out << "#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << " 720p\"";
-            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            out << " ace-id=\"" << best_hd_cid << "\" tvg-chno=\"" << best_hd_cid << "\"";
-            out << " group-title=\"" << group << "\", " << display_name << " 720p\n";
-            out << "http://" << hostport << "/auto/" << slug << "-720p/stream.ts\n";
-        }
     }
 
     return out.str();
@@ -3570,6 +3566,7 @@ static std::string get_doblem_tvg_id(const std::string& slug_or_name, const std:
         {"dazn2", "DAZN2.es"},
         {"dazn3", "DAZN3.es"},
         {"dazn4", "DAZN4.es"},
+        {"daznf1", "DaznF1.es"},
         {"daznlaliga", "DAZNLaLiga.es"},
         {"daznlaliga2", "DAZNLaLiga2.es"},
         {"mvamos", "MVamos.es"},
@@ -3735,13 +3732,7 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
         std::string tvg_id = get_doblem_tvg_id(slug, raw_tvg_id);
 
         std::string best_auto_cid;
-        std::string best_hd_cid;
-        bool has_real_hd = false;
-
-        auto auto_cand = resolve_best_candidate(slug + "-1080p");
-        if (!auto_cand.has_value()) {
-            auto_cand = resolve_best_candidate(slug);
-        }
+        auto auto_cand = resolve_best_candidate(slug);
         if (auto_cand.has_value()) {
             best_auto_cid = auto_cand->content_id;
             if (raw_tvg_id.empty() && !auto_cand->tvg_id.empty()) {
@@ -3749,29 +3740,13 @@ std::string Proxy::generate_favorites_playlist(const std::string& hostport) {
             }
         }
 
-        auto hd_cand = resolve_best_candidate(slug + "-720p");
-        if (hd_cand.has_value() && !hd_cand->content_id.empty() && hd_cand->quality == StreamQuality::HD_720) {
-            has_real_hd = true;
-            best_hd_cid = hd_cand->content_id;
-        }
-
-        // 1. [Nombre Canal] 1080p
+        // v09.08.06: Un solo enlace por canal favorito en la lista M3U.
+        // El cliente/reproductor utiliza los selectores de calidad si lo desea.
         out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
         if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-        out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " 1080p\n";
-        if (has_real_hd) {
-            out << "http://" << hostport << "/auto/" << slug << "-1080p\n";
-        } else {
-            out << "http://" << hostport << "/auto/" << slug << "\n";
-        }
-
-        // 2. [Nombre Canal] 720p — Renderizar solo si existe fuente HD real
-        if (has_real_hd && !best_hd_cid.empty()) {
-            out << "\n#EXTINF:-1 tvg-id=\"" << tvg_id << "\" tvg-name=\"" << display_name << "\"";
-            if (!logo.empty()) out << " tvg-logo=\"" << logo << "\"";
-            out << " group-title=\"Favoritos\"," << dial << ". " << display_name << " 720p\n";
-            out << "http://" << hostport << "/auto/" << slug << "-720p\n";
-        }
+        if (!best_auto_cid.empty()) out << " ace-id=\"" << best_auto_cid << "\" tvg-chno=\"" << best_auto_cid << "\"";
+        out << " group-title=\"Favoritos\"," << dial << ". " << display_name << "\n";
+        out << "http://" << hostport << "/auto/" << slug << "/stream.ts\n";
     }
 
     return out.str();

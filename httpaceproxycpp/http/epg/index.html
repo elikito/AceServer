@@ -1891,24 +1891,29 @@
             }
         }
 
-        function isFavoriteChannel(chanId) {
+        function isFavoriteChannel(chanId, chanName) {
             const favs = getFavoriteChannels();
-            return favs.includes(chanId) || favs.some(f => toCanonicalSlug(f) === toCanonicalSlug(chanId));
+            if (!favs || favs.length === 0) return false;
+            const slug = toCanonicalSlug(chanName || chanId);
+            return favs.some(f => f === chanId || f === chanName || toCanonicalSlug(f) === slug);
         }
 
-        function toggleFavoriteChannel(chanId, e) {
+        function toggleFavoriteChannel(chanId, chanName, e) {
             if (e) e.stopPropagation();
             let favs = getFavoriteChannels();
-            let existingIdx = favs.indexOf(chanId);
+            const slug = toCanonicalSlug(chanName || chanId);
+            let existingIdx = favs.indexOf(slug);
+            if (existingIdx === -1) existingIdx = favs.indexOf(chanId);
+            if (existingIdx === -1 && chanName) existingIdx = favs.indexOf(chanName);
             if (existingIdx === -1) {
-                existingIdx = favs.findIndex(f => toCanonicalSlug(f) === toCanonicalSlug(chanId));
+                existingIdx = favs.findIndex(f => toCanonicalSlug(f) === slug);
             }
             if (existingIdx !== -1) {
                 favs.splice(existingIdx, 1);
-                showToast('Canal quitado de Favoritos');
+                showToast(`Canal quitado de Favoritos`);
             } else {
-                favs.push(chanId);
-                showToast('⭐ Canal añadido a Favoritos', 'success');
+                favs.push(slug);
+                showToast(`⭐ ${chanName || chanId} añadido a Favoritos`, 'success');
             }
             localStorage.setItem('epg_favorites', JSON.stringify(favs));
             syncFavoritesWithServer(favs);
@@ -2048,8 +2053,8 @@
                 if (btnUp) btnUp.disabled = (idx === 0);
                 const btnDown = card.querySelector('.dial-btn-down');
                 if (btnDown) btnDown.disabled = (idx === cards.length - 1);
-                const chanId = card.dataset.channelId;
-                if (chanId) newFavs.push(chanId);
+                const slug = card.dataset.channelSlug || toCanonicalSlug(card.dataset.channelName || card.dataset.channelId);
+                if (slug && !newFavs.includes(slug)) newFavs.push(slug);
             });
 
             if (newFavs.length > 0 && currentMainTab === 'fav') {
@@ -2776,15 +2781,19 @@
             let channelsToRender = [];
             if (currentMainTab === 'fav') {
                 favList.forEach((favId, favOrderIdx) => {
-                    const chan = epgChannels.find(c => c.id === favId || toCanonicalSlug(c.name) === toCanonicalSlug(favId) || toCanonicalSlug(c.id) === toCanonicalSlug(favId));
+                    const favSlug = toCanonicalSlug(favId);
+                    const chan = epgChannels.find(c => c.id === favId || toCanonicalSlug(c.name) === favSlug || toCanonicalSlug(c.id) === favSlug);
                     if (chan) {
                         channelsToRender.push({ chan, favIdx: favOrderIdx, isFav: true });
                     }
                 });
             } else {
                 epgChannels.forEach((chan, idx) => {
-                    let favIdx = favList.indexOf(chan.id);
-                    if (favIdx === -1) favIdx = favList.findIndex(f => toCanonicalSlug(f) === toCanonicalSlug(chan.name) || toCanonicalSlug(f) === toCanonicalSlug(chan.id));
+                    const chanSlug = toCanonicalSlug(chan.name || chan.id);
+                    let favIdx = favList.indexOf(chanSlug);
+                    if (favIdx === -1) favIdx = favList.indexOf(chan.id);
+                    if (favIdx === -1 && chan.name) favIdx = favList.indexOf(chan.name);
+                    if (favIdx === -1) favIdx = favList.findIndex(f => toCanonicalSlug(f) === chanSlug);
                     channelsToRender.push({ chan, favIdx: favIdx !== -1 ? favIdx : idx, isFav: favIdx !== -1 });
                 });
             }
@@ -2833,6 +2842,7 @@
                 card.className = 'channel-epg-card';
                 card.dataset.channelId = chan.id;
                 card.dataset.channelName = chan.name;
+                card.dataset.channelSlug = toCanonicalSlug(chan.name || chan.id);
 
                 if (currentMainTab === 'fav') {
                     card.ondragover = (e) => onFavDragOver(e, card);
@@ -2923,7 +2933,7 @@
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                             <span>Personalizar</span>
                         </button>
-                        <button class="action-btn-sm action-btn-fav ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
+                        <button class="action-btn-sm action-btn-fav ${isFav ? 'active' : ''}" onclick="toggleFavoriteChannel('${escapeJs(chan.id)}', '${escapeJs(chan.name)}', event)" title="${isFav ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="${isFav ? '#eab308' : 'none'}" stroke="${isFav ? '#eab308' : 'currentColor'}" stroke-width="2" style="vertical-align:middle; margin-right:3px;">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                             </svg>

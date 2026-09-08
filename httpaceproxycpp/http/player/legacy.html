@@ -115,35 +115,109 @@
             margin: 0;
         }
 
-        .source-select-container-legacy {
+        /* Pestañas de Fuentes Legacy */
+        .tabs-container-legacy {
+            display: -webkit-flex;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            margin-bottom: 12px;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-btn-legacy {
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            color: #a8a8b2;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            outline: none;
+            -webkit-transition: all 0.2s ease;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn-legacy:hover {
+            background-color: #26262c;
+            color: #ffffff;
+            border-color: #4cd964;
+        }
+
+        .tab-btn-legacy.active {
+            background-color: rgba(76, 217, 100, 0.15);
+            border-color: #4cd964;
+            color: #4cd964;
+            font-weight: bold;
+        }
+
+        /* Buscador y Reloj en la misma línea */
+        .search-bar-row-legacy {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            gap: 10px;
             margin-bottom: 12px;
         }
 
-        .source-select-legacy {
-            display: block;
+        .search-input-wrap-legacy {
+            position: relative;
+            -webkit-flex: 1;
+            flex: 1;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+        }
+
+        .search-icon-legacy {
+            position: absolute;
+            left: 10px;
+            color: #8e8e93;
+            pointer-events: none;
+        }
+
+        .search-input-legacy {
             width: 100%;
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
             color: #ffffff;
-            padding: 10px 14px;
+            padding: 8px 12px 8px 32px;
             border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
+            font-size: 13px;
             outline: none;
-            cursor: pointer;
             box-sizing: border-box;
-            -webkit-appearance: menulist;
-            appearance: menulist;
+            -webkit-transition: border-color 0.2s;
+            transition: border-color 0.2s;
         }
 
-        .source-select-legacy:focus {
+        .search-input-legacy:focus {
             border-color: #4cd964;
+        }
+
+        .live-clock-legacy {
+            font-weight: bold;
+            color: #4cd964;
+            font-size: 14px;
+            padding: 6px 12px;
+            background: #1a1a1e;
+            border: 1px solid #2d2d34;
+            border-radius: 6px;
+            white-space: nowrap;
+            -webkit-flex-shrink: 0;
+            flex-shrink: 0;
+            text-align: center;
         }
 
         /* Selector de Calidad 1080 / 720 */
         .quality-toggle-legacy {
             display: inline-block;
-            margin-top: 6px;
         }
 
         .quality-btn-legacy {
@@ -157,6 +231,7 @@
             cursor: pointer;
             outline: none;
             margin-right: 4px;
+            -webkit-transition: all 0.15s ease;
             transition: all 0.15s ease;
         }
 
@@ -177,90 +252,216 @@
             color: #ffffff;
         }
 
-        /* Controles de Paginación Legacy */
+        /* Controles de Paginación y Barra de Herramientas Legacy */
         .pagination-container-legacy {
+            display: -webkit-flex;
             display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
             align-items: center;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
             justify-content: space-between;
+            -webkit-flex-wrap: wrap;
             flex-wrap: wrap;
             gap: 10px;
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
-            padding: 10px 14px;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border-radius: 8px;
             margin-bottom: 15px;
             font-size: 12px;
             color: #a8a8b2;
         }
 
-        .pagination-info-legacy {
+        .pagination-left-legacy {
+            display: -webkit-flex;
             display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            -webkit-flex-wrap: wrap;
             flex-wrap: wrap;
         }
 
-        .pagination-controls-legacy {
+        .pagination-label-legacy {
+            color: #8e8e93;
+            font-weight: 500;
+        }
+
+        .items-per-page-legacy {
+            background-color: #25252b;
+            border: 1px solid #3a3a44;
+            color: #ffffff;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .pagination-status-legacy {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #c0c0ca;
+            font-size: 11px;
+        }
+
+        .pagination-right-legacy {
+            display: -webkit-flex;
             display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+            -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
+        }
+
+        .pagination-nav-legacy {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            gap: 4px;
         }
 
         .pagination-btn-legacy {
-            background-color: #2d2d34;
-            border: 1px solid #4a4a52;
+            background-color: #25252b;
+            border: 1px solid #3a3a44;
             color: #ffffff;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 5px 10px;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: bold;
             cursor: pointer;
             outline: none;
+            -webkit-transition: all 0.15s ease;
+            transition: all 0.15s ease;
         }
 
         .pagination-btn-legacy:hover:not(:disabled) {
-            background-color: #3f3f46;
-        }
-
-        .pagination-btn-legacy:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .items-per-page-legacy {
-            background-color: #2d2d34;
-            border: 1px solid #4a4a52;
-            color: #ffffff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            outline: none;
-        }
-
-        .search-container-legacy {
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .search-input-legacy {
-            width: 100%;
-            max-width: 320px;
-            background-color: #1a1a1e;
-            border: 1px solid #2d2d34;
-            color: #ffffff;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            outline: none;
-        }
-
-        .search-input-legacy:focus {
+            background-color: #34343d;
             border-color: #4cd964;
         }
 
-        /* Lista Legacy de alto rendimiento */
+        .pagination-btn-legacy:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .page-indicator-legacy {
+            font-weight: bold;
+            color: #ffffff;
+            padding: 0 4px;
+            font-size: 12px;
+        }
+
+        .view-mode-toggle-legacy {
+            display: -webkit-flex;
+            display: flex;
+            background-color: #141418;
+            border: 1px solid #2d2d34;
+            border-radius: 6px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .view-mode-btn-legacy {
+            background: transparent;
+            border: none;
+            color: #8e8e93;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: -webkit-inline-flex;
+            display: inline-flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            gap: 4px;
+            outline: none;
+            -webkit-transition: all 0.15s ease;
+            transition: all 0.15s ease;
+        }
+
+        .view-mode-btn-legacy.active {
+            background-color: #2d2d34;
+            color: #ffffff;
+        }
+
+        /* Botones de Acción (Play / Copiar) con dimensiones idénticas */
+        .channel-actions-legacy {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-action-legacy {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            min-height: 36px;
+            max-width: 36px;
+            max-height: 36px;
+            box-sizing: border-box;
+            border-radius: 6px;
+            display: -webkit-inline-flex;
+            display: inline-flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            text-decoration: none;
+            outline: none;
+            vertical-align: middle;
+            -webkit-transition: all 0.15s ease;
+            transition: all 0.15s ease;
+        }
+
+        .btn-copy-legacy {
+            background-color: #25252b;
+            border: 1px solid #3a3a44;
+            color: #ffffff;
+        }
+
+        .btn-copy-legacy:hover {
+            background-color: #34343d;
+            border-color: #555562;
+        }
+
+        .btn-copy-legacy.copied {
+            background-color: #15803d;
+            border-color: #22c55e;
+            color: #ffffff;
+        }
+
+        .btn-play-legacy {
+            background-color: #22c55e;
+            border: 1px solid #22c55e;
+            color: #ffffff;
+        }
+
+        .btn-play-legacy:hover {
+            background-color: #16a34a;
+            border-color: #16a34a;
+        }
+
+        /* Categorías y Listas de Canales */
         .category-header {
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
@@ -269,7 +470,8 @@
             font-weight: bold;
             color: #ffffff;
             margin-top: 15px;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            border-radius: 6px;
         }
 
         .channel-list {
@@ -278,90 +480,179 @@
             margin: 0;
         }
 
-        .channel-item {
-            background-color: #1a1a1e;
-            border: 1px solid #2d2d34;
-            padding: 12px 16px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            overflow: hidden;
-            min-height: 86px;
-        }
-
-        .channel-logo-container {
-            float: left;
-            width: 70px;
-            height: 70px;
-            margin-right: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #141418;
-            border: 1px solid #2d2d34;
-            border-radius: 8px;
-            padding: 4px;
-            overflow: hidden;
-        }
-
         .channel-logo {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
         }
 
-        .channel-name {
-            font-size: 16px;
-            font-weight: bold;
-            color: #ffffff;
-            padding-top: 4px;
-            line-height: 1.3;
+        /* MODO CUADRÍCULA (GRID) */
+        .channel-list.view-grid {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
-        .btn-play-legacy,
-        .btn-copy-legacy {
-            float: right;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 10px 18px;
+        .channel-list.view-grid .channel-item {
+            -webkit-flex: 1 1 240px;
+            flex: 1 1 240px;
+            min-width: 220px;
+            max-width: 340px;
+            box-sizing: border-box;
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 0;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-orient: vertical;
+            -webkit-box-direction: normal;
+            -webkit-flex-direction: column;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 124px;
+            -webkit-transition: border-color 0.15s ease;
+            transition: border-color 0.15s ease;
+        }
+
+        .channel-list.view-grid .channel-item:hover {
+            border-color: #3f3f46;
+        }
+
+        .channel-list.view-grid .channel-grid-top {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 8px;
+        }
+
+        .channel-list.view-grid .channel-name {
             font-size: 14px;
             font-weight: bold;
-            border-radius: 6px;
-            margin-top: 10px;
-            cursor: pointer;
-            border: none;
-            display: inline-flex;
+            color: #ffffff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            -webkit-flex: 1;
+            flex: 1;
+        }
+
+        .channel-list.view-grid .channel-grid-body {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
             align-items: center;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .channel-list.view-grid .channel-logo-container {
+            width: 56px;
+            height: 56px;
+            min-width: 56px;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
             justify-content: center;
+            background-color: #141418;
+            border: 1px solid #2d2d34;
+            border-radius: 8px;
+            padding: 4px;
+            box-sizing: border-box;
         }
 
-        .btn-play-legacy {
-            background-color: #4cd964;
+        /* MODO LISTA (ROW) */
+        .channel-list.view-list {
+            display: block;
         }
 
-        .btn-play-legacy:hover {
-            background-color: #34c759;
+        .channel-list.view-list .channel-item {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-bottom: 8px;
+            box-sizing: border-box;
+            -webkit-transition: border-color 0.15s ease;
+            transition: border-color 0.15s ease;
         }
 
-        .btn-copy-legacy {
-            background-color: #2d2d34;
-            border: 1px solid #4a4a52;
-            margin-right: 8px;
+        .channel-list.view-list .channel-item:hover {
+            border-color: #3f3f46;
         }
 
-        .btn-copy-legacy:hover {
-            background-color: #3f3f46;
+        .channel-list.view-list .channel-left-side {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            gap: 12px;
+            -webkit-flex: 1;
+            flex: 1;
+            overflow: hidden;
         }
 
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .channel-list {
-                display: grid !important;
-                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
-                gap: 12px !important;
-            }
+        .channel-list.view-list .channel-logo-container {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            background-color: #141418;
+            border: 1px solid #2d2d34;
+            border-radius: 6px;
+            padding: 3px;
+            box-sizing: border-box;
+        }
 
-            .channel-item {
-                margin-bottom: 0 !important;
-            }
+        .channel-list.view-list .channel-details {
+            -webkit-flex: 1;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .channel-list.view-list .channel-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #ffffff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .channel-list.view-list .quality-toggle-legacy {
+            margin-top: 3px;
         }
 
         .loading-screen {
@@ -386,7 +677,7 @@
 <body>
     <!-- Navbar Legacy -->
     <div class="navbar">
-        <a href="/stat" class="nav-brand">HTTPAceProxy</a>
+        <a href="/stat" class="nav-brand">HTTPAceProxy (Ligero)</a>
         <div class="nav-links">
             <a href="/stat">Dashboard</a>
             <a href="/statplugin/">Canales</a>
@@ -399,48 +690,56 @@
 
     <!-- Container -->
     <div class="container">
-        <div class="header-section"
-            style="display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between; -webkit-box-align: center; -webkit-align-items: center; align-items: center; -webkit-flex-wrap: wrap; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <h2>Reproductor IPTV (Ligero)</h2>
-                <p id="loading-status">Cargando canales para WebKit ES5...</p>
+        <!-- Encabezado con estado -->
+        <div style="margin-bottom: 12px; display: -webkit-flex; display: flex; -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between; -webkit-box-align: baseline; -webkit-align-items: baseline; align-items: baseline;">
+            <h2 style="margin: 0; font-size: 18px; color: #ffffff;">Reproductor IPTV (Ligero)</h2>
+            <span id="loading-status" style="font-size: 12px; color: #8e8e93;">Cargando canales...</span>
+        </div>
+
+        <!-- Listado de Fuentes (Pestañas / Pills) -->
+        <div id="tabs-container-legacy" class="tabs-container-legacy"></div>
+
+        <!-- Buscador + Reloj en la misma línea -->
+        <div class="search-bar-row-legacy">
+            <div class="search-input-wrap-legacy">
+                <svg class="search-icon-legacy" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+                <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..." onkeyup="filterChannelsLegacy()">
             </div>
-            <div id="live-clock-legacy"
-                style="font-weight: bold; color: #4CAF50; font-size: 14px; padding: 4px 10px; background: #1a1a1e; border: 1px solid #2d2d34; border-radius: 6px;">
-                --:--:--</div>
+            <div id="live-clock-legacy" class="live-clock-legacy">--:--:--</div>
         </div>
 
-        <!-- Desplegable de Fuentes Legacy -->
-        <div class="source-select-container-legacy">
-            <select id="source-select-legacy" class="source-select-legacy" onchange="switchSourceLegacy(this.value)">
-            </select>
-        </div>
-
-        <!-- Buscador Legacy -->
-        <div class="search-container-legacy">
-            <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..."
-                onkeyup="filterChannelsLegacy()">
-        </div>
-
-        <!-- Controles de Paginación -->
+        <!-- Controles de Paginación y Selector Cuadrícula / Lista -->
         <div id="pagination-container-legacy" class="pagination-container-legacy">
-            <div class="pagination-info-legacy">
-                <span>Mostrar:</span>
-                <select id="items-per-page-legacy" class="items-per-page-legacy"
-                    onchange="changeItemsPerPageLegacy(this.value)">
-                    <option value="10">10 por pág.</option>
-                    <option value="20" selected>20 por pág.</option>
-                    <option value="50">50 por pág.</option>
-                    <option value="100">100 por pág.</option>
+            <div class="pagination-left-legacy">
+                <span class="pagination-label-legacy">Mostrar:</span>
+                <select id="items-per-page-legacy" class="items-per-page-legacy" onchange="changeItemsPerPageLegacy(this.value)">
+                    <option value="12">12 por pág.</option>
+                    <option value="24" selected>24 por pág.</option>
+                    <option value="48">48 por pág.</option>
+                    <option value="96">96 por pág.</option>
                 </select>
-                <span id="pagination-status-legacy">Cargando paginación...</span>
+                <span id="pagination-status-legacy" class="pagination-status-legacy">Cargando canales...</span>
             </div>
-            <div class="pagination-controls-legacy">
-                <button id="btn-prev-legacy" class="pagination-btn-legacy" onclick="prevPageLegacy()" disabled>&laquo;
-                    Anterior</button>
-                <span id="page-indicator-legacy">Pág. 1/1</span>
-                <button id="btn-next-legacy" class="pagination-btn-legacy" onclick="nextPageLegacy()" disabled>Siguiente
-                    &raquo;</button>
+            <div class="pagination-right-legacy">
+                <div class="pagination-nav-legacy">
+                    <button id="btn-first-legacy" class="pagination-btn-legacy" onclick="firstPageLegacy()" disabled title="Primera página">&laquo;&laquo;</button>
+                    <button id="btn-prev-legacy" class="pagination-btn-legacy" onclick="prevPageLegacy()" disabled title="Página anterior">&laquo; Ant</button>
+                    <span id="page-indicator-legacy" class="page-indicator-legacy">Pág. 1/1</span>
+                    <button id="btn-next-legacy" class="pagination-btn-legacy" onclick="nextPageLegacy()" disabled title="Página siguiente">Sig &raquo;</button>
+                    <button id="btn-last-legacy" class="pagination-btn-legacy" onclick="lastPageLegacy()" disabled title="Última página">&raquo;&raquo;</button>
+                </div>
+                <div class="view-mode-toggle-legacy">
+                    <button id="btn-view-grid" type="button" class="view-mode-btn-legacy active" onclick="setViewModeLegacy('grid')" title="Vista Cuadrícula">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
+                        Cuadrícula
+                    </button>
+                    <button id="btn-view-list" type="button" class="view-mode-btn-legacy" onclick="setViewModeLegacy('list')" title="Vista Lista">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                        Lista
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -462,29 +761,53 @@
 
         var allChannelsLegacy = [];
         var filteredChannelsLegacy = [];
-        var currentSourceLegacy = '/aio';
+        var currentSourceLegacy = '/channels/favoritos.m3u';
         var currentPageLegacy = 1;
-        var itemsPerPageLegacy = 20;
+        var itemsPerPageLegacy = 24;
         var activeSourcesListLegacy = [];
+        var currentViewModeLegacy = 'grid';
 
         window.onload = function () {
             if (localStorage.getItem('theme') === 'light') {
                 document.body.className = 'light-theme';
             }
+            var savedView = localStorage.getItem('legacy_view_mode');
+            if (savedView === 'list' || savedView === 'grid') {
+                currentViewModeLegacy = savedView;
+            }
+            updateViewModeButtonsLegacy();
+
             var hostIp = window.location.hostname || '127.0.0.1';
-            document.getElementById('server-ip').innerHTML = hostIp;
-            fetch('/stat/?action=get_status')
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    var sysHostname = (data.server_info && data.server_info.hostname) ? data.server_info.hostname : '';
-                    if (sysHostname) {
-                        document.getElementById('server-ip').innerHTML = hostIp + ' (' + sysHostname + ')';
-                    }
-                }).catch(function () { });
+            var serverIpEl = document.getElementById('server-ip');
+            if (serverIpEl) serverIpEl.innerHTML = hostIp;
+
+            // XHR clásico para compatibilidad con iOS 9 (sin fetch)
+            var statXhr = new XMLHttpRequest();
+            statXhr.open('GET', '/stat/?action=get_status', true);
+            statXhr.onreadystatechange = function () {
+                if (statXhr.readyState === 4 && statXhr.status === 200) {
+                    try {
+                        var data = JSON.parse(statXhr.responseText);
+                        var sysHostname = (data.server_info && data.server_info.hostname) ? data.server_info.hostname : '';
+                        if (sysHostname && serverIpEl) {
+                            serverIpEl.innerHTML = hostIp + ' (' + sysHostname + ')';
+                        }
+                    } catch (e) { }
+                }
+            };
+            statXhr.send();
+
             updateLiveClockLegacy();
             setInterval(updateLiveClockLegacy, 1000);
             initSourcesLegacy();
         };
+
+        function updateStatusLegacy(msg) {
+            var el = document.getElementById('loading-status');
+            if (el) el.innerHTML = msg;
+            var elPag = document.getElementById('pagination-status-legacy');
+            if (elPag) elPag.innerHTML = msg;
+        }
 
         function updateLiveClockLegacy() {
             var clockEl = document.getElementById('live-clock-legacy');
@@ -566,46 +889,82 @@
                     sources.unshift({ key: 'favoritos', label: '⭐ Favoritos', url: '/channels/favoritos.m3u' });
 
                     activeSourcesListLegacy = sources;
-                    renderSourceSelectLegacy();
-                    switchSourceLegacy(sources[0].url);
+                    currentSourceLegacy = sources[0].url;
+                    renderTabsLegacy();
+                    switchTabLegacy(sources[0].url);
                 }
             };
             xhr.send();
         }
 
-        function renderSourceSelectLegacy() {
-            var selectEl = document.getElementById('source-select-legacy');
-            if (!selectEl) return;
-            selectEl.innerHTML = '';
+        function renderTabsLegacy() {
+            var container = document.getElementById('tabs-container-legacy');
+            if (!container) return;
+            container.innerHTML = '';
 
             for (var k = 0; k < activeSourcesListLegacy.length; k++) {
                 var src = activeSourcesListLegacy[k];
-                var opt = document.createElement('option');
-                opt.value = src.url;
-                opt.text = src.label;
-                if (src.url === currentSourceLegacy) {
-                    opt.selected = true;
-                }
-                selectEl.appendChild(opt);
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'tab-btn-legacy' + (src.url === currentSourceLegacy ? ' active' : '');
+                btn.innerHTML = escapeHtmlLegacy(src.label);
+                (function(url) {
+                    btn.onclick = function() {
+                        switchTabLegacy(url);
+                    };
+                })(src.url);
+                container.appendChild(btn);
             }
         }
 
-        function switchSourceLegacy(url) {
+        function switchTabLegacy(url) {
             if (!url) return;
             currentSourceLegacy = url;
             currentPageLegacy = 1;
 
-            var selectEl = document.getElementById('source-select-legacy');
-            if (selectEl && selectEl.value !== url) {
-                selectEl.value = url;
+            var container = document.getElementById('tabs-container-legacy');
+            if (container) {
+                var buttons = container.getElementsByTagName('button');
+                for (var i = 0; i < buttons.length; i++) {
+                    if (activeSourcesListLegacy[i] && activeSourcesListLegacy[i].url === url) {
+                        buttons[i].className = 'tab-btn-legacy active';
+                    } else {
+                        buttons[i].className = 'tab-btn-legacy';
+                    }
+                }
             }
 
             var searchEl = document.getElementById('search-legacy');
             if (searchEl) searchEl.value = '';
 
-            document.getElementById('loading-indicator').style.display = 'block';
-            document.getElementById('loading-status').innerHTML = 'Cargando canales de la fuente seleccionada...';
+            var indicator = document.getElementById('loading-indicator');
+            if (indicator) indicator.style.display = 'block';
+
+            updateStatusLegacy('Cargando canales de la fuente seleccionada...');
             loadLegacyData(url);
+        }
+
+        function setViewModeLegacy(mode) {
+            currentViewModeLegacy = (mode === 'list') ? 'list' : 'grid';
+            try {
+                localStorage.setItem('legacy_view_mode', currentViewModeLegacy);
+            } catch(e) {}
+            updateViewModeButtonsLegacy();
+            renderCurrentPageLegacy();
+        }
+
+        function updateViewModeButtonsLegacy() {
+            var btnGrid = document.getElementById('btn-view-grid');
+            var btnList = document.getElementById('btn-view-list');
+            if (btnGrid && btnList) {
+                if (currentViewModeLegacy === 'grid') {
+                    btnGrid.className = 'view-mode-btn-legacy active';
+                    btnList.className = 'view-mode-btn-legacy';
+                } else {
+                    btnGrid.className = 'view-mode-btn-legacy';
+                    btnList.className = 'view-mode-btn-legacy active';
+                }
+            }
         }
 
         function stripQualityFromChannelName(name) {
@@ -715,11 +1074,12 @@
                         allChannelsLegacy = groupChannelsLegacy(rawList);
                         filteredChannelsLegacy = allChannelsLegacy;
                         currentPageLegacy = 1;
-                        document.getElementById('loading-status').innerHTML = allChannelsLegacy.length + ' canales disponibles.';
+                        updateStatusLegacy(allChannelsLegacy.length + ' canales disponibles.');
                         renderCurrentPageLegacy();
                     } else {
-                        document.getElementById('loading-status').innerHTML = 'Error al cargar canales (HTTP ' + xhr.status + ')';
-                        document.getElementById('loading-indicator').style.display = 'none';
+                        updateStatusLegacy('Error al cargar canales (HTTP ' + xhr.status + ')');
+                        var ind = document.getElementById('loading-indicator');
+                        if (ind) ind.style.display = 'none';
                     }
                 }
             };
@@ -780,7 +1140,8 @@
         }
 
         function filterChannelsLegacy() {
-            var query = document.getElementById('search-legacy').value.toLowerCase().trim();
+            var searchEl = document.getElementById('search-legacy');
+            var query = searchEl ? searchEl.value.toLowerCase().trim() : '';
             var filtered = [];
             for (var i = 0; i < allChannelsLegacy.length; i++) {
                 var chan = allChannelsLegacy[i];
@@ -794,9 +1155,16 @@
         }
 
         function changeItemsPerPageLegacy(val) {
-            itemsPerPageLegacy = parseInt(val, 10) || 20;
+            itemsPerPageLegacy = parseInt(val, 10) || 24;
             currentPageLegacy = 1;
             renderCurrentPageLegacy();
+        }
+
+        function firstPageLegacy() {
+            if (currentPageLegacy > 1) {
+                currentPageLegacy = 1;
+                renderCurrentPageLegacy();
+            }
         }
 
         function prevPageLegacy() {
@@ -810,6 +1178,14 @@
             var totalPages = Math.ceil(filteredChannelsLegacy.length / itemsPerPageLegacy) || 1;
             if (currentPageLegacy < totalPages) {
                 currentPageLegacy++;
+                renderCurrentPageLegacy();
+            }
+        }
+
+        function lastPageLegacy() {
+            var totalPages = Math.ceil(filteredChannelsLegacy.length / itemsPerPageLegacy) || 1;
+            if (currentPageLegacy < totalPages) {
+                currentPageLegacy = totalPages;
                 renderCurrentPageLegacy();
             }
         }
@@ -828,12 +1204,14 @@
 
             var statusEl = document.getElementById('pagination-status-legacy');
             var indicatorEl = document.getElementById('page-indicator-legacy');
+            var btnFirst = document.getElementById('btn-first-legacy');
             var btnPrev = document.getElementById('btn-prev-legacy');
             var btnNext = document.getElementById('btn-next-legacy');
+            var btnLast = document.getElementById('btn-last-legacy');
 
             if (statusEl) {
                 if (totalItems === 0) {
-                    statusEl.innerHTML = 'Sin canales disponibles';
+                    statusEl.innerHTML = 'Sin canales';
                 } else {
                     statusEl.innerHTML = 'Mostrando ' + (startIndex + 1) + '-' + endIndex + ' de ' + totalItems + ' canales';
                 }
@@ -843,8 +1221,10 @@
                 indicatorEl.innerHTML = 'Pág. ' + currentPageLegacy + '/' + totalPages;
             }
 
+            if (btnFirst) btnFirst.disabled = (currentPageLegacy <= 1);
             if (btnPrev) btnPrev.disabled = (currentPageLegacy <= 1);
             if (btnNext) btnNext.disabled = (currentPageLegacy >= totalPages);
+            if (btnLast) btnLast.disabled = (currentPageLegacy >= totalPages);
 
             renderChannelsLegacy(pageSlice, startIndex);
         }
@@ -903,7 +1283,7 @@
                 if (successful && btn) {
                     var originalSvg = btn.innerHTML;
                     btn.classList.add('copied');
-                    btn.innerHTML = '✓';
+                    btn.innerHTML = '<span style="font-size:16px; font-weight:bold;">✓</span>';
                     setTimeout(function () {
                         btn.classList.remove('copied');
                         btn.innerHTML = originalSvg;
@@ -927,7 +1307,9 @@
 
         function renderChannelsLegacy(channels, startIndex) {
             var container = document.getElementById('channels-container');
-            document.getElementById('loading-indicator').style.display = 'none';
+            var indicator = document.getElementById('loading-indicator');
+            if (indicator) indicator.style.display = 'none';
+            if (!container) return;
             container.innerHTML = '';
 
             if (!channels || channels.length === 0) {
@@ -959,6 +1341,8 @@
 
             groups.sort();
 
+            var isGrid = (currentViewModeLegacy === 'grid');
+
             for (var g = 0; g < groups.length; g++) {
                 var groupName = groups[g];
                 var groupChannels = grouped[groupName];
@@ -969,7 +1353,7 @@
                 container.appendChild(catHeader);
 
                 var list = document.createElement('ul');
-                list.className = 'channel-list';
+                list.className = 'channel-list ' + (isGrid ? 'view-grid' : 'view-list');
 
                 for (var c = 0; c < groupChannels.length; c++) {
                     var channel = groupChannels[c];
@@ -979,7 +1363,8 @@
                     var fallbackSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="sans-serif" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>';
                     var fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
                     var logoUrl = channel.logo || fallbackLogo;
-                    var copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                    var copyIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                    var playIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 
                     var q = channel.selectedQuality || '1080';
                     var selectedUrl = channel.urls[q] || channel.urls['1080'] || channel.urls['720'] || '';
@@ -989,19 +1374,40 @@
                     var is1080Active = (q === '1080') ? ' active' : '';
                     var is720Active = (q === '720') ? ' active' : '';
 
-                    item.innerHTML =
-                        '<a id="btn-play-' + listIdx + '" href="' + vlcUrl + '" class="btn-play-legacy" target="_blank" title="Abrir en VLC">&#9654;</a>' +
-                        '<button id="btn-copy-' + listIdx + '" class="btn-copy-legacy" onclick="copyChannelUrlLegacy(' + listIdx + ', this)" title="Copiar enlace del canal">' + copyIcon + '</button>' +
-                        '<div class="channel-logo-container">' +
-                        '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
-                        '</div>' +
-                        '<div class="channel-details">' +
-                        '<div class="channel-name">' + escapeHtmlLegacy(channel.name) + '</div>' +
-                        '<div class="quality-toggle-legacy">' +
+                    var playBtn = '<a id="btn-play-' + listIdx + '" href="' + vlcUrl + '" class="btn-action-legacy btn-play-legacy" target="_blank" title="Abrir en VLC">' + playIcon + '</a>';
+                    var copyBtn = '<button type="button" id="btn-copy-' + listIdx + '" class="btn-action-legacy btn-copy-legacy" onclick="copyChannelUrlLegacy(' + listIdx + ', this)" title="Copiar enlace del canal">' + copyIcon + '</button>';
+                    var actionsHtml = '<div class="channel-actions-legacy">' + copyBtn + playBtn + '</div>';
+
+                    var qualitiesHtml = '<div class="quality-toggle-legacy">' +
                         '<button type="button" id="btn-q1080-' + listIdx + '" class="quality-btn-legacy quality-1080' + is1080Active + '" onclick="toggleChannelQualityLegacy(' + listIdx + ', \'1080\')">1080</button>' +
                         '<button type="button" id="btn-q720-' + listIdx + '" class="quality-btn-legacy quality-720' + is720Active + '" onclick="toggleChannelQualityLegacy(' + listIdx + ', \'720\')">720</button>' +
-                        '</div>' +
                         '</div>';
+
+                    if (isGrid) {
+                        item.innerHTML =
+                            '<div class="channel-grid-top">' +
+                            '<div class="channel-name" title="' + escapeHtmlLegacy(channel.name) + '">' + escapeHtmlLegacy(channel.name) + '</div>' +
+                            actionsHtml +
+                            '</div>' +
+                            '<div class="channel-grid-body">' +
+                            '<div class="channel-logo-container">' +
+                            '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
+                            '</div>' +
+                            qualitiesHtml +
+                            '</div>';
+                    } else {
+                        item.innerHTML =
+                            '<div class="channel-left-side">' +
+                            '<div class="channel-logo-container">' +
+                            '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
+                            '</div>' +
+                            '<div class="channel-details">' +
+                            '<div class="channel-name" title="' + escapeHtmlLegacy(channel.name) + '">' + escapeHtmlLegacy(channel.name) + '</div>' +
+                            qualitiesHtml +
+                            '</div>' +
+                            '</div>' +
+                            actionsHtml;
+                    }
 
                     list.appendChild(item);
                 }
