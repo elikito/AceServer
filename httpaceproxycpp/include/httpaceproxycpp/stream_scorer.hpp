@@ -28,6 +28,9 @@ StreamQuality detect_stream_quality(const std::string& name);
 /// Detecta si el stream contiene sufijos o etiquetas de país/idioma extranjero no español.
 bool detect_is_foreign(const std::string& name);
 
+/// Extrae el conteo de peers o semillas incrustado en el título M3U (ej. "[299]", "(114)", "150 peers", "**", etc.).
+int extract_peer_count_from_title(const std::string& name);
+
 /// Estructura de candidato a stream para el selector automático.
 struct ChannelCandidate {
     std::string   name;

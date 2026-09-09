@@ -3481,14 +3481,28 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
 
                 // Chequear si ya está activo en BroadcastManager
                 auto broadcast = broadcasts_.find(cid);
-                if (broadcast && broadcast->client_count() > 0) {
+                if (broadcast && (broadcast->client_count() > 0 || broadcast->is_running())) {
                     c.is_active_stream = true;
                     auto p2p = broadcast->get_p2p_status();
+                    int live_peers = 0;
                     if (p2p.contains("peers")) {
-                        try { c.peers = std::stoi(p2p.at("peers")); } catch (...) {}
+                        try { live_peers = std::stoi(p2p.at("peers")); } catch (...) {}
+                    }
+                    if (p2p.contains("http_peers")) {
+                        try { live_peers += std::stoi(p2p.at("http_peers")); } catch (...) {}
+                    }
+                    if (p2p.contains("total_peers")) {
+                        try { int tp = std::stoi(p2p.at("total_peers")); if (tp > live_peers) live_peers = tp; } catch (...) {}
                     }
                     if (p2p.contains("speed_down")) {
                         try { c.speed_down = std::stoll(p2p.at("speed_down")); } catch (...) {}
+                    }
+                    // Si está transfiriendo datos reales a alta velocidad (>100 KB/s), garantizar que refleje el enjambre activo
+                    if (c.speed_down > 100000) {
+                        int traffic_peers = static_cast<int>(c.speed_down / 35000); // ej. 1 MB/s -> ~30 peers
+                        c.peers = std::max(live_peers, std::max(5, traffic_peers));
+                    } else {
+                        c.peers = live_peers;
                     }
                     c.health = ChannelHealth::ONLINE;
                 } else {
@@ -3496,6 +3510,19 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                     c.peers = cached.peers;
                     c.speed_down = cached.speed_down;
                     c.health = cached.health;
+                }
+
+                // Fallback prioritario de popularidad: extraer métricas de semillas del título M3U
+                int title_peers = extract_peer_count_from_title(item.name);
+                if (title_peers > 0) {
+                    if (c.peers <= 0) {
+                        c.peers = title_peers;
+                    } else if (title_peers > c.peers) {
+                        c.peers = std::max(c.peers, title_peers);
+                    }
+                    if (c.health == ChannelHealth::UNKNOWN) {
+                        c.health = (c.peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                    }
                 }
 
                 switch (c.quality) {

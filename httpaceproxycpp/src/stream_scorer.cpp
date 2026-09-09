@@ -188,6 +188,56 @@ bool detect_is_foreign(const std::string& name) {
     return false;
 }
 
+int extract_peer_count_from_title(const std::string& name) {
+    if (name.empty()) return 0;
+
+    // 1. Patrón en corchetes o paréntesis: ej. "[299]", "(114)", "(150 peers)", "[seeds: 85]", "[P: 120]"
+    static const std::regex bracket_paren_regex(
+        R"([\[\(]\s*(?:(?:peers?|seeds?|semillas?|[ps])\s*[:=-]?\s*)?([0-9]{1,4})\s*(?:peers?|seeds?|semillas?)?\s*[\]\)])",
+        std::regex::icase
+    );
+    std::smatch bp_match;
+    if (std::regex_search(name, bp_match, bracket_paren_regex)) {
+        try {
+            int val = std::stoi(bp_match[1].str());
+            auto matched_str = lower(bp_match[0].str());
+            bool has_kw = (matched_str.find("peer") != std::string::npos ||
+                           matched_str.find("seed") != std::string::npos ||
+                           matched_str.find("semilla") != std::string::npos ||
+                           matched_str.find("p:") != std::string::npos ||
+                           matched_str.find("s:") != std::string::npos);
+            if ((has_kw && val > 0) || (val >= 5 && val != 720 && val != 1080 && val != 2160 && val != 576 && val != 480)) {
+                return val;
+            }
+        } catch (...) {}
+    }
+
+    // 2. Patrón de palabra clave en texto libre: ej. "150 peers", "45 seeds", "semillas: 80"
+    static const std::regex kw_after_regex(R"(\b([0-9]{1,4})\s*(?:peers?|seeds?|semillas?)\b)", std::regex::icase);
+    std::smatch kw_match;
+    if (std::regex_search(name, kw_match, kw_after_regex)) {
+        try {
+            int val = std::stoi(kw_match[1].str());
+            if (val > 0) return val;
+        } catch (...) {}
+    }
+
+    static const std::regex kw_before_regex(R"(\b(?:peers?|seeds?|semillas?)\s*[:=-]?\s*([0-9]{1,4})\b)", std::regex::icase);
+    if (std::regex_search(name, kw_match, kw_before_regex)) {
+        try {
+            int val = std::stoi(kw_match[1].str());
+            if (val > 0) return val;
+        } catch (...) {}
+    }
+
+    // 3. Ponderación por estrellas de estabilidad en listas hispanas (ej. "**" -> 50 peers, "*" -> 20 peers)
+    if (name.find("***") != std::string::npos) return 80;
+    if (name.find("**") != std::string::npos) return 50;
+    if (name.find("*") != std::string::npos) return 20;
+
+    return 0;
+}
+
 double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
     // Si ha sido deshabilitado manualmente por el usuario en Favoritos/Curación o vía web/API
     if (candidate.is_disabled) {

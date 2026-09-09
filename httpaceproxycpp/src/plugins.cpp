@@ -1404,11 +1404,42 @@ public:
                         case StreamQuality::SD:       quality_str = "sd"; break;
                         default:                      quality_str = "unknown"; break;
                     }
-                    if (!top.is_disabled && top.score > -500.0 &&
-                        top.health != ChannelHealth::OFFLINE &&
-                        top.health != ChannelHealth::BLOCKED &&
-                        top.health != ChannelHealth::ERROR) {
+
+                    // Sondeo activo: verificar si alguno de los candidatos está emitiendo en BroadcastManager
+                    for (const auto& cand : candidates) {
+                        if (cand.peers > peers) peers = cand.peers;
+                        auto b = proxy_.broadcasts().find(cand.content_id);
+                        if (b && (b->client_count() > 0 || b->is_running())) {
+                            has_active = true;
+                            health_str = "ONLINE";
+                            auto p2p = b->get_p2p_status();
+                            int live_p = 0;
+                            if (p2p.contains("peers")) { try { live_p = std::stoi(p2p.at("peers")); } catch (...) {} }
+                            if (p2p.contains("http_peers")) { try { live_p += std::stoi(p2p.at("http_peers")); } catch (...) {} }
+                            if (p2p.contains("total_peers")) { try { int tp = std::stoi(p2p.at("total_peers")); if (tp > live_p) live_p = tp; } catch (...) {} }
+                            long long live_spd = 0;
+                            if (p2p.contains("speed_down")) { try { live_spd = std::stoll(p2p.at("speed_down")); } catch (...) {} }
+                            if (live_spd > 100000) {
+                                int traffic_peers = static_cast<int>(live_spd / 35000);
+                                live_p = std::max(live_p, std::max(5, traffic_peers));
+                            }
+                            if (live_p > peers) peers = live_p;
+                        }
+                    }
+
+                    if (peers > 0 || top.is_active_stream || top.speed_down > 0 ||
+                        (top.health == ChannelHealth::ONLINE && !top.is_disabled)) {
                         has_active = true;
+                    } else if (top.is_disabled || top.health == ChannelHealth::OFFLINE ||
+                               top.health == ChannelHealth::BLOCKED || top.health == ChannelHealth::ERROR) {
+                        has_active = false;
+                    }
+
+                    // Si el canal no tiene peers conocidos, encolar sondeo en segundo plano
+                    if (peers == 0 && !slug.empty() && (health_str == "UNKNOWN" || health_str == "OFFLINE")) {
+                        if (auto fw = proxy_.get_favorites_worker()) {
+                            fw->request_channel_probe(slug, /*priority=*/true);
+                        }
                     }
                 }
 

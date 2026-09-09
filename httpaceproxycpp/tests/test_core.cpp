@@ -955,6 +955,26 @@ void test_v09_09_06_reaper_tolerance_and_client_connection() {
     require(!conn.is_connected(), "Invalid fd must report not connected");
 }
 
+void test_peer_count_extraction_and_popularity_ranking() {
+    // 1. Verificación de extracción de etiquetas de semillas desde títulos M3U
+    require(extract_peer_count_from_title("M+ Liga de Campeones [299]") == 299, "bracket peer extraction");
+    require(extract_peer_count_from_title("DAZN 1 (114)") == 114, "parentheses peer extraction");
+    require(extract_peer_count_from_title("M+ Deportes 4 (150 peers)") == 150, "keyword peers extraction");
+    require(extract_peer_count_from_title("Eurosport 1 [seeds: 85]") == 85, "keyword seeds extraction");
+    require(extract_peer_count_from_title("LaLiga TV 45 seeds") == 45, "inline seeds extraction");
+    require(extract_peer_count_from_title("DAZN 1 (2)") == 0, "mirror/replica number not confused with peers");
+    require(extract_peer_count_from_title("DAZN 1 1080p **") == 50, "two-star quality peer weighting");
+    require(extract_peer_count_from_title("DAZN 1 720p *") == 20, "one-star quality peer weighting");
+
+    // 2. Verificación de ponderación en StreamScorer
+    ChannelCandidate c1{"Canal A 1080p [299]", "cid_1", "test", "", "", "canal-a", StreamQuality::FHD_1080, 100, 299, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate c2{"Canal B 1080p", "cid_2", "test", "", "", "canal-b", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::UNKNOWN, false, false, false, 0.0};
+    std::vector<ChannelCandidate> cands = {c2, c1};
+    StreamScorer::rank_candidates(cands);
+    require(cands[0].content_id == "cid_1", "candidate with 299 peers ranks first");
+    require(cands[0].score > cands[1].score + 2000.0, "score heavily reflects active peers");
+}
+
 } // namespace
 
 int main() {
@@ -990,6 +1010,7 @@ int main() {
         test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation();
         test_v09_09_05_startup_timeout_and_upgrader_stability();
         test_v09_09_06_reaper_tolerance_and_client_connection();
+        test_peer_count_extraction_and_popularity_ranking();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

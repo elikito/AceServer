@@ -95,6 +95,7 @@ public:
     std::shared_ptr<AceClient> ace() const { return ace_; }
     std::string infohash() const { return infohash_; }
     std::map<std::string, std::string> get_p2p_status() const;
+    bool is_running() const { return running_.load(); }
 
     // v09.09.01 — Safe Reaper & Dynamic Stream Upgrader helpers
     int get_subscribers() const { return subscribers_.load(); }
