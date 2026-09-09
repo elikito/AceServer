@@ -11,6 +11,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/stat/css/navbar.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        if (typeof Hls === 'undefined') {
+            document.write('<script src="/player/js/hls.min.js"><\/script>');
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
     <script>
         if (typeof mpegts === 'undefined') {
@@ -2157,6 +2163,7 @@
         }
 
         var webMpegtsPlayer = null;
+        var hlsPlayer = null;
 
         function escapeJsString(str) {
             if (!str) return '';
@@ -2434,6 +2441,12 @@
                     webMpegtsPlayer.unload();
                 } catch (e) { }
             }
+            if (hlsPlayer) {
+                try {
+                    hlsPlayer.destroy();
+                } catch (e) { }
+                hlsPlayer = null;
+            }
             const overlay = document.getElementById('player-error-overlay');
             const reasonEl = document.getElementById('player-error-reason');
             const vlcBtn = document.getElementById('player-error-vlc-btn');
@@ -2588,6 +2601,15 @@
                 webMpegtsPlayer = null;
             }
 
+            if (hlsPlayer) {
+                try {
+                    hlsPlayer.destroy();
+                } catch (e) {
+                    console.warn('Error al destruir reproductor hls:', e);
+                }
+                hlsPlayer = null;
+            }
+
             if (videoEl) {
                 videoEl.pause();
                 videoEl.removeAttribute('src');
@@ -2713,13 +2735,85 @@
             lastStatTime = Date.now();
 
             let streamHasStartedPlaying = false;
+            let hasTriedFallback = false;
+
+            const trySoftwareFallback = (reason) => {
+                if (hasTriedFallback) return;
+                hasTriedFallback = true;
+                console.warn('Iniciando fallback resiliente por software demuxer:', reason);
+                updatePlayerStatus('Ajustando códecs de audio/video (Hls/Software)...', 'loading');
+
+                if (webMpegtsPlayer) {
+                    try { webMpegtsPlayer.destroy(); } catch (e) { }
+                    webMpegtsPlayer = null;
+                }
+                if (hlsPlayer) {
+                    try { hlsPlayer.destroy(); } catch (e) { }
+                    hlsPlayer = null;
+                }
+
+                if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                    try {
+                        hlsPlayer = new Hls({
+                            enableWorker: true,
+                            lowLatencyMode: true,
+                            fragLoadingTimeOut: 20000,
+                            manifestLoadingTimeOut: 20000,
+                            backBufferLength: 30
+                        });
+                        hlsPlayer.loadSource(streamUrl);
+                        hlsPlayer.attachMedia(videoElement);
+                        hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                            videoElement.play().catch(() => { });
+                        });
+                        hlsPlayer.on(Hls.Events.AUDIO_TRACKS_UPDATED, (event, data) => {
+                            if (data && data.audioTracks && data.audioTracks.length > 1) {
+                                populateAudioTrackSelect(data.audioTracks);
+                            }
+                        });
+                        hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                            console.warn('Evento error Hls:', data);
+                            if (data.fatal) {
+                                switch (data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        hlsPlayer.startLoad();
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        hlsPlayer.recoverMediaError();
+                                        break;
+                                    default:
+                                        videoElement.src = streamUrl;
+                                        videoElement.play().catch(() => { });
+                                        break;
+                                }
+                            }
+                        });
+                        return;
+                    } catch (err) {
+                        console.warn('Fallo en inicialización de fallback Hls:', err);
+                    }
+                }
+                videoElement.src = streamUrl;
+                videoElement.play().catch(e => {
+                    console.warn('Fallo en reproducción directa HTML5:', e);
+                });
+            };
+
             playbackWatchdogTimer = setTimeout(() => {
                 if (!streamHasStartedPlaying) {
-                    showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+                    if (currentStreamStats.totalBytes > 0 || currentStreamStats.speedKBps > 0) {
+                        updatePlayerStatus('Almacenando búfer...', 'loading');
+                    } else if (!hasTriedFallback) {
+                        trySoftwareFallback('Watchdog: intentando demuxer por software');
+                    } else {
+                        showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+                    }
                 }
-            }, 10000);
+            }, 15000);
 
-            if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
+            if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                trySoftwareFallback('Flujo HLS nativo');
+            } else if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
                 try {
                     webMpegtsPlayer = mpegts.createPlayer({
                         type: 'mse',
@@ -2742,7 +2836,6 @@
                     webMpegtsPlayer.attachMediaElement(videoElement);
                     webMpegtsPlayer.load();
 
-                    // Detect multi-audio streams from MEDIA_INFO
                     webMpegtsPlayer.on(mpegts.Events.MEDIA_INFO, (info) => {
                         if (info && info.audioTracks && info.audioTracks.length > 1) {
                             populateAudioTrackSelect(info.audioTracks);
@@ -2772,9 +2865,9 @@
                     });
 
                     webMpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-                        console.error('Error en mpegts player:', errorType, errorDetail, errorInfo);
-                        if (errorDetail === mpegts.ErrorDetails.MEDIA_MSE_ERROR) {
-                            showPlaybackFailure('Códec no soportado en navegador (HEVC / AC3)', streamUrl);
+                        console.warn('Error en mpegts player:', errorType, errorDetail, errorInfo);
+                        if (!hasTriedFallback) {
+                            trySoftwareFallback('Error decodificador MSE (' + errorDetail + ')');
                         } else {
                             showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
                         }
@@ -2783,7 +2876,10 @@
                     webMpegtsPlayer.play().then(() => {
                         updatePlayerStatus('Conectado', 'loading');
                     }).catch(err => {
-                        console.warn('Error reproduciendo stream:', err);
+                        console.warn('Error reproduciendo stream en mpegts:', err);
+                        if (!hasTriedFallback) {
+                            trySoftwareFallback('Fallo inicio reproducción mpegts');
+                        }
                     });
 
                     videoElement.onplaying = () => {
@@ -2802,24 +2898,20 @@
                     };
 
                     videoElement.onerror = () => {
-                        clearTimeout(playbackWatchdogTimer);
-                        showPlaybackFailure('Error al conectar con el stream', streamUrl);
+                        if (!hasTriedFallback) {
+                            trySoftwareFallback('videoElement error nativo');
+                        } else {
+                            clearTimeout(playbackWatchdogTimer);
+                            showPlaybackFailure('Error al reproducir stream', streamUrl);
+                        }
                     };
 
                 } catch (e) {
-                    console.error('Excepción al crear mpegts player:', e);
-                    showPlaybackFailure('Error al inicializar reproductor mpegts', streamUrl);
+                    console.warn('Excepción al crear mpegts player:', e);
+                    trySoftwareFallback('Excepción inicializando mpegts');
                 }
             } else {
-                videoElement.src = streamUrl;
-                videoElement.onplaying = () => {
-                    streamHasStartedPlaying = true;
-                    clearTimeout(playbackWatchdogTimer);
-                    updatePlayerStatus('En directo', 'live');
-                };
-                videoElement.play().catch(() => {
-                    showPlaybackFailure('Error al reproducir stream directo', streamUrl);
-                });
+                trySoftwareFallback('Navegador sin soporte MSE directo');
             }
 
             if (wrapper) {
@@ -2865,6 +2957,11 @@
                     videoEl.audioTracks[i].enabled = (idx === -1 || i === idx);
                 }
                 showToast(idx === -1 ? '✓ Audio: Automático' : `✓ Pista de audio cambiada a: Pista ${idx + 1}`);
+            } else if (hlsPlayer && hlsPlayer.audioTracks && hlsPlayer.audioTracks.length > 0) {
+                if (idx >= 0 && idx < hlsPlayer.audioTracks.length) {
+                    hlsPlayer.audioTrack = idx;
+                }
+                showToast('✓ Pista de audio (Hls): ' + (idx === -1 ? 'Automática' : ('Pista ' + (idx + 1))));
             } else if (webMpegtsPlayer) {
                 showToast('✓ Pista de audio seleccionada: ' + (idx === -1 ? 'Automática' : ('Pista ' + (idx + 1))));
             }

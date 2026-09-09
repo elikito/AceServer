@@ -189,9 +189,9 @@ bool detect_is_foreign(const std::string& name) {
 }
 
 double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
-    // Si ha sido deshabilitado manualmente por el usuario en Favoritos/Curación
+    // Si ha sido deshabilitado manualmente por el usuario en Favoritos/Curación o vía web/API
     if (candidate.is_disabled) {
-        return -999.0;
+        return -1000.0;
     }
 
     // Penalización total si está marcado como caído/erróneo

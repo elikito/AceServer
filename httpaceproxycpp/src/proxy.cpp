@@ -623,17 +623,31 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             return;
         }
 
-        // Redirigir al mejor stream disponible con URL ABSOLUTA y nombre descriptivo
         std::string display_title = best->name.empty() ? canonical_name(slug) : best->name;
-        std::string redirect_target = "http://" + raw_host + "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)", "") + ".ts";
-        connection.send_response_headers(307, "Temporary Redirect", {
-            {"Location", redirect_target},
-            {"X-Content-Id", best->content_id},
-            {"X-Resolved-Content-Id", best->content_id},
-            {"Access-Control-Expose-Headers", "Location, X-Content-Id, X-Resolved-Content-Id"},
-            {"Access-Control-Allow-Origin", "*"},
-            {"Connection", "close"}
-        });
+
+        // Si se pide explícitamente redirección 307
+        if (query_get(ctx.query, "redirect") == "true") {
+            std::string redirect_target = "http://" + raw_host + "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)", "") + ".ts";
+            connection.send_response_headers(307, "Temporary Redirect", {
+                {"Location", redirect_target},
+                {"X-Content-Id", best->content_id},
+                {"X-Resolved-Content-Id", best->content_id},
+                {"Access-Control-Expose-Headers", "Location, X-Content-Id, X-Resolved-Content-Id"},
+                {"Access-Control-Allow-Origin", "*"},
+                {"Connection", "close"}
+            });
+            return;
+        }
+
+        // v09.09.01 — Stream directo para canales virtuales /auto/<slug>
+        // Mantiene la conexión TCP del cliente viva para permitir Dynamic Stream Upgrader en caliente
+        ctx.auto_slug = slug;
+        ctx.req_quality = req_quality;
+        ctx.channel_name = display_title;
+        ctx.reqtype = "content_id";
+        ctx.parts = {"", "content_id", best->content_id, url_encode(display_title + " (Auto)") + ".ts"};
+        ctx.path = "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)") + ".ts";
+        handle_core_stream(ctx);
         return;
     }
 
@@ -673,6 +687,38 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 {"favorites", Json(arr)},
                 {"worker_running", favorites_worker_ ? favorites_worker_->is_running() : false},
                 {"last_probe_time", favorites_worker_ ? static_cast<double>(favorites_worker_->get_last_probe_time()) : 0.0}
+            };
+            auto body_str = res.dump(2);
+            headers["Content-Length"] = std::to_string(body_str.size());
+            connection.send_response_headers(200, status_reason(200), headers);
+            connection.send_text(body_str);
+            return;
+        } else if (action == "toggle_candidate" || action == "toggle" || action == "disable" || action == "deactivate") {
+            std::string cid = query_get(ctx.query, "content_id");
+            std::string dis_str = query_get(ctx.query, "disabled");
+            std::string act_str = query_get(ctx.query, "active");
+            if (cid.empty() && !request.body.empty()) {
+                try {
+                    auto j = Json::parse(request.body);
+                    if (j.is_object()) {
+                        if (j.contains("content_id")) cid = j["content_id"].as_string();
+                        if (j.contains("disabled")) dis_str = j["disabled"].as_bool() ? "true" : "false";
+                        if (j.contains("active")) act_str = j["active"].as_bool() ? "true" : "false";
+                    }
+                } catch (...) {}
+            }
+            bool is_dis = false;
+            if (!act_str.empty()) {
+                is_dis = (act_str == "false" || act_str == "0");
+            } else {
+                is_dis = (dis_str == "true" || dis_str == "1" || action == "disable" || action == "deactivate");
+            }
+            bool now_disabled = toggle_disabled_candidate(cid, is_dis);
+            Json res = Json::object{
+                {"status", "success"},
+                {"content_id", cid},
+                {"disabled", now_disabled},
+                {"active", !now_disabled}
             };
             auto body_str = res.dump(2);
             headers["Content-Length"] = std::to_string(body_str.size());
@@ -2211,6 +2257,8 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             epg_title,
             epg_icon
         );
+        client->auto_slug = ctx.auto_slug;
+        client->req_quality = ctx.req_quality;
         broadcast->start_once();
 
         // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (TIMEOUT 30s)
@@ -2259,8 +2307,16 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             std::vector<char> chunk;
             auto empty_start = std::chrono::steady_clock::now();
             bool empty_timer_running = false;
+            auto last_upgrader_check = unix_time();
 
             while (true) {
+                // v09.09.01 — Comprobación periódica (cada 35s) de Dynamic Stream Upgrader
+                auto now = unix_time();
+                if (!client->auto_slug.empty() && (now - last_upgrader_check) >= 35) {
+                    last_upgrader_check = now;
+                    check_and_upgrade_stream(client, broadcast, infohash, params);
+                }
+
                 if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50))) {
                     empty_timer_running = false;
                     if (chunked) {
@@ -2306,11 +2362,18 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             }
         }
         if (chunked) ctx.connection.send_text("0\r\n\r\n");
-        broadcast->remove_client(client);
-        broadcasts_.remove_if_empty(infohash);
+        auto current_b = client->current_broadcast.lock();
+        if (current_b) {
+            current_b->remove_client(client);
+            broadcasts_.remove_if_empty(current_b->infohash());
+        } else {
+            broadcast->remove_client(client);
+            broadcasts_.remove_if_empty(infohash);
+        }
 
         // TELEMETRÍA: AL DETENER STREAM (TCP FIN / RST / CIERRE REPRODUCTOR)
-        add_bunker_log("[REAPER/DESCONEXIÓN] Cliente desconectado -> ID: " + req_value + ". Emitido STOP inmediato al motor.");
+        add_bunker_log("[REAPER/DESCONEXIÓN] Cliente desconectado -> ID: " + req_value +
+                       ". Sesión en período de gracia (" + std::to_string(config_.linger_timeout) + "s) o con otros suscriptores activos.");
     } catch (const std::exception& e) {
         // TELEMETRÍA: SI OCURRE UN ERROR
         add_bunker_log("[ERROR REPRODUCTOR] Fallo al conectar con el motor " + selected_engine() + ": " + e.what());
@@ -3874,6 +3937,162 @@ void Proxy::save_epg_favorites() {
     }
 }
 
+bool Proxy::check_and_upgrade_stream(const std::shared_ptr<StreamClient>& client,
+                                      std::shared_ptr<Broadcast>& current_broadcast,
+                                      std::string& current_infohash,
+                                      const std::map<std::string, std::string>& params) {
+    if (!client || !current_broadcast || client->auto_slug.empty()) return false;
+
+    // 1. Obtener candidatos actualizados para el canal virtual
+    auto candidates = find_candidates_for_channel(client->auto_slug);
+    if (candidates.empty()) return false;
+    StreamScorer::rank_candidates(candidates);
+
+    // Filtrar deshabilitados
+    std::vector<ChannelCandidate> valid_cands;
+    for (const auto& c : candidates) {
+        if (!c.is_disabled && !is_candidate_disabled(c.content_id)) {
+            valid_cands.push_back(c);
+        }
+    }
+    if (valid_cands.empty()) return false;
+
+    // Identificar el candidato actual
+    const ChannelCandidate* current_cand = nullptr;
+    for (const auto& c : valid_cands) {
+        if (c.content_id == current_infohash) {
+            current_cand = &c;
+            break;
+        }
+    }
+
+    const auto& best_cand = valid_cands[0];
+    if (best_cand.content_id == current_infohash) {
+        return false;
+    }
+
+    // 2. Comprobar condiciones de conmutación:
+    // a) El stream actual cae por debajo del umbral de calidad requerido (bitrate < 450 KB/s durante 20s)
+    bool degraded = current_broadcast->is_bitrate_degraded(20);
+
+    // b) Aparece un candidato activo con mayor resolución/bitrate (ej. 1080p estable frente a 720p/SD en curso)
+    bool better_quality = false;
+    if (current_cand) {
+        if (static_cast<int>(best_cand.quality) > static_cast<int>(current_cand->quality) &&
+            (best_cand.is_active_stream || best_cand.health == ChannelHealth::ONLINE || best_cand.health == ChannelHealth::LOW_PEERS)) {
+            better_quality = true;
+        }
+    } else {
+        better_quality = true;
+    }
+
+    if (!degraded && !better_quality) {
+        return false;
+    }
+
+    log_line("INFO", "[DYNAMIC UPGRADER] Condición detectada para canal '" + client->auto_slug +
+             "' (" + (degraded ? "bitrate degradado < 450 KB/s" : "mejor calidad disponible") +
+             "). Iniciando precarga en background de " + best_cand.content_id.substr(0, std::min<std::size_t>(8, best_cand.content_id.size())) + "...");
+
+    // 3. Iniciar en background la precarga/buffer del nuevo CID en el motor AceStream
+    std::map<std::string, std::string> target_params = params;
+    target_params["content_id"] = best_cand.content_id;
+    target_params["sessionID"] = std::to_string(reinterpret_cast<std::uintptr_t>(client.get())) + "_upg";
+
+    auto new_broadcast = broadcasts_.get_or_create(best_cand.content_id, target_params);
+    new_broadcast->start_once();
+
+    // Esperar hasta 6 segundos a que entregue paquetes TS válidos
+    auto wait_start = std::chrono::steady_clock::now();
+    bool ts_ready = false;
+    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wait_start).count() < 6000) {
+        if (new_broadcast->has_valid_ts_data()) {
+            ts_ready = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    if (!ts_ready) {
+        log_line("WARNING", "[DYNAMIC UPGRADER] Candidato " + best_cand.content_id.substr(0, std::min<std::size_t>(8, best_cand.content_id.size())) +
+                 " no entregó paquetes TS válidos en el tiempo límite. Manteniendo stream actual.");
+        return false;
+    }
+
+    // 4. Conmutar el flujo de salida hacia el cliente de forma fluida (seamless handoff a nivel de socket / PAT-PMT)
+    current_broadcast->detach_client_for_migration(client);
+    new_broadcast->attach_migrated_client(client);
+    auto old_hash = current_infohash;
+    current_broadcast = new_broadcast;
+    current_infohash = best_cand.content_id;
+
+    log_line("INFO", "[DYNAMIC UPGRADER] Conmutación seamless completada para canal '" + client->auto_slug +
+             "': " + old_hash.substr(0, std::min<std::size_t>(8, old_hash.size())) + " -> " + current_infohash.substr(0, std::min<std::size_t>(8, current_infohash.size())));
+    add_bunker_log("[DYNAMIC UPGRADER] Stream conmutado en caliente para canal '" + client->auto_slug +
+                   "' de " + old_hash.substr(0, std::min<std::size_t>(8, old_hash.size())) + " a " + current_infohash.substr(0, std::min<std::size_t>(8, current_infohash.size())) +
+                   " (" + (degraded ? "recuperación degradación" : "upgrade resolución") + ")");
+
+    return true;
+}
+
+void Proxy::migrate_subscribers(const std::string& old_content_id) {
+    if (old_content_id.empty()) return;
+
+    auto old_b = broadcasts_.find(old_content_id);
+    if (!old_b) return;
+
+    auto clients = old_b->clients();
+    if (clients.empty()) return;
+
+    log_line("INFO", "[MIGRACIÓN MANUAL] Disparando migración inmediata para " +
+             std::to_string(clients.size()) + " cliente(s) en sesión " + old_content_id.substr(0, std::min<std::size_t>(8, old_content_id.size())));
+
+    for (const auto& client : clients) {
+        if (!client) continue;
+        std::string slug = client->auto_slug;
+        if (slug.empty()) slug = canonical_slug(client->channel_name);
+        if (slug.empty()) continue;
+
+        auto candidates = find_candidates_for_channel(slug);
+        StreamScorer::rank_candidates(candidates);
+
+        std::string target_cid;
+        for (const auto& c : candidates) {
+            if (c.content_id != old_content_id && !c.is_disabled && !is_candidate_disabled(c.content_id)) {
+                target_cid = c.content_id;
+                break;
+            }
+        }
+
+        if (target_cid.empty()) {
+            log_line("WARNING", "[MIGRACIÓN MANUAL] No hay candidatos alternativos para canal " + slug);
+            continue;
+        }
+
+        std::map<std::string, std::string> params = {
+            {"file_indexes", "0"}, {"developer_id", "0"}, {"affiliate_id", "0"}, {"zone_id", "0"}, {"stream_id", "0"},
+            {"stream_type", config_.stream_type_string()},
+            {"content_id", target_cid},
+            {"sessionID", std::to_string(reinterpret_cast<std::uintptr_t>(client.get())) + "_manmig"}
+        };
+
+        auto target_b = broadcasts_.get_or_create(target_cid, params);
+        target_b->start_once();
+
+        // Esperar brevemente (hasta 3s)
+        auto wait_start = std::chrono::steady_clock::now();
+        while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wait_start).count() < 3000) {
+            if (target_b->has_valid_ts_data()) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+
+        old_b->detach_client_for_migration(client);
+        target_b->attach_migrated_client(client);
+        add_bunker_log("[MIGRACIÓN INMEDIATA] Suscriptor migrado de " + old_content_id.substr(0, std::min<std::size_t>(8, old_content_id.size())) +
+                       " a " + target_cid.substr(0, std::min<std::size_t>(8, target_cid.size())) + " por desactivación manual.");
+    }
+}
+
 bool Proxy::toggle_disabled_candidate(const std::string& content_id, bool disabled) {
     if (content_id.empty()) return false;
     {
@@ -3885,6 +4104,12 @@ bool Proxy::toggle_disabled_candidate(const std::string& content_id, bool disabl
         }
     }
     save_epg_favorites();
+
+    // v09.09.01 — Si el usuario desactiva un CID (active = false / disabled = true):
+    // Forzar score a -1000 y disparar de inmediato la migración de todos sus suscriptores activos
+    if (disabled) {
+        migrate_subscribers(content_id);
+    }
     return disabled;
 }
 

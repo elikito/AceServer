@@ -785,8 +785,8 @@ void test_v09_08_04_resolution_standardization_and_legacy_player() {
 }
 
 void test_v09_08_05_instant_resolution_and_favorites_worker() {
-    // 1. Verificación estricta de versión v09.08.07
-    require(std::string(kAppVersion) == "09.08.07", "App version must be 09.08.07");
+    // 1. Verificación de versión previa superada por v09.09.01
+    require(std::string(kAppVersion) >= "09.08.07", "App version must be at least 09.08.07");
 
     // 2. Configuración de FavoritesHealthWorker
     Config cfg;
@@ -832,6 +832,20 @@ void test_v09_08_05_instant_resolution_and_favorites_worker() {
     require(unknown_candidates.front().content_id == "cid1_1080p", "Top static quality candidate returned instantly when cache is empty");
 }
 
+void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
+    // 1. Verificación estricta de versión canónica v09.09.01
+    require(std::string(kAppVersion) == "09.09.01", "App version must be 09.09.01");
+
+    // 2. Configuración de linger_timeout por defecto = 15s
+    Config cfg;
+    require(cfg.linger_timeout == 15, "default linger_timeout must be 15s");
+
+    // 3. Verificación de score -1000 para candidatos desactivados
+    ChannelCandidate dis;
+    dis.is_disabled = true;
+    require(StreamScorer::calculate_score(dis) == -1000.0, "Disabled candidate score must be -1000.0");
+}
+
 } // namespace
 
 int main() {
@@ -861,6 +875,7 @@ int main() {
         test_v09_08_03_two_row_navbar_and_search();
         test_v09_08_04_resolution_standardization_and_legacy_player();
         test_v09_08_05_instant_resolution_and_favorites_worker();
+        test_v09_09_01_dynamic_upgrader_and_safe_reaper();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

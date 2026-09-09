@@ -141,6 +141,9 @@ std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip
     client->last_activity = client->connection_time;
     client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)), 8 * 1024 * 1024);
     client->ace = ace_;
+    client->current_broadcast = shared_from_this();
+    subscribers_.fetch_add(1, std::memory_order_relaxed);
+    zero_subscribers_time_.store(0, std::memory_order_relaxed);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         clients_.push_back(client);
@@ -158,7 +161,91 @@ void Broadcast::remove_client(const std::shared_ptr<StreamClient>& client) {
             return !locked || locked == client;
         }), clients_.end());
     }
-    if (client_count() == 0) stop();
+    int remaining = subscribers_.fetch_sub(1, std::memory_order_relaxed) - 1;
+    if (remaining <= 0) {
+        subscribers_.store(0, std::memory_order_relaxed);
+        zero_subscribers_time_.store(unix_time(), std::memory_order_relaxed);
+    }
+}
+
+void Broadcast::detach_client_for_migration(const std::shared_ptr<StreamClient>& client) {
+    if (client) {
+        // Desvincular el cliente sin cerrar su ChunkQueue para handoff limpio
+        std::lock_guard<std::mutex> lock(mutex_);
+        clients_.erase(std::remove_if(clients_.begin(), clients_.end(), [&](const auto& weak) {
+            auto locked = weak.lock();
+            return !locked || locked == client;
+        }), clients_.end());
+        int remaining = subscribers_.fetch_sub(1, std::memory_order_relaxed) - 1;
+        if (remaining <= 0) {
+            subscribers_.store(0, std::memory_order_relaxed);
+            zero_subscribers_time_.store(unix_time(), std::memory_order_relaxed);
+        }
+    } else {
+        if (subscribers_.load(std::memory_order_relaxed) <= 0 && zero_subscribers_time_.load(std::memory_order_relaxed) == 0) {
+            zero_subscribers_time_.store(unix_time(), std::memory_order_relaxed);
+        }
+    }
+}
+
+void Broadcast::attach_migrated_client(const std::shared_ptr<StreamClient>& client) {
+    if (!client) return;
+    client->content_id = infohash_;
+    client->ace = ace_;
+    client->current_broadcast = shared_from_this();
+    subscribers_.fetch_add(1, std::memory_order_relaxed);
+    zero_subscribers_time_.store(0, std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        clients_.push_back(client);
+    }
+    // Reinyección limpia de PAT/PMT del nuevo stream
+    {
+        std::lock_guard<std::mutex> lock(pat_pmt_mutex_);
+        if (!latest_pat_pmt_.empty()) {
+            client->queue->push(latest_pat_pmt_, std::chrono::milliseconds(50));
+        }
+    }
+}
+
+double Broadcast::get_bitrate_kbps() {
+    auto now = unix_time();
+    auto last_time = last_bitrate_calc_time_.load(std::memory_order_relaxed);
+    if (last_time == 0) {
+        last_bitrate_calc_time_.store(now, std::memory_order_relaxed);
+        last_calc_bytes_.store(total_bytes_received_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        return current_bitrate_kbps_.load(std::memory_order_relaxed);
+    }
+    auto dt = now - last_time;
+    if (dt >= 2) {
+        auto current_bytes = total_bytes_received_.load(std::memory_order_relaxed);
+        auto prev_bytes = last_calc_bytes_.exchange(current_bytes, std::memory_order_relaxed);
+        last_bitrate_calc_time_.store(now, std::memory_order_relaxed);
+        long long delta = current_bytes - prev_bytes;
+        double kbps = (dt > 0 && delta >= 0) ? (static_cast<double>(delta) / dt / 1024.0) : 0.0;
+        current_bitrate_kbps_.store(kbps, std::memory_order_relaxed);
+
+        if (kbps < 450.0 && total_bytes_received_.load() > 64 * 1024) {
+            if (low_bitrate_start_time_.load(std::memory_order_relaxed) == 0) {
+                low_bitrate_start_time_.store(now, std::memory_order_relaxed);
+            }
+        } else {
+            low_bitrate_start_time_.store(0, std::memory_order_relaxed);
+        }
+    }
+    return current_bitrate_kbps_.load(std::memory_order_relaxed);
+}
+
+bool Broadcast::is_bitrate_degraded(int seconds_threshold) {
+    get_bitrate_kbps();
+    auto low_start = low_bitrate_start_time_.load(std::memory_order_relaxed);
+    if (low_start > 0) {
+        auto now = unix_time();
+        if ((now - low_start) >= seconds_threshold) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::size_t Broadcast::client_count() const {
@@ -200,6 +287,12 @@ void Broadcast::start_once() {
 }
 
 void Broadcast::stop() {
+    // Bloquear terminantemente el comando STOP si todavía existen suscriptores activos
+    if (subscribers_.load(std::memory_order_relaxed) > 0) {
+        log_line("WARNING", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                 "] Broadcast::stop bloqueado: sesión con " + std::to_string(subscribers_.load()) + " suscriptores activos.");
+        return;
+    }
     bool expected = false;
     if (!stopped_.compare_exchange_strong(expected, true)) return;
     running_ = false;
@@ -217,7 +310,7 @@ void Broadcast::stop() {
         try { ace_->stop_broadcast(); } catch (...) {}
         try { ace_->shutdown(); } catch (...) {}
     }
-    // Desconexión limpia inmediata: Enviar comando STOP al motor AceStream vía HTTP
+    // Desconexión limpia: Enviar comando STOP al motor AceStream vía HTTP sólo si no hay clientes
     try {
         std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
         http_client_.get(stop_url, {}, 2);
@@ -319,6 +412,24 @@ void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
         }
     }
 
+    total_bytes_received_.fetch_add(chunk_to_push.size(), std::memory_order_relaxed);
+
+    // Cache latest PAT / PMT packets from stream (PAT PID is 0)
+    {
+        for (std::size_t offset = 0; offset + 188 <= chunk_to_push.size(); offset += 188) {
+            const unsigned char* pkt = reinterpret_cast<const unsigned char*>(chunk_to_push.data() + offset);
+            if (pkt[0] == 0x47) {
+                int pid = ((pkt[1] & 0x1F) << 8) | pkt[2];
+                if (pid == 0) {
+                    std::lock_guard<std::mutex> lock(pat_pmt_mutex_);
+                    std::size_t pmt_len = (offset + 376 <= chunk_to_push.size()) ? 376 : 188;
+                    latest_pat_pmt_.assign(chunk_to_push.begin() + offset, chunk_to_push.begin() + offset + pmt_len);
+                    break;
+                }
+            }
+        }
+    }
+
     auto write_timeout = std::max(1, config_.client_write_timeout);
     auto wait = std::chrono::milliseconds(write_timeout * 1000 / 4);
     auto now = unix_time();
@@ -358,7 +469,7 @@ void BroadcastManager::start_reaper() {
             while (reaper_running_) {
                 {
                     std::unique_lock<std::mutex> lock(reaper_mutex_);
-                    reaper_cv_.wait_for(lock, std::chrono::seconds(30), [this] {
+                    reaper_cv_.wait_for(lock, std::chrono::seconds(15), [this] {
                         return !reaper_running_;
                     });
                 }
@@ -381,6 +492,7 @@ void BroadcastManager::stop_reaper() {
 
 void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
     auto now = unix_time();
+    int linger = std::max(1, config_.linger_timeout);
     std::vector<std::shared_ptr<Broadcast>> to_stop;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -404,11 +516,23 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
                     }
                 }
             }
-            if (!has_active_reading_client || broadcast->client_count() == 0) {
-                log_line("INFO", "[" + broadcast->infohash().substr(0, std::min<std::size_t>(8, broadcast->infohash().size())) +
-                                 "] Reaper: eliminando broadcast huerfano sin clientes activos");
-                to_stop.push_back(broadcast);
-                it = broadcasts_.erase(it);
+
+            int subs = broadcast->get_subscribers();
+            if (subs <= 0 || !has_active_reading_client || broadcast->client_count() == 0) {
+                auto zero_time = broadcast->get_zero_subscribers_time();
+                if (zero_time == 0) {
+                    // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout
+                    broadcast->detach_client_for_migration(nullptr);
+                    ++it;
+                } else if ((now - zero_time) >= linger) {
+                    log_line("INFO", "[" + broadcast->infohash().substr(0, std::min<std::size_t>(8, broadcast->infohash().size())) +
+                                     "] Reaper: período de gracia linger (" + std::to_string(linger) + "s) expirado. Deteniendo sesión.");
+                    to_stop.push_back(broadcast);
+                    it = broadcasts_.erase(it);
+                } else {
+                    // En período de gracia (linger_timeout)
+                    ++it;
+                }
             } else {
                 ++it;
             }
@@ -446,9 +570,16 @@ void BroadcastManager::remove_if_empty(const std::string& infohash) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = broadcasts_.find(infohash);
-        if (it != broadcasts_.end() && it->second->client_count() == 0) {
-            removed = it->second;
-            broadcasts_.erase(it);
+        if (it != broadcasts_.end()) {
+            if (it->second->get_subscribers() <= 0 && it->second->client_count() == 0) {
+                auto now = unix_time();
+                auto zero_time = it->second->get_zero_subscribers_time();
+                int linger = std::max(1, config_.linger_timeout);
+                if (zero_time > 0 && (now - zero_time) >= linger) {
+                    removed = it->second;
+                    broadcasts_.erase(it);
+                }
+            }
         }
     }
     if (removed) removed->stop();

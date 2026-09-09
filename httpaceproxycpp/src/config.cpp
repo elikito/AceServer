@@ -93,6 +93,7 @@ Config load_config(int argc, char** argv) {
     cfg.client_queue_size = getenv_int("CLIENT_QUEUE_SIZE", cfg.client_queue_size);
     cfg.client_write_timeout = getenv_int("CLIENT_WRITE_TIMEOUT", cfg.client_write_timeout);
     cfg.curl_stream_buffer = getenv_int("CURL_STREAM_BUFFER", cfg.curl_stream_buffer);
+    cfg.linger_timeout = getenv_int("LINGER_TIMEOUT", cfg.linger_timeout);
     cfg.config_dir = getenv_string("CONFIG_DIR", cfg.config_dir);
 
     if (argc > 0 && argv && argv[0]) {

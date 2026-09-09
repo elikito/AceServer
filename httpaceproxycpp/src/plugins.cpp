@@ -1201,21 +1201,29 @@ public:
         } else if (action == "toggle_candidate") {
             std::string cid = query_get(ctx.query, "content_id");
             std::string dis_str = query_get(ctx.query, "disabled");
+            std::string act_str = query_get(ctx.query, "active");
             if (cid.empty() && !ctx.request.body.empty()) {
                 try {
                     auto j = Json::parse(ctx.request.body);
                     if (j.is_object()) {
                         if (j.contains("content_id")) cid = j["content_id"].as_string();
                         if (j.contains("disabled")) dis_str = j["disabled"].as_bool() ? "true" : "false";
+                        if (j.contains("active")) act_str = j["active"].as_bool() ? "true" : "false";
                     }
                 } catch (...) {}
             }
-            bool is_dis = (dis_str == "true" || dis_str == "1");
+            bool is_dis = false;
+            if (!act_str.empty()) {
+                is_dis = (act_str == "false" || act_str == "0");
+            } else {
+                is_dis = (dis_str == "true" || dis_str == "1");
+            }
             bool now_disabled = proxy_.toggle_disabled_candidate(cid, is_dis);
             Json res = Json::object{
                 {"status", "success"},
                 {"content_id", cid},
-                {"disabled", now_disabled}
+                {"disabled", now_disabled},
+                {"active", !now_disabled}
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;

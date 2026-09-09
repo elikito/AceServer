@@ -4,6 +4,39 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.09.01] - 2026-09-09
+
+### ⚡ Conmutación Dinámica en Caliente (Dynamic Stream Upgrader), Unificación Resiliente del Reproductor Web y Reaper Seguro
+
+#### 1. Conmutación Proactiva en Caliente al Mejor Stream (`Dynamic Stream Upgrader`)
+- **Rutas Virtuales `/auto/...` sin 307**: Los clientes conectados mediante `/auto/<slug>` o `/auto/<slug>/stream.ts` ahora reciben el flujo TS de forma directa en su conexión TCP nativa, eliminando la necesidad de reconexión HTTP previa.
+- **Rutina Periódica de Comprobación (cada 35s)**:
+  - Supervisión en segundo plano de la salud y calidad del stream activo frente al ranking de `StreamScorer`.
+  - Detección automática de streams degradados (`bitrate < 450 KB/s` durante 20s) o aparición de candidatos con mayor resolución/bitrate (ej. 1080p FHD estable frente a un 720p/SD en curso).
+  - Precarga asíncrona del nuevo Content ID en el motor AceStream y conmutación transparente (*seamless handoff* a nivel de socket con reinyección limpia de PAT/PMT) sin resetear la conexión TCP del cliente.
+- **Desactivación Manual Inmediata (`active = false` / `disabled = true`)**:
+  - Al desactivar un CID vía API o panel web, su puntuación se fija inmediatamente en `-1000.0` y se dispara en la misma llamada la migración de todos sus suscriptores activos hacia el siguiente mejor candidato disponible.
+
+#### 2. Unificación Total del Reproductor Web (`/player` vs `/mobile`)
+- **Arquitectura de Reproducción Resiliente**:
+  - Incorporado `hls.js` con demuxer por software para decodificar pistas de audio AC3 / E-AC3 (Dolby Digital) y perfiles H.264/HEVC sin bloquear la reproducción en navegadores de escritorio (Chrome, Brave, Firefox).
+  - Eliminación total del fallo bloqueante *"Canal no disponible o sin peers suficientes"* originado por incompatibilidad de códecs nativos del navegador en Media Source Extensions (MSE).
+  - Mecanismo de degradación suave y watchdog adaptativo de 15 segundos con detección de bytes entrantes.
+
+#### 3. Reaper Seguro con Conteo Atómico de Referencias (Ref-Counting)
+- **Control Atómico de Suscriptores**:
+  - Contador atómico `std::atomic<int> subscribers` por sesión de streaming activa.
+  - Bloqueo estricto del comando `STOP` hacia el motor AceStream mientras `subscribers > 0`.
+  - Período de gracia configurable (`linger_timeout = 15s`) tras la desconexión del último cliente antes de enviar la orden de parada al motor.
+  - Telemetría de desconexión corregida reflejando el período de gracia o la persistencia de la sesión con otros suscriptores.
+
+#### 4. Sincronización Canónica de Versión a `09.09.01`
+- Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.09.01"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (aserto estricto para `09.09.01` y tests de upgrader/safe reaper).
+- Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.09.01'`).
+- Barra de navegación: `httpaceproxycpp/http/js/navbar.js` (`v09.09.01`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.09.01"`).
+
 ## [09.08.07] - 2026-09-08
 
 ### 📱 Optimización 100% de Ancho en EPG Móvil y Rediseño Completo del Reproductor Legacy (WebKit / iPad)

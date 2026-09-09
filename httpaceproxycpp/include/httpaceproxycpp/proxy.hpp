@@ -82,6 +82,13 @@ public:
     const Config& get_config() const { return config_; }
     FavoritesHealthWorker* get_favorites_worker() { return favorites_worker_.get(); }
 
+    // v09.09.01 — Dynamic Stream Upgrader
+    bool check_and_upgrade_stream(const std::shared_ptr<StreamClient>& client,
+                                  std::shared_ptr<Broadcast>& current_broadcast,
+                                  std::string& current_infohash,
+                                  const std::map<std::string, std::string>& params);
+    void migrate_subscribers(const std::string& old_content_id);
+
     // Logos personalizados persistentes (custom_logos.json)
     std::map<std::string, std::string> get_custom_logos() const;
     void set_custom_logo(const std::string& channel_or_slug, const std::string& logo_url);

@@ -33,6 +33,8 @@ struct RequestContext {
     std::string channel_name;
     std::string channel_icon;
     bool rewritten = false;
+    std::string auto_slug;
+    std::string req_quality;
 
     void rewrite_to(const std::string& new_path);
 };

@@ -45,6 +45,8 @@ private:
     bool closed_ = false;
 };
 
+class Broadcast;
+
 struct StreamClient {
     std::string session_id;
     std::string client_ip;
@@ -57,9 +59,12 @@ struct StreamClient {
     std::string content_id;
     std::string epg_title;
     std::string epg_icon;
+    std::string auto_slug;
+    std::string req_quality;
     std::int64_t connection_time = 0;
     std::shared_ptr<ChunkQueue> queue;
     std::weak_ptr<AceClient> ace;
+    std::weak_ptr<Broadcast> current_broadcast;
     std::atomic<std::int64_t> last_activity{0};
     std::atomic<int> dropped_chunks{0};
     std::atomic<bool> stuck_logged{false};
@@ -80,6 +85,8 @@ public:
                                              const std::string& epg_title = "",
                                              const std::string& epg_icon = "");
     void remove_client(const std::shared_ptr<StreamClient>& client);
+    void detach_client_for_migration(const std::shared_ptr<StreamClient>& client);
+    void attach_migrated_client(const std::shared_ptr<StreamClient>& client);
     std::size_t client_count() const;
     std::vector<std::shared_ptr<StreamClient>> clients() const;
     void start_once();
@@ -87,6 +94,13 @@ public:
     std::shared_ptr<AceClient> ace() const { return ace_; }
     std::string infohash() const { return infohash_; }
     std::map<std::string, std::string> get_p2p_status() const;
+
+    // v09.09.01 — Safe Reaper & Dynamic Stream Upgrader helpers
+    int get_subscribers() const { return subscribers_.load(); }
+    std::int64_t get_zero_subscribers_time() const { return zero_subscribers_time_.load(); }
+    bool has_valid_ts_data() const { return total_bytes_received_.load() >= 188; }
+    double get_bitrate_kbps();
+    bool is_bitrate_degraded(int seconds_threshold = 20);
 
 private:
     void stream_loop();
@@ -109,6 +123,21 @@ private:
     std::thread keepalive_thread_;
     std::mutex ts_residual_mutex_;
     std::vector<char> ts_residual_;
+
+    // v09.09.01 — Ref-counting atómico y gracia linger_timeout
+    std::atomic<int> subscribers_{0};
+    std::atomic<std::int64_t> zero_subscribers_time_{0};
+
+    // PAT/PMT reinjection buffer
+    mutable std::mutex pat_pmt_mutex_;
+    std::vector<char> latest_pat_pmt_;
+
+    // Bitrate tracking
+    std::atomic<long long> total_bytes_received_{0};
+    std::atomic<long long> last_calc_bytes_{0};
+    std::atomic<std::int64_t> last_bitrate_calc_time_{0};
+    std::atomic<double> current_bitrate_kbps_{0.0};
+    std::atomic<std::int64_t> low_bitrate_start_time_{0};
 };
 
 class BroadcastManager {
