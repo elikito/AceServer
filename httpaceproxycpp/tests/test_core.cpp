@@ -4,6 +4,7 @@
 #include "httpaceproxycpp/util.hpp"
 #include "httpaceproxycpp/broadcast.hpp"
 #include "httpaceproxycpp/channel_verifier.hpp"
+#include "httpaceproxycpp/http_server.hpp"
 
 #include <cstdlib>
 #include <iostream>
