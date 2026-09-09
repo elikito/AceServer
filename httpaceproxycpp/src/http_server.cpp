@@ -81,6 +81,20 @@ bool ClientConnection::send_response_headers(int status, const std::string& reas
     return send_text(data);
 }
 
+bool ClientConnection::is_connected() const {
+    if (fd_ < 0) return false;
+    char buf;
+    ssize_t res = ::recv(fd_, &buf, 1, MSG_PEEK | MSG_DONTWAIT);
+    if (res == 0) return false; // FIN recibido del cliente
+    if (res < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return true; // Socket activo y sin datos pendientes en buffer de lectura
+        }
+        return false; // Error en socket (ECONNRESET, EPIPE, etc.)
+    }
+    return true; // Hay datos sin leer o socket abierto
+}
+
 void ClientConnection::close() { close_fd(fd_); }
 
 HttpServer::HttpServer(std::string host, int port, HttpHandler handler)

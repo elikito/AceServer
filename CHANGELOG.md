@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.09.06] - 2026-09-09
+
+### 🔧 Hotfix Crítico: Tolerancia del Reaper a Micro-pausas y Eliminación de Auto-democión en Transmisiones Activas
+
+#### 1. Tolerancia del Reaper y Detección Real de Socket (`is_connected`)
+- **Prevención de Desconexiones Falsas por Pausas de Buffer**:
+  - Se implementó la verificación de estado de socket mediante `ClientConnection::is_connected()` utilizando `recv(fd, &buf, 1, MSG_PEEK | MSG_DONTWAIT)`.
+  - No se invoca la desconexión del cliente si el socket HTTP sigue físicamente abierto (salvo recepción explícita de EOF `0` o `ECONNRESET`).
+  - Se elevó la tolerancia por inactividad de datos antes de finalizar la conexión a **60 segundos** completos.
+
+#### 2. Erradicación Definitiva de Auto-democión a `-1000.0`
+- **Eliminación Total de la Penalización en Caliente**:
+  - Se eliminaron las llamadas residuales que degradaban CIDs a `ChannelHealth::BLOCKED (-1000.0)` durante transmisiones activas y transiciones del reproductor.
+  - Los fallos o timeouts de entrega se gestionan como failover suave (`[STREAM-FAILOVER]`) sin censurar CIDs válidos en el pool.
+
+#### 3. Sincronización Canónica de Versión a `09.09.06`
+- Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.09.06"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_09_06_reaper_tolerance_and_client_connection`).
+- Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.09.06'`).
+- Barra de navegación: `httpaceproxycpp/http/js/navbar.js` (`v09.09.06`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.09.06"`).
+
 ## [09.09.05] - 2026-09-09
 
 ### 🛡️ Hotfix Quirúrgico: Ampliación de Ventana de Arranque y Estabilización del Dynamic Upgrader

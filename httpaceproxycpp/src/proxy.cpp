@@ -2277,18 +2277,11 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                     break;
                 }
 
-                // Error o timeout sin datos tras 25 segundos completos de prebuffering:
-                log_line("WARNING", "[AUTO-DEMOCIÓN] Error o sin datos en 25s para CID '" + req_value +
-                         "' en canal '" + ctx.auto_slug + "'. Penalizando a -1000.0 y conmutando...");
-                add_bunker_log("[AUTO-DEMOCIÓN] Cannot retrieve torrent / timeout 25s en CID " + req_value +
-                               " (canal: " + ctx.auto_slug + ") -> degradado a -1000.0");
-
-                VerifyResult vr;
-                vr.content_id = req_value;
-                vr.health = ChannelHealth::BLOCKED;
-                vr.error = "Cannot retrieve torrent o timeout de arranque (<=25s)";
-                vr.checked_at = unix_time();
-                channel_verifier_.update_state(vr);
+                // Timeout sin datos tras 25 segundos completos de prebuffering:
+                log_line("WARNING", "[STREAM-FAILOVER] Sin datos en 25s para CID '" + req_value +
+                         "' en canal '" + ctx.auto_slug + "'. Conmutando a siguiente candidato sin bloquear CID...");
+                add_bunker_log("[STREAM-FAILOVER] Timeout de arranque (25s) en CID " + req_value +
+                               " (canal: " + ctx.auto_slug + ") -> conmutando al siguiente candidato");
 
                 // Desacoplar del broadcast fallido
                 broadcast->remove_client(client);
@@ -2309,11 +2302,11 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                 }
 
                 if (next_cid.empty()) {
-                    log_line("ERROR", "[AUTO-DEMOCIÓN] No quedan más candidatos viables para canal '" + ctx.auto_slug + "'");
+                    log_line("ERROR", "[STREAM-FAILOVER] No quedan más candidatos viables para canal '" + ctx.auto_slug + "'");
                     break;
                 }
 
-                log_line("INFO", "[AUTO-DEMOCIÓN] Conmutando canal '" + ctx.auto_slug + "' hacia siguiente candidato: " + next_cid);
+                log_line("INFO", "[STREAM-FAILOVER] Conmutando canal '" + ctx.auto_slug + "' hacia siguiente candidato: " + next_cid);
                 req_value = next_cid;
                 infohash = next_cid;
                 params["content_id"] = next_cid;
@@ -2429,16 +2422,10 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                     auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now() - empty_start).count();
 
-                    if (!client->auto_slug.empty() && elapsed_sec >= 5) {
-                        // En canales virtuales, si el stream se corta por más de 5s, auto-demover CID y conmutar
+                    if (!client->auto_slug.empty() && elapsed_sec >= 20) {
+                        // En canales virtuales, si el stream no recibe datos por más de 20s, intentar failover suave
                         auto cur_b = client->current_broadcast.lock();
                         std::string cur_h = cur_b ? cur_b->infohash() : infohash;
-                        VerifyResult vr;
-                        vr.content_id = cur_h;
-                        vr.health = ChannelHealth::BLOCKED;
-                        vr.error = "Corte de stream > 5s en canal virtual";
-                        vr.checked_at = unix_time();
-                        channel_verifier_.update_state(vr);
 
                         if (cur_b && check_and_upgrade_stream(client, cur_b, cur_h, params)) {
                             empty_timer_running = false;
@@ -2447,11 +2434,19 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                         }
                     }
 
-                    if (ace_active && elapsed_sec < 45) {
+                    // Tolerancia del Reaper a micro-pausas:
+                    // Si el socket del cliente sigue conectado y el motor AceStream sigue vivo o no se han alcanzado 60s, no cortar
+                    bool client_connected = ctx.connection.is_connected();
+                    if (!client_connected) {
+                        // Cliente cerró la conexión TCP (EOF o ECONNRESET)
+                        break;
+                    }
+
+                    if (elapsed_sec < 60) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(50));
                         continue;
                     } else {
-                        // Se superaron 45 segundos consecutivos con la cola vacía o AceEngine no está activo
+                        // Se superaron 60 segundos consecutivos de inactividad total sin datos
                         break;
                     }
                 }

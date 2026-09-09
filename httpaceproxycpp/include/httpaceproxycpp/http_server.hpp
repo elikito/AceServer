@@ -103,6 +103,7 @@ public:
     bool send_text(const std::string& value);
     bool send_response_headers(int status, const std::string& reason,
                                const std::map<std::string, std::string>& headers);
+    bool is_connected() const;
     void close();
 
 private:

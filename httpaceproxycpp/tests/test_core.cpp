@@ -935,14 +935,23 @@ void test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation() {
 }
 
 void test_v09_09_05_startup_timeout_and_upgrader_stability() {
-    // 1. Verificación estricta de versión canónica v09.09.05
-    require(std::string(kAppVersion) == "09.09.05", "App version must be 09.09.05");
+    // 1. Verificación de compatibilidad de versión
+    require(std::string(kAppVersion) >= "09.09.05", "App version must be >= 09.09.05");
 
     // 2. Verificación de StreamClient guardando connection_time
     StreamClient sc;
     sc.connection_time = unix_time();
     sc.auto_slug = "test_slug";
     require((unix_time() - sc.connection_time) < 5, "Connection time recorded properly");
+}
+
+void test_v09_09_06_reaper_tolerance_and_client_connection() {
+    // 1. Verificación estricta de versión canónica v09.09.06
+    require(std::string(kAppVersion) == "09.09.06", "App version must be 09.09.06");
+
+    // 2. Verificación de ClientConnection::is_connected en fd inválido (-1)
+    ClientConnection conn(-1);
+    require(!conn.is_connected(), "Invalid fd must report not connected");
 }
 
 } // namespace
@@ -979,6 +988,7 @@ int main() {
         test_v09_09_03_dashboard_cid_and_epg_popularity();
         test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation();
         test_v09_09_05_startup_timeout_and_upgrader_stability();
+        test_v09_09_06_reaper_tolerance_and_client_connection();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {
