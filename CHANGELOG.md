@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.09.04] - 2026-09-09
+
+### 🔧 Corrección Definitiva: Eliminación de Sonda TS Asfixiante y Cierre Limpio de Sesiones de Motor AceStream
+
+#### 1. Eliminación de la Fase 4 Asfixiante en `ChannelVerifier`
+- **Eliminación del Requisito de Sincronismo TS (`0x47`) en 4 Segundos**:
+  - Tras la auditoría empírica, se comprobó que los pre-buffering pasivos de streams fríos demoran más de 10-15 segundos en transferir el primer paquete TS, provocando falsos positivos de "Timeout was reached" que marcaban CIDs perfectamente funcionales como `BLOCKED (-1000)`.
+  - La salud y disponibilidad del stream quedan plenamente demostradas en la Fase 1/2: si `/ace/getstream` devuelve un JSON válido con `playback_url` y `stat_url` sin errores, el CID se clasifica inmediatamente como `ONLINE`.
+  - NUNCA se clasifica como `BLOCKED (-1000)` ante la falta de datos TS en sondeos pasivos en segundo plano.
+
+#### 2. Cierre Limpio de Sesiones Huérfanas del Motor (`command_url?method=stop`)
+- **Eliminación de la llamada inválida a `/ace/stop`**:
+  - Se eliminó la llamada errónea a `/ace/stop` en todo el código base (que retornaba HTTP 404 en AceStream y dejaba sesiones P2P abiertas e inactivas en memoria, saturando la CPU del motor).
+  - Al finalizar cualquier verificación en `ChannelVerifier`, se ejecuta la parada contra el endpoint real provisto por la respuesta de inicio: `GET <command_url>?method=stop`. AceStream ejecuta de inmediato `stop_playing_download` y libera todos los recursos P2P.
+
+#### 3. Sincronización Canónica de Versión a `09.09.04`
+- Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.09.04"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation`).
+- Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.09.04'`).
+- Barra de navegación: `httpaceproxycpp/http/js/navbar.js` (`v09.09.04`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.09.04"`).
+
 ## [09.09.03] - 2026-09-09
 
 ### 🚀 Mejoras de UX y Visibilidad: Content ID Activo en Dashboard y Ordenación por Popularidad en EPG

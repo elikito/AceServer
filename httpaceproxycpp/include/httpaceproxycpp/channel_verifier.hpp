@@ -58,6 +58,8 @@ inline constexpr long long kDefaultSpeedThreshold = 102400LL;
 // ---------------------------------------------------------------------------
 inline constexpr int kDefaultMaxWorkers = 2;
 inline constexpr int kDefaultCacheAgeSec = 90;
+inline constexpr int kDefaultObserveTotalMs = 800;
+inline constexpr int kDefaultObservePollMs = 300;
 
 // ---------------------------------------------------------------------------
 // Enum de estado de salud de un Content ID.
@@ -173,6 +175,13 @@ public:
     void clear_state(const std::string& content_id);
     void clear_all_state();
 
+    // ------------------------------------------------------------------
+    // Clasifica el resultado final en base a peers, speed_down y status_text.
+    // ------------------------------------------------------------------
+    static ChannelHealth classify(int peers, long long speed_down,
+                                  const std::string& status_text,
+                                  long long threshold) noexcept;
+
 private:
     // ------------------------------------------------------------------
     // Implementación del pipeline de 4 fases + cierre.
@@ -202,11 +211,6 @@ private:
 
     /// Cierre obligatorio: GET command_url?method=stop  (timeout 1.5s).
     void stop_session(const std::string& command_url) noexcept;
-
-    /// Clasifica el resultado final en base a peers, speed_down y status_text.
-    static ChannelHealth classify(int peers, long long speed_down,
-                                  const std::string& status_text,
-                                  long long threshold) noexcept;
 
     // ------------------------------------------------------------------
     // Construcción de la URL base del motor AceStream.

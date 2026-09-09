@@ -310,11 +310,6 @@ void Broadcast::stop() {
         try { ace_->stop_broadcast(); } catch (...) {}
         try { ace_->shutdown(); } catch (...) {}
     }
-    // Desconexión limpia: Enviar comando STOP al motor AceStream vía HTTP sólo si no hay clientes
-    try {
-        std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
-        http_client_.get(stop_url, {}, 2);
-    } catch (...) {}
 
     if (stream_thread_.joinable() && stream_thread_.get_id() != std::this_thread::get_id()) stream_thread_.join();
     if (keepalive_thread_.joinable() && keepalive_thread_.get_id() != std::this_thread::get_id()) keepalive_thread_.join();
@@ -351,10 +346,6 @@ void Broadcast::stream_loop() {
         try { ace_->stop_broadcast(); } catch (...) {}
         try { ace_->shutdown(); } catch (...) {}
     }
-    try {
-        std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
-        http_client_.get(stop_url, {}, 2);
-    } catch (...) {}
     for (auto& client : clients()) client->queue->close();
 }
 
@@ -540,12 +531,6 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
     }
     for (auto& b : to_stop) {
         b->stop();
-    }
-    if (broadcast_count() == 0) {
-        try {
-            std::string stop_url = "http://" + config_.ace_host + ":" + std::to_string(config_.ace_http_port) + "/ace/stop";
-            http_client_.get(stop_url, {}, 2);
-        } catch (...) {}
     }
 }
 

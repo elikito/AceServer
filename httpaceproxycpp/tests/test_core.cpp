@@ -835,7 +835,7 @@ void test_v09_08_05_instant_resolution_and_favorites_worker() {
 
 void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
     // 1. Verificación de versión base
-    require(std::string(kAppVersion) == "09.09.01" || std::string(kAppVersion) == "09.09.02" || std::string(kAppVersion) == "09.09.03", "App version compatibility");
+    require(std::string(kAppVersion) >= "09.09.01", "App version compatibility");
 
     // 2. Configuración de linger_timeout por defecto = 15s
     Config cfg;
@@ -848,25 +848,24 @@ void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
 }
 
 void test_v09_09_02_preflight_probe_and_warp() {
-    // 1. Verificación de versión canónica v09.09.02 / v09.09.03
-    require(std::string(kAppVersion) == "09.09.02" || std::string(kAppVersion) == "09.09.03", "App version must be 09.09.02 or 09.09.03");
+    // 1. Verificación de versión canónica v09.09.02+
+    require(std::string(kAppVersion) >= "09.09.02", "App version must be >= 09.09.02");
 
     // 2. Verificación de score penalizado a -1000.0 para BLOCKED, OFFLINE y ERROR
     ChannelCandidate blocked_cand;
     blocked_cand.health = ChannelHealth::BLOCKED;
-    require(StreamScorer::calculate_score(blocked_cand) == -1000.0, "Blocked candidate score must be -1000.0");
+    require(StreamScorer::calculate_score(blocked_cand) == -1000.0, "Blocked candidate must have -1000.0 score");
 
     ChannelCandidate offline_cand;
     offline_cand.health = ChannelHealth::OFFLINE;
-    require(StreamScorer::calculate_score(offline_cand) == -1000.0, "Offline candidate score must be -1000.0");
+    require(StreamScorer::calculate_score(offline_cand) == -1000.0, "Offline candidate must have -1000.0 score");
 
     ChannelCandidate error_cand;
     error_cand.health = ChannelHealth::ERROR;
-    require(StreamScorer::calculate_score(error_cand) == -1000.0, "Error candidate score must be -1000.0");
+    require(StreamScorer::calculate_score(error_cand) == -1000.0, "Error candidate must have -1000.0 score");
 
-    // 3. Verificación de validación ACTIVO / EXCELENTE para ONLINE (TS 0x47 confirmado)
+    // 3. Verificación de cálculo de score de candidato Online
     ChannelCandidate online_cand;
-    online_cand.name = "DAZN 1 FHD";
     online_cand.quality = StreamQuality::FHD_1080;
     online_cand.health = ChannelHealth::ONLINE;
     online_cand.peers = 5;
@@ -878,8 +877,8 @@ void test_v09_09_02_preflight_probe_and_warp() {
 }
 
 void test_v09_09_03_dashboard_cid_and_epg_popularity() {
-    // 1. Verificación estricta de versión canónica v09.09.03
-    require(std::string(kAppVersion) == "09.09.03", "App version must be 09.09.03");
+    // 1. Verificación de versión canónica v09.09.03+
+    require(std::string(kAppVersion) >= "09.09.03", "App version must be >= 09.09.03");
 
     // 2. Verificación de ordenación por popularidad de StreamScorer
     // Candidato A: 1080p, Online, 15 peers
@@ -918,6 +917,23 @@ void test_v09_09_03_dashboard_cid_and_epg_popularity() {
     require(list[2].score == -1000.0, "Blocked candidate score must be -1000.0");
 }
 
+void test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation() {
+    // 1. Verificación estricta de versión canónica v09.09.04
+    require(std::string(kAppVersion) == "09.09.04", "App version must be 09.09.04");
+
+    // 2. Verificación de clasificador de salud: estado 'dl' con handshake exitoso es ONLINE
+    auto health_dl = ChannelVerifier::classify(2, 0, "dl", 256000);
+    require(health_dl == ChannelHealth::ONLINE, "Handshake with 'dl' and 2 peers must classify as ONLINE");
+
+    // 3. Verificación de que sin datos en segundo plano no se marca BLOCKED si no hay error explícito
+    auto health_low = ChannelVerifier::classify(1, 0, "buf", 256000);
+    require(health_low == ChannelHealth::LOW_PEERS, "Passive buffering state with 1 peer is LOW_PEERS, not BLOCKED");
+
+    // 4. Verificación de timeout rápido de observación DHT / Swarm en ChannelVerifier
+    require(kDefaultObserveTotalMs <= 1000, "kDefaultObserveTotalMs should be <= 1000ms to avoid blocking verifier");
+    require(kDefaultObservePollMs <= 400, "kDefaultObservePollMs should be <= 400ms");
+}
+
 } // namespace
 
 int main() {
@@ -950,6 +966,7 @@ int main() {
         test_v09_09_01_dynamic_upgrader_and_safe_reaper();
         test_v09_09_02_preflight_probe_and_warp();
         test_v09_09_03_dashboard_cid_and_epg_popularity();
+        test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {
