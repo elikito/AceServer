@@ -230,11 +230,6 @@ int extract_peer_count_from_title(const std::string& name) {
         } catch (...) {}
     }
 
-    // 3. Ponderación por estrellas de estabilidad en listas hispanas (ej. "**" -> 50 peers, "*" -> 20 peers)
-    if (name.find("***") != std::string::npos || name.find("★★★") != std::string::npos) return 80;
-    if (name.find("**") != std::string::npos || name.find("★★") != std::string::npos) return 50;
-    if (name.find("*") != std::string::npos || name.find("★") != std::string::npos) return 20;
-
     return 0;
 }
 
@@ -253,9 +248,13 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
 
     double score = 0.0;
 
-    // Bonus de sesión activa en caliente
+    // Prioridad absoluta a canales con emisión activa o transferencia real de datos
     if (candidate.is_active_stream) {
-        score += 100.0;
+        score += 2000.0;
+    }
+    if (candidate.speed_down > 0) {
+        // Canales con transferencia real confirmada (speed_down > 0) se priorizan por encima de cualquier candidato inactivo
+        score += 1000.0 + (static_cast<double>(candidate.speed_down) / 1024.0 * 0.5);
     }
 
     // Bonus por calidad detectada y ponderación contra peers (v08.26.02)
@@ -276,9 +275,6 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
         double sd_peer_contrib = candidate.peers * 5.0;
         score += std::min(30.0, sd_peer_contrib);
     }
-
-    // Puntuación por velocidad de bajada
-    score += (static_cast<double>(candidate.speed_down) / 1024.0 * 0.5);
 
     // Penalización por país/idioma extranjero no español
     if (candidate.is_foreign) {

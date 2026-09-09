@@ -540,17 +540,20 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 else if (c.quality == StreamQuality::HD_720) quality_str = "720p";
 
                 int cand_peers = c.peers;
-                if (cand_peers <= 0) {
+                ChannelHealth cand_health = c.health;
+
+                if (cand_health == ChannelHealth::OFFLINE ||
+                    cand_health == ChannelHealth::BLOCKED ||
+                    cand_health == ChannelHealth::ERROR) {
+                    cand_peers = 0;
+                } else if (c.is_active_stream || c.speed_down > 0) {
+                    cand_health = ChannelHealth::ONLINE;
+                } else if (cand_peers <= 0) {
                     int tp = extract_peer_count_from_title(c.name);
                     if (tp > 0) cand_peers = tp;
-                }
-
-                ChannelHealth cand_health = c.health;
-                if (cand_peers > 0 && (cand_health == ChannelHealth::UNKNOWN ||
-                                       cand_health == ChannelHealth::OFFLINE ||
-                                       cand_health == ChannelHealth::ERROR ||
-                                       cand_health == ChannelHealth::PENDING)) {
-                    cand_health = (cand_peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                    if (cand_peers > 0 && (cand_health == ChannelHealth::UNKNOWN || cand_health == ChannelHealth::PENDING)) {
+                        cand_health = (cand_peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                    }
                 }
 
                 arr.push_back(Json::object{
@@ -3527,21 +3530,30 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                     c.health = cached.health;
                 }
 
-                // Fallback prioritario de popularidad: extraer métricas de semillas del título M3U
-                int title_peers = extract_peer_count_from_title(item.name);
-                if (title_peers > 0) {
-                    if (live_peers <= 0 || c.peers <= 0) {
-                        c.peers = title_peers;
-                    } else if (title_peers > c.peers) {
-                        c.peers = std::max(c.peers, title_peers);
+                // Si el canal está caído o bloqueado (por timeout, Cannot retrieve torrent, etc.), penalización severa
+                if (c.health == ChannelHealth::OFFLINE ||
+                    c.health == ChannelHealth::BLOCKED ||
+                    c.health == ChannelHealth::ERROR) {
+                    c.peers = 0;
+                    c.speed_down = 0;
+                } else if (c.is_active_stream || c.speed_down > 0) {
+                    // Si tiene transferencia real o emisión activa, es siempre ONLINE
+                    c.health = ChannelHealth::ONLINE;
+                } else {
+                    // Fallback prioritario de popularidad: extraer métricas de semillas de etiquetas explícitas M3U
+                    int title_peers = extract_peer_count_from_title(item.name);
+                    if (title_peers > 0) {
+                        if (live_peers <= 0 || c.peers <= 0) {
+                            c.peers = title_peers;
+                        } else if (title_peers > c.peers) {
+                            c.peers = std::max(c.peers, title_peers);
+                        }
                     }
-                }
 
-                // Si c.peers > 0, el campo "health" debe ser automáticamente ONLINE o LOW_PEERS, nunca UNKNOWN ni LENTO con 0 peers
-                if (c.peers > 0) {
-                    if (c.health == ChannelHealth::UNKNOWN || c.health == ChannelHealth::OFFLINE ||
-                        c.health == ChannelHealth::ERROR || c.health == ChannelHealth::PENDING) {
-                        c.health = (c.peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                    if (c.peers > 0) {
+                        if (c.health == ChannelHealth::UNKNOWN || c.health == ChannelHealth::PENDING) {
+                            c.health = (c.peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                        }
                     }
                 }
 
@@ -4595,16 +4607,20 @@ Json Proxy::recheck_sources(const std::string& slug_or_channel) {
             else if (c.quality == StreamQuality::HD_720) quality_str = "720p";
 
             int cand_peers = c.peers;
-            if (cand_peers <= 0) {
+            ChannelHealth cand_health = c.health;
+
+            if (cand_health == ChannelHealth::OFFLINE ||
+                cand_health == ChannelHealth::BLOCKED ||
+                cand_health == ChannelHealth::ERROR) {
+                cand_peers = 0;
+            } else if (c.is_active_stream || c.speed_down > 0) {
+                cand_health = ChannelHealth::ONLINE;
+            } else if (cand_peers <= 0) {
                 int tp = extract_peer_count_from_title(c.name);
                 if (tp > 0) cand_peers = tp;
-            }
-            ChannelHealth cand_health = c.health;
-            if (cand_peers > 0 && (cand_health == ChannelHealth::UNKNOWN ||
-                                   cand_health == ChannelHealth::OFFLINE ||
-                                   cand_health == ChannelHealth::ERROR ||
-                                   cand_health == ChannelHealth::PENDING)) {
-                cand_health = (cand_peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                if (cand_peers > 0 && (cand_health == ChannelHealth::UNKNOWN || cand_health == ChannelHealth::PENDING)) {
+                    cand_health = (cand_peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                }
             }
 
             arr.push_back(Json::object{

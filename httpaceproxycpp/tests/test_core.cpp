@@ -963,8 +963,8 @@ void test_peer_count_extraction_and_popularity_ranking() {
     require(extract_peer_count_from_title("Eurosport 1 [seeds: 85]") == 85, "keyword seeds extraction");
     require(extract_peer_count_from_title("LaLiga TV 45 seeds") == 45, "inline seeds extraction");
     require(extract_peer_count_from_title("DAZN 1 (2)") == 0, "mirror/replica number not confused with peers");
-    require(extract_peer_count_from_title("DAZN 1 1080p **") == 50, "two-star quality peer weighting");
-    require(extract_peer_count_from_title("DAZN 1 720p *") == 20, "one-star quality peer weighting");
+    require(extract_peer_count_from_title("DAZN 1 1080p **") == 0, "stars must not be treated as peers");
+    require(extract_peer_count_from_title("DAZN 1 720p *") == 0, "stars must not be treated as peers");
 
     // 2. Verificación de ponderación en StreamScorer
     ChannelCandidate c1{"Canal A 1080p [299]", "cid_1", "test", "", "", "canal-a", StreamQuality::FHD_1080, 100, 299, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
@@ -979,13 +979,22 @@ void test_v09_10_01_peer_serialization_and_version() {
     // 1. Verificación estricta de versión canónica v09.10.01
     require(std::string(kAppVersion) == "09.10.01", "App version must be 09.10.01");
 
-    // 2. Verificación de estrellas unicode y ascii
-    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p ***") == 80, "three-star weighting");
-    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p **") == 50, "two-star weighting");
-    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p *") == 20, "one-star weighting");
-    require(extract_peer_count_from_title("Canal 1080p ★★★") == 80, "unicode three-star weighting");
-    require(extract_peer_count_from_title("Canal 1080p ★★") == 50, "unicode two-star weighting");
-    require(extract_peer_count_from_title("Canal 1080p ★") == 20, "unicode one-star weighting");
+    // 2. Verificación de que asteriscos NO producen peers
+    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p ***") == 0, "three-star no peers");
+    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p **") == 0, "two-star no peers");
+    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p *") == 0, "one-star no peers");
+    require(extract_peer_count_from_title("Canal 1080p ★★★") == 0, "unicode three-star no peers");
+    require(extract_peer_count_from_title("Canal 1080p ★★") == 0, "unicode two-star no peers");
+    require(extract_peer_count_from_title("Canal 1080p ★") == 0, "unicode one-star no peers");
+
+    // 3. Verificación de que stream activo o con speed_down > 0 tiene máxima prioridad sobre stream offline
+    ChannelCandidate dead{"M+ Liga de Campeones 2 1080p **", "cid_dead", "unificada", "", "", "m-liga-2", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::OFFLINE, false, false, false, 0.0};
+    ChannelCandidate live{"M+ Liga de Campeones 2 1080p", "cid_live", "unificada", "", "", "m-liga-2", StreamQuality::FHD_1080, 100, 25, 1200000, ChannelHealth::ONLINE, false, false, false, 0.0};
+    std::vector<ChannelCandidate> list = {dead, live};
+    StreamScorer::rank_candidates(list);
+    require(list[0].content_id == "cid_live", "live stream with speed_down > 0 must rank first");
+    require(list[0].score > 1000.0, "live stream must have high positive score");
+    require(list[1].score == -1000.0, "offline candidate must have -1000.0 score");
 }
 
 } // namespace

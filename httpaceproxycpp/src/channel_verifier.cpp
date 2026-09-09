@@ -491,19 +491,25 @@ VerifyResult ChannelVerifier::run_pipeline(const std::string& content_id) {
 
     } catch (const std::runtime_error& e) {
         std::string err_msg = e.what();
-        // Solo marcar BLOCKED (-1000) si el motor explícitamente arrojó Cannot retrieve torrent o auth_error
+        // Un CID que de timeout o Cannot retrieve torrent recibe penalización severa (health = OFFLINE, peers = 0)
         if (err_msg.find("Cannot retrieve torrent") != std::string::npos ||
-            err_msg.find("auth_error") != std::string::npos) {
-            result.health = ChannelHealth::BLOCKED;
+            err_msg.find("auth_error") != std::string::npos ||
+            err_msg.find("Timeout") != std::string::npos ||
+            err_msg.find("timed out") != std::string::npos) {
+            result.health = ChannelHealth::OFFLINE;
         } else {
-            result.health = ChannelHealth::UNKNOWN;
+            result.health = ChannelHealth::OFFLINE;
         }
+        result.peers       = 0;
+        result.speed_down  = 0;
         result.error       = err_msg;
         result.checked_at  = unix_time();
         if (!command_url.empty()) stop_session(command_url);
         return result;
     } catch (const std::exception& e) {
-        result.health     = ChannelHealth::ERROR;
+        result.health     = ChannelHealth::OFFLINE;
+        result.peers      = 0;
+        result.speed_down = 0;
         result.error      = e.what();
         result.checked_at = unix_time();
         if (!command_url.empty()) stop_session(command_url);
