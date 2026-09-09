@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     try {
         auto config = httpace::load_config(argc, argv);
         ensure_local_m3u_structure(config);
-        httpace::log_line("INFO", "HTTPAceProxyCPP starting");
+        httpace::log_line("INFO", std::string("HTTPAceProxyCPP v") + httpace::kAppVersion + " starting");
         httpace::log_line("INFO", "AceStream engine " + config.ace_host + ":" + std::to_string(config.ace_api_port));
         httpace::Proxy proxy(config);
         g_proxy.store(&proxy);

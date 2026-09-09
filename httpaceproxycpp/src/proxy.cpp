@@ -394,7 +394,7 @@ void Proxy::start() {
         [this](const HttpRequest& request, ClientConnection& connection) { handle_http(request, connection); });
     server_->set_client_send_timeout(config_.client_write_timeout);
     server_->start();
-    log_line("INFO", "HTTPAceProxyCPP started at " + config_.http_host + ":" + std::to_string(config_.http_port));
+    log_line("INFO", "HTTPAceProxyCPP v" + std::string(kAppVersion) + " started at " + config_.http_host + ":" + std::to_string(config_.http_port));
     server_->join();
 }
 
@@ -539,16 +539,30 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 else if (c.quality == StreamQuality::FHD_1080) quality_str = "1080p";
                 else if (c.quality == StreamQuality::HD_720) quality_str = "720p";
 
+                int cand_peers = c.peers;
+                if (cand_peers <= 0) {
+                    int tp = extract_peer_count_from_title(c.name);
+                    if (tp > 0) cand_peers = tp;
+                }
+
+                ChannelHealth cand_health = c.health;
+                if (cand_peers > 0 && (cand_health == ChannelHealth::UNKNOWN ||
+                                       cand_health == ChannelHealth::OFFLINE ||
+                                       cand_health == ChannelHealth::ERROR ||
+                                       cand_health == ChannelHealth::PENDING)) {
+                    cand_health = (cand_peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+                }
+
                 arr.push_back(Json::object{
                     {"name", c.name},
+                    {"peers", static_cast<double>(cand_peers)},
                     {"content_id", c.content_id},
                     {"plugin", c.plugin_name},
                     {"quality", static_cast<double>(static_cast<int>(c.quality))},
                     {"quality_label", quality_str},
                     {"quality_bonus", static_cast<double>(c.quality_bonus)},
-                    {"peers", static_cast<double>(c.peers)},
                     {"speed_down", static_cast<double>(c.speed_down)},
-                    {"health", health_to_string(c.health)},
+                    {"health", health_to_string(cand_health)},
                     {"is_active", c.is_active_stream},
                     {"is_disabled", c.is_disabled},
                     {"is_foreign", c.is_foreign},
@@ -571,7 +585,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 {"Content-Type", "application/json; charset=utf-8"},
                 {"Connection", "close"}
             });
-            connection.send_text(res.dump(2));
+            connection.send_text(res.dump());
             return;
         }
 
@@ -3481,10 +3495,10 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
 
                 // Chequear si ya está activo en BroadcastManager
                 auto broadcast = broadcasts_.find(cid);
+                int live_peers = 0;
                 if (broadcast && (broadcast->client_count() > 0 || broadcast->is_running())) {
                     c.is_active_stream = true;
                     auto p2p = broadcast->get_p2p_status();
-                    int live_peers = 0;
                     if (p2p.contains("peers")) {
                         try { live_peers = std::stoi(p2p.at("peers")); } catch (...) {}
                     }
@@ -3507,6 +3521,7 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                     c.health = ChannelHealth::ONLINE;
                 } else {
                     auto cached = channel_verifier_.get_cached(cid);
+                    live_peers = cached.peers;
                     c.peers = cached.peers;
                     c.speed_down = cached.speed_down;
                     c.health = cached.health;
@@ -3515,12 +3530,17 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 // Fallback prioritario de popularidad: extraer métricas de semillas del título M3U
                 int title_peers = extract_peer_count_from_title(item.name);
                 if (title_peers > 0) {
-                    if (c.peers <= 0) {
+                    if (live_peers <= 0 || c.peers <= 0) {
                         c.peers = title_peers;
                     } else if (title_peers > c.peers) {
                         c.peers = std::max(c.peers, title_peers);
                     }
-                    if (c.health == ChannelHealth::UNKNOWN) {
+                }
+
+                // Si c.peers > 0, el campo "health" debe ser automáticamente ONLINE o LOW_PEERS, nunca UNKNOWN ni LENTO con 0 peers
+                if (c.peers > 0) {
+                    if (c.health == ChannelHealth::UNKNOWN || c.health == ChannelHealth::OFFLINE ||
+                        c.health == ChannelHealth::ERROR || c.health == ChannelHealth::PENDING) {
                         c.health = (c.peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
                     }
                 }
@@ -4574,16 +4594,29 @@ Json Proxy::recheck_sources(const std::string& slug_or_channel) {
             else if (c.quality == StreamQuality::FHD_1080) quality_str = "1080p";
             else if (c.quality == StreamQuality::HD_720) quality_str = "720p";
 
+            int cand_peers = c.peers;
+            if (cand_peers <= 0) {
+                int tp = extract_peer_count_from_title(c.name);
+                if (tp > 0) cand_peers = tp;
+            }
+            ChannelHealth cand_health = c.health;
+            if (cand_peers > 0 && (cand_health == ChannelHealth::UNKNOWN ||
+                                   cand_health == ChannelHealth::OFFLINE ||
+                                   cand_health == ChannelHealth::ERROR ||
+                                   cand_health == ChannelHealth::PENDING)) {
+                cand_health = (cand_peers >= 5) ? ChannelHealth::ONLINE : ChannelHealth::LOW_PEERS;
+            }
+
             arr.push_back(Json::object{
                 {"name", c.name},
+                {"peers", static_cast<double>(cand_peers)},
                 {"content_id", c.content_id},
                 {"plugin", c.plugin_name},
                 {"quality", static_cast<double>(static_cast<int>(c.quality))},
                 {"quality_label", quality_str},
                 {"quality_bonus", static_cast<double>(c.quality_bonus)},
-                {"peers", static_cast<double>(c.peers)},
                 {"speed_down", static_cast<double>(c.speed_down)},
-                {"health", health_to_string(c.health)},
+                {"health", health_to_string(cand_health)},
                 {"is_active", c.is_active_stream},
                 {"is_disabled", c.is_disabled},
                 {"is_foreign", c.is_foreign},

@@ -4,6 +4,29 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.10.01] - 2026-09-10
+
+### 🚀 Release Mayor: Propagación Definitiva de Peers, Normalización de Estado y Clasificación de Popularidad
+
+#### 1. Corrección de Raíz en Serialización C++ (`proxy.cpp` y `plugins.cpp`)
+- **Propagación Incondicional de Peers y Semillas**:
+  - En `/auto/<slug>?action=list`, `recheck_sources` y `find_candidates_for_channel`: el campo `peers` se garantiza mediante fallback prioritario `extract_peer_count_from_title` (estrellas `***`=80, `**`=50, `*`=20, etiquetas `[299]`, `(114)`) cuando el enjambre está ocioso.
+  - El campo `peers` se serializa inmediatamente adyacente a `name` en formato JSON compacto.
+  - Todo candidato con `peers > 0` normaliza su salud a `ONLINE` o `LOW_PEERS`, evitando estados espurios `UNKNOWN` o `OFFLINE`.
+
+#### 2. Consolidación de Popularidad (`get_channels_popularity`)
+- **Evaluación Exhaustiva de Fuentes y Activación**:
+  - Se consolida el valor `max_peers` entre todas las variantes y candidatos del canal.
+  - Se garantiza que `has_active_source` sea estrictamente `true` para cualquier canal con `peers > 0` o transmisión en curso.
+
+#### 3. Sincronización Canónica de Versión a `09.10.01`
+- Sistema de compilación: `httpaceproxycpp/CMakeLists.txt` (`VERSION 9.10.1`, `HTTPACEPROXYCPP_VERSION "09.10.01"`).
+- Cabecera canónica: `httpaceproxycpp/include/httpaceproxycpp/version.hpp` y `config.hpp` (`kAppVersion = "09.10.01"`).
+- Banners de arranque: `main.cpp` y `proxy.cpp`.
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_10_01_peer_serialization_and_version`).
+- Pie universal y navegación: `footer.js` (`canonicalVersion = '09.10.01'`), `navbar.js` (`v09.10.01`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.10.01"`).
+
 ## [09.09.06] - 2026-09-09
 
 ### 🔧 Hotfix Crítico: Tolerancia del Reaper a Micro-pausas y Eliminación de Auto-democión en Transmisiones Activas

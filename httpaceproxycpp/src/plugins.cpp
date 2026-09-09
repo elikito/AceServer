@@ -1407,7 +1407,13 @@ public:
 
                     // Sondeo activo: verificar si alguno de los candidatos está emitiendo en BroadcastManager
                     for (const auto& cand : candidates) {
-                        if (cand.peers > peers) peers = cand.peers;
+                        int cp = cand.peers;
+                        if (cp <= 0) {
+                            int tp = extract_peer_count_from_title(cand.name);
+                            if (tp > 0) cp = tp;
+                        }
+                        if (cp > peers) peers = cp;
+
                         auto b = proxy_.broadcasts().find(cand.content_id);
                         if (b && (b->client_count() > 0 || b->is_running())) {
                             has_active = true;
@@ -1427,11 +1433,15 @@ public:
                         }
                     }
 
-                    if (peers > 0 || top.is_active_stream || top.speed_down > 0 ||
-                        (top.health == ChannelHealth::ONLINE && !top.is_disabled)) {
+                    if (peers > 0) {
                         has_active = true;
-                    } else if (top.is_disabled || top.health == ChannelHealth::OFFLINE ||
-                               top.health == ChannelHealth::BLOCKED || top.health == ChannelHealth::ERROR) {
+                        if (health_str == "UNKNOWN" || health_str == "OFFLINE") {
+                            health_str = (peers >= 5) ? "ONLINE" : "LOW_PEERS";
+                        }
+                    } else if (top.is_active_stream || top.speed_down > 0 ||
+                               (top.health == ChannelHealth::ONLINE && !top.is_disabled)) {
+                        has_active = true;
+                    } else {
                         has_active = false;
                     }
 
@@ -1466,7 +1476,7 @@ public:
                 {"count", static_cast<double>(req_channels.size())},
                 {"channels", Json(pop_map)}
             };
-            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump());
             return true;
         } else if (action == "set_channel_filter" || action == "save_channel_filter") {
             std::string chan = query_get(ctx.query, "channel");

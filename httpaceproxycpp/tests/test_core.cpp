@@ -947,8 +947,8 @@ void test_v09_09_05_startup_timeout_and_upgrader_stability() {
 }
 
 void test_v09_09_06_reaper_tolerance_and_client_connection() {
-    // 1. Verificación estricta de versión canónica v09.09.06
-    require(std::string(kAppVersion) == "09.09.06", "App version must be 09.09.06");
+    // 1. Verificación de versión canónica v09.09.06+
+    require(std::string(kAppVersion) >= "09.09.06", "App version must be >= 09.09.06");
 
     // 2. Verificación de ClientConnection::is_connected en fd inválido (-1)
     ClientConnection conn(-1);
@@ -973,6 +973,19 @@ void test_peer_count_extraction_and_popularity_ranking() {
     StreamScorer::rank_candidates(cands);
     require(cands[0].content_id == "cid_1", "candidate with 299 peers ranks first");
     require(cands[0].score > cands[1].score + 2000.0, "score heavily reflects active peers");
+}
+
+void test_v09_10_01_peer_serialization_and_version() {
+    // 1. Verificación estricta de versión canónica v09.10.01
+    require(std::string(kAppVersion) == "09.10.01", "App version must be 09.10.01");
+
+    // 2. Verificación de estrellas unicode y ascii
+    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p ***") == 80, "three-star weighting");
+    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p **") == 50, "two-star weighting");
+    require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p *") == 20, "one-star weighting");
+    require(extract_peer_count_from_title("Canal 1080p ★★★") == 80, "unicode three-star weighting");
+    require(extract_peer_count_from_title("Canal 1080p ★★") == 50, "unicode two-star weighting");
+    require(extract_peer_count_from_title("Canal 1080p ★") == 20, "unicode one-star weighting");
 }
 
 } // namespace
@@ -1011,6 +1024,7 @@ int main() {
         test_v09_09_05_startup_timeout_and_upgrader_stability();
         test_v09_09_06_reaper_tolerance_and_client_connection();
         test_peer_count_extraction_and_popularity_ranking();
+        test_v09_10_01_peer_serialization_and_version();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

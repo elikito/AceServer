@@ -231,9 +231,9 @@ int extract_peer_count_from_title(const std::string& name) {
     }
 
     // 3. Ponderación por estrellas de estabilidad en listas hispanas (ej. "**" -> 50 peers, "*" -> 20 peers)
-    if (name.find("***") != std::string::npos) return 80;
-    if (name.find("**") != std::string::npos) return 50;
-    if (name.find("*") != std::string::npos) return 20;
+    if (name.find("***") != std::string::npos || name.find("★★★") != std::string::npos) return 80;
+    if (name.find("**") != std::string::npos || name.find("★★") != std::string::npos) return 50;
+    if (name.find("*") != std::string::npos || name.find("★") != std::string::npos) return 20;
 
     return 0;
 }
