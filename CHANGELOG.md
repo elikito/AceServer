@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.09.05] - 2026-09-09
+
+### 🛡️ Hotfix Quirúrgico: Ampliación de Ventana de Arranque y Estabilización del Dynamic Upgrader
+
+#### 1. Ampliación de la Ventana de Inicio de Stream en `proxy.cpp` (25 Segundos)
+- **Eliminación del Temporizador Rígido de 5s**:
+  - En canales virtuales (`/auto/<slug>`), se amplió el tiempo de espera del primer chunk real de datos (`pop_timeout`) de 5 a **25 segundos**.
+  - Un enjambre AceStream en vivo requiere comúnmente de 8 a 18 segundos de prebuffering inicial en frío.
+  - Se evita la auto-democión prematura que penalizaba injustamente CIDs viables con `-1000.0` y abortaba el stream justo cuando el motor estaba completando el llenado del búfer de reproducción.
+
+#### 2. Estabilización del Dynamic Upgrader Durante el Arranque
+- **Guarda de Estabilidad de 60 Segundos**:
+  - Se prohíbe cualquier conmutación en caliente por mejora teórica de calidad/peers en sesiones de streaming con menos de **60 segundos** de vida activa.
+  - El Upgrader solo intervendrá durante el arranque si el stream en curso sufre una degradación activa verificada (`is_bitrate_degraded(20)`), protegiendo la conexión TCP del reproductor contra reseteos intempestivos.
+
+#### 3. Sincronización Canónica de Versión a `09.09.05`
+- Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.09.05"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_09_05_startup_timeout_and_upgrader_stability`).
+- Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.09.05'`).
+- Barra de navegación: `httpaceproxycpp/http/js/navbar.js` (`v09.09.05`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.09.05"`).
+
 ## [09.09.04] - 2026-09-09
 
 ### 🔧 Corrección Definitiva: Eliminación de Sonda TS Asfixiante y Cierre Limpio de Sesiones de Motor AceStream

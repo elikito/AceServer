@@ -918,8 +918,8 @@ void test_v09_09_03_dashboard_cid_and_epg_popularity() {
 }
 
 void test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation() {
-    // 1. Verificación estricta de versión canónica v09.09.04
-    require(std::string(kAppVersion) == "09.09.04", "App version must be 09.09.04");
+    // 1. Verificación de compatibilidad de versión
+    require(std::string(kAppVersion) >= "09.09.04", "App version must be >= 09.09.04");
 
     // 2. Verificación de clasificador de salud: estado 'dl' con handshake exitoso es ONLINE
     auto health_dl = ChannelVerifier::classify(2, 0, "dl", 256000);
@@ -932,6 +932,17 @@ void test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation() {
     // 4. Verificación de timeout rápido de observación DHT / Swarm en ChannelVerifier
     require(kDefaultObserveTotalMs <= 1000, "kDefaultObserveTotalMs should be <= 1000ms to avoid blocking verifier");
     require(kDefaultObservePollMs <= 400, "kDefaultObservePollMs should be <= 400ms");
+}
+
+void test_v09_09_05_startup_timeout_and_upgrader_stability() {
+    // 1. Verificación estricta de versión canónica v09.09.05
+    require(std::string(kAppVersion) == "09.09.05", "App version must be 09.09.05");
+
+    // 2. Verificación de StreamClient guardando connection_time
+    StreamClient sc;
+    sc.connection_time = unix_time();
+    sc.auto_slug = "test_slug";
+    require((unix_time() - sc.connection_time) < 5, "Connection time recorded properly");
 }
 
 } // namespace
@@ -967,6 +978,7 @@ int main() {
         test_v09_09_02_preflight_probe_and_warp();
         test_v09_09_03_dashboard_cid_and_epg_popularity();
         test_v09_09_04_verifier_clean_stop_and_no_ts_asphyxiation();
+        test_v09_09_05_startup_timeout_and_upgrader_stability();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

@@ -2264,7 +2264,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         broadcast->start_once();
 
         // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS
-        // Para canales virtuales (/auto/<slug>), conmutación rápida en los primeros 5 segundos con auto-democión
+        // Para canales virtuales (/auto/<slug>), margen de prebuffering de 25 segundos antes de conmutar
         std::vector<char> first_chunk;
         bool initial_ok = false;
 
@@ -2272,21 +2272,21 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             int attempts = 0;
             while (attempts < 5) {
                 attempts++;
-                if (client->queue->pop_timeout(first_chunk, std::chrono::seconds(5)) && !first_chunk.empty()) {
+                if (client->queue->pop_timeout(first_chunk, std::chrono::seconds(25)) && !first_chunk.empty()) {
                     initial_ok = true;
                     break;
                 }
 
-                // Error o timeout sin datos en los primeros 5 segundos:
-                log_line("WARNING", "[AUTO-DEMOCIÓN] Error o sin datos en 5s para CID '" + req_value +
+                // Error o timeout sin datos tras 25 segundos completos de prebuffering:
+                log_line("WARNING", "[AUTO-DEMOCIÓN] Error o sin datos en 25s para CID '" + req_value +
                          "' en canal '" + ctx.auto_slug + "'. Penalizando a -1000.0 y conmutando...");
-                add_bunker_log("[AUTO-DEMOCIÓN] Cannot retrieve torrent / timeout 5s en CID " + req_value +
+                add_bunker_log("[AUTO-DEMOCIÓN] Cannot retrieve torrent / timeout 25s en CID " + req_value +
                                " (canal: " + ctx.auto_slug + ") -> degradado a -1000.0");
 
                 VerifyResult vr;
                 vr.content_id = req_value;
                 vr.health = ChannelHealth::BLOCKED;
-                vr.error = "Cannot retrieve torrent o timeout de arranque (<=5s)";
+                vr.error = "Cannot retrieve torrent o timeout de arranque (<=25s)";
                 vr.checked_at = unix_time();
                 channel_verifier_.update_state(vr);
 
@@ -4072,14 +4072,19 @@ bool Proxy::check_and_upgrade_stream(const std::shared_ptr<StreamClient>& client
     bool degraded = current_broadcast->is_bitrate_degraded(20);
 
     // b) Aparece un candidato activo con mayor resolución/bitrate (ej. 1080p estable frente a 720p/SD en curso)
+    // ESTABILIZACIÓN: Si la sesión tiene menos de 60s de vida, prohibir conmutación en caliente por mejora teórica.
+    // Solo permitir conmutación si el stream está activamente degradado (corte de datos / buffer starving).
+    auto session_age = unix_time() - client->connection_time;
     bool better_quality = false;
-    if (current_cand) {
-        if (static_cast<int>(best_cand.quality) > static_cast<int>(current_cand->quality) &&
-            (best_cand.is_active_stream || best_cand.health == ChannelHealth::ONLINE || best_cand.health == ChannelHealth::LOW_PEERS)) {
+    if (session_age >= 60 && !degraded) {
+        if (current_cand) {
+            if (static_cast<int>(best_cand.quality) > static_cast<int>(current_cand->quality) &&
+                (best_cand.is_active_stream || best_cand.health == ChannelHealth::ONLINE || best_cand.health == ChannelHealth::LOW_PEERS)) {
+                better_quality = true;
+            }
+        } else {
             better_quality = true;
         }
-    } else {
-        better_quality = true;
     }
 
     if (!degraded && !better_quality) {
