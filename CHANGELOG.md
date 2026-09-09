@@ -4,6 +4,60 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.09.03] - 2026-09-09
+
+### 🚀 Mejoras de UX y Visibilidad: Content ID Activo en Dashboard y Ordenación por Popularidad en EPG
+
+#### 1. Dashboard: Content ID Activo en Conexiones Activas
+- **Insignia Monospacio CID con Copiado Instantáneo**:
+  - En la tabla de "Conexiones Activas" del Dashboard (`/stat` / `index.html`), se incorpora una insignia secundaria monoespaciada con etiqueta `CID:` bajo el nombre del canal y el título EPG.
+  - Incluye un botón/icono interactivo para copiar el hash hexadecimal completo del Content ID activo en un solo clic con notificación toast.
+- **Transparencia en Canales Virtuales (`/auto/...`)**:
+  - En `/api/status`, el backend reporta con precisión tanto el `channel_name` como el `resolved_content_id` y `content_id` activos en la sesión, actualizados en caliente incluso tras un failover o conmutación dinámica.
+
+#### 2. EPG: Ordenación por Popularidad de CIDs Ganadores (Peers / Score)
+- **Auditoría y Corrección del Botón A-Z**:
+  - Se corrigió el ordenamiento alfabético para operar sobre la lista íntegra de favoritos del almacenamiento local/servidor sin sufrir truncamiento si un filtro de búsqueda universal está activo en el DOM.
+  - Soporte de conmutación bidireccional ascendente/descendente (`A-Z ↑` y `Z-A ↓`) con indicador visual activo.
+- **Nuevo Botón "🔥 Popularidad"**:
+  - Añadido botón interactivo en la barra de acciones de Favoritos que consulta el endpoint `/epg?action=get_channels_popularity`.
+  - El backend resuelve y evalúa los candidatos de cada canal favorito mediante `StreamScorer`, posicionando arriba aquellos canales cuyo candidato ganador (Top 1 CID) posee mayor puntuación de calidad y mayor recuento de peers/semillas activas.
+  - Los canales sin fuentes activas o cuyo mejor CID está caído/bloqueado (-1000) se desplazan automáticamente al final de la lista.
+
+#### 3. Sincronización Canónica de Versión a `09.09.03`
+- Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.09.03"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_09_03_dashboard_cid_and_epg_popularity`).
+- Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.09.03'`).
+- Barra de navegación: `httpaceproxycpp/http/js/navbar.js` (`v09.09.03`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.09.03"`).
+
+## [09.09.02] - 2026-09-09
+
+### 🛡️ Pre-flight Probe Real en Worker Pool, Auto-democión de Falsos Positivos y Enrutamiento AceStream WARP SOCKS5
+
+#### 1. Pre-flight Probe Real en el Worker Pool de Diagnóstico (`ChannelVerifier` / `StreamScorer`)
+- **Fase 4 Ephemeral TS Probe**:
+  - Incorporada Fase 4 de verificación real en los candidatos Top 5 de cada canal, sustituyendo el scrape UDP superficial.
+  - Conexión efímera no destructiva hacia el motor AceStream con timeout estricto de 4 segundos.
+  - Validación rigurosa de resolución de infohash e inspección del primer bloque de paquetes Transport Stream requiriendo el byte de sincronismo `0x47`.
+  - Si el motor retorna `"Cannot retrieve torrent"`, `"auth_error"`, o timeout sin datos, se clasifica de inmediato como `BLOQUEADO / OFFLINE` penalizando su score a `-1000.0`.
+  - Almacenamiento en caché en memoria durante 90 segundos para evitar saturación del motor.
+
+#### 2. Enrutamiento de AceStream a través de Cloudflare WARP SOCKS5
+- Configurado el servicio `aceserve-modern` en `docker-compose.yml` con la opción `--proxy socks5://host.docker.internal:40000` en `ACESTREAM_OPTS` y la directiva `extra_hosts: ["host.docker.internal:host-gateway"]` para canalizar trackers y P2P a través de WARP con bypass de bloqueos ISP.
+- Operación en modo directo transparente si WARP no está activo en el host.
+
+#### 3. Auto-democión en Caliente por Error `Cannot retrieve torrent`
+- En el bucle de despacho de streams (`src/proxy.cpp`), si un Content ID emite `Cannot retrieve torrent` o falla en los primeros 5 segundos de conexión (o sufre un corte > 5s en canal virtual), se degrada automáticamente a `-1000.0` en `StreamScorer` y `ChannelVerifier`.
+- Conmutación inmediata hacia el siguiente mejor candidato sin agotar el timeout de 30s ni colapsar la conexión del cliente.
+
+#### 4. Sincronización Canónica de Versión a `09.09.02`
+- Backend C++: `httpaceproxycpp/include/httpaceproxycpp/config.hpp` (`kAppVersion = "09.09.02"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (aserto estricto para `09.09.02` y test unitario `test_v09_09_02_preflight_probe_and_warp`).
+- Pie universal: `httpaceproxycpp/http/js/footer.js` (`canonicalVersion = '09.09.02'`).
+- Barra de navegación: `httpaceproxycpp/http/js/navbar.js` (`v09.09.02`).
+- Estado de plugins: `httpaceproxycpp/http/plugins_state.json` y `config/plugins_state.json` (`"version": "09.09.02"`).
+
 ## [09.09.01] - 2026-09-09
 
 ### ⚡ Conmutación Dinámica en Caliente (Dynamic Stream Upgrader), Unificación Resiliente del Reproductor Web y Reaper Seguro

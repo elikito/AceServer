@@ -3,6 +3,7 @@
 #include "httpaceproxycpp/stream_scorer.hpp"
 #include "httpaceproxycpp/util.hpp"
 #include "httpaceproxycpp/broadcast.hpp"
+#include "httpaceproxycpp/channel_verifier.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -833,8 +834,8 @@ void test_v09_08_05_instant_resolution_and_favorites_worker() {
 }
 
 void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
-    // 1. Verificación estricta de versión canónica v09.09.01
-    require(std::string(kAppVersion) == "09.09.01", "App version must be 09.09.01");
+    // 1. Verificación de versión base
+    require(std::string(kAppVersion) == "09.09.01" || std::string(kAppVersion) == "09.09.02" || std::string(kAppVersion) == "09.09.03", "App version compatibility");
 
     // 2. Configuración de linger_timeout por defecto = 15s
     Config cfg;
@@ -844,6 +845,77 @@ void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
     ChannelCandidate dis;
     dis.is_disabled = true;
     require(StreamScorer::calculate_score(dis) == -1000.0, "Disabled candidate score must be -1000.0");
+}
+
+void test_v09_09_02_preflight_probe_and_warp() {
+    // 1. Verificación de versión canónica v09.09.02 / v09.09.03
+    require(std::string(kAppVersion) == "09.09.02" || std::string(kAppVersion) == "09.09.03", "App version must be 09.09.02 or 09.09.03");
+
+    // 2. Verificación de score penalizado a -1000.0 para BLOCKED, OFFLINE y ERROR
+    ChannelCandidate blocked_cand;
+    blocked_cand.health = ChannelHealth::BLOCKED;
+    require(StreamScorer::calculate_score(blocked_cand) == -1000.0, "Blocked candidate score must be -1000.0");
+
+    ChannelCandidate offline_cand;
+    offline_cand.health = ChannelHealth::OFFLINE;
+    require(StreamScorer::calculate_score(offline_cand) == -1000.0, "Offline candidate score must be -1000.0");
+
+    ChannelCandidate error_cand;
+    error_cand.health = ChannelHealth::ERROR;
+    require(StreamScorer::calculate_score(error_cand) == -1000.0, "Error candidate score must be -1000.0");
+
+    // 3. Verificación de validación ACTIVO / EXCELENTE para ONLINE (TS 0x47 confirmado)
+    ChannelCandidate online_cand;
+    online_cand.name = "DAZN 1 FHD";
+    online_cand.quality = StreamQuality::FHD_1080;
+    online_cand.health = ChannelHealth::ONLINE;
+    online_cand.peers = 5;
+    online_cand.speed_down = 2048000;
+    require(StreamScorer::calculate_score(online_cand) > 150.0, "Online TS-confirmed candidate must have high positive score");
+
+    // 4. Verificación de TTL de caché de diagnóstico a 90 segundos
+    require(kDefaultCacheAgeSec == 90, "Default cache age must be 90s");
+}
+
+void test_v09_09_03_dashboard_cid_and_epg_popularity() {
+    // 1. Verificación estricta de versión canónica v09.09.03
+    require(std::string(kAppVersion) == "09.09.03", "App version must be 09.09.03");
+
+    // 2. Verificación de ordenación por popularidad de StreamScorer
+    // Candidato A: 1080p, Online, 15 peers
+    ChannelCandidate cand_a;
+    cand_a.name = "M+ LaLiga TV 1080p";
+    cand_a.content_id = "cid_top_1080p";
+    cand_a.quality = StreamQuality::FHD_1080;
+    cand_a.health = ChannelHealth::ONLINE;
+    cand_a.peers = 15;
+    cand_a.speed_down = 3000000;
+
+    // Candidato B: 720p, Online, 3 peers
+    ChannelCandidate cand_b;
+    cand_b.name = "M+ LaLiga TV 720p";
+    cand_b.content_id = "cid_mid_720p";
+    cand_b.quality = StreamQuality::HD_720;
+    cand_b.health = ChannelHealth::ONLINE;
+    cand_b.peers = 3;
+    cand_b.speed_down = 1000000;
+
+    // Candidato C: Bloqueado por ISP (-1000)
+    ChannelCandidate cand_c;
+    cand_c.name = "M+ LaLiga TV Bad";
+    cand_c.content_id = "cid_blocked";
+    cand_c.quality = StreamQuality::FHD_1080;
+    cand_c.health = ChannelHealth::BLOCKED;
+    cand_c.peers = 0;
+
+    std::vector<ChannelCandidate> list = {cand_c, cand_b, cand_a};
+    StreamScorer::rank_candidates(list);
+
+    require(list.size() == 3, "Candidate list size");
+    require(list[0].content_id == "cid_top_1080p", "Popular candidate with high peers must rank #1");
+    require(list[1].content_id == "cid_mid_720p", "Healthy candidate with fewer peers must rank #2");
+    require(list[2].content_id == "cid_blocked", "Blocked candidate must rank last at -1000.0 score");
+    require(list[2].score == -1000.0, "Blocked candidate score must be -1000.0");
 }
 
 } // namespace
@@ -876,6 +948,8 @@ int main() {
         test_v09_08_04_resolution_standardization_and_legacy_player();
         test_v09_08_05_instant_resolution_and_favorites_worker();
         test_v09_09_01_dynamic_upgrader_and_safe_reaper();
+        test_v09_09_02_preflight_probe_and_warp();
+        test_v09_09_03_dashboard_cid_and_epg_popularity();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

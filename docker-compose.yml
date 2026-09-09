@@ -30,8 +30,11 @@ services:
     dns:
       - 1.1.1.1
       - 8.8.8.8
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - TZ=Europe/Madrid
+      - ACESTREAM_OPTS=--proxy socks5://host.docker.internal:40000
     ports:
       - "6878:6878/tcp"
       - "6878:6878/udp"

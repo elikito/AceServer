@@ -1169,6 +1169,19 @@
             transform: translateY(-1px);
         }
 
+        .fav-action-btn.active {
+            border-color: var(--brand-color, #22c55e);
+            color: var(--brand-color, #22c55e);
+            background: rgba(34, 197, 94, 0.15);
+            box-shadow: 0 0 0 1px var(--brand-color, #22c55e);
+        }
+
+        .fav-action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         .fav-save-btn {
             background: var(--brand-color, #22c55e);
             border-color: rgba(34, 197, 94, 0.4);
@@ -1372,12 +1385,17 @@
                 Todos <span class="tab-badge" id="all-count-badge">0</span>
             </button>
             <div id="fav-actions-bar" class="fav-actions-bar">
-                <button class="fav-action-btn" onclick="sortFavoritesAlphabetically()"
-                    title="Reordenar automáticamente los canales favoritos de A a Z">
+                <button class="fav-action-btn" id="btn-sort-az" onclick="sortFavoritesAlphabetically()"
+                    title="Ordenar automáticamente los canales favoritos de A a Z / Z a A">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h7M3 12h5M3 18h3M14 6l4 8 4-8M18 10v8"></path>
                     </svg>
-                    A-Z
+                    <span id="btn-sort-az-label">A-Z</span>
+                </button>
+                <button class="fav-action-btn" id="btn-sort-pop" onclick="sortByPopularity()"
+                    title="Ordenar canales por popularidad de fuentes (peers activos y puntuación StreamScorer)">
+                    <span id="btn-sort-pop-icon">🔥</span>
+                    <span id="btn-sort-pop-label">Popularidad</span>
                 </button>
                 <button class="fav-action-btn fav-save-btn" onclick="saveCurrentFavoritesOrder()"
                     title="Guardar orden de canales favoritos en el servidor">
@@ -2043,6 +2061,7 @@
         function recalculateDialsFromDOM(autoSave = true) {
             const container = document.getElementById('epg-container');
             if (!container) return;
+            const searchVal = document.getElementById('epg-search')?.value.trim() || '';
             const cards = Array.from(container.querySelectorAll('.channel-epg-card'));
             const newFavs = [];
             cards.forEach((card, idx) => {
@@ -2057,7 +2076,7 @@
                 if (slug && !newFavs.includes(slug)) newFavs.push(slug);
             });
 
-            if (newFavs.length > 0 && currentMainTab === 'fav') {
+            if (newFavs.length > 0 && currentMainTab === 'fav' && !searchVal) {
                 localStorage.setItem('epg_favorites', JSON.stringify(newFavs));
                 const favBadge = document.getElementById('fav-count-badge');
                 if (favBadge) favBadge.textContent = newFavs.length;
@@ -2067,21 +2086,155 @@
             }
         }
 
-        function sortFavoritesAlphabetically() {
-            const container = document.getElementById('epg-container');
-            if (!container) return;
-            const cards = Array.from(container.querySelectorAll('.channel-epg-card'));
-            if (cards.length <= 1) return;
+        let currentSortMode = 'none'; // 'az' | 'pop'
+        let currentAzDirection = 'none'; // 'asc' | 'desc'
+        let isSortingPopularity = false;
 
-            cards.sort((a, b) => {
-                const nameA = a.dataset.channelName || '';
-                const nameB = b.dataset.channelName || '';
-                return nameA.localeCompare(nameB, 'es', { sensitivity: 'base', numeric: true });
+        function updateSortButtonsUI() {
+            const btnAz = document.getElementById('btn-sort-az');
+            const labelAz = document.getElementById('btn-sort-az-label');
+            const btnPop = document.getElementById('btn-sort-pop');
+
+            if (btnAz) {
+                if (currentSortMode === 'az') {
+                    btnAz.classList.add('active');
+                    if (labelAz) labelAz.textContent = (currentAzDirection === 'asc' ? 'A-Z ↑' : 'Z-A ↓');
+                } else {
+                    btnAz.classList.remove('active');
+                    if (labelAz) labelAz.textContent = 'A-Z';
+                }
+            }
+
+            if (btnPop) {
+                if (currentSortMode === 'pop') {
+                    btnPop.classList.add('active');
+                } else {
+                    btnPop.classList.remove('active');
+                }
+            }
+        }
+
+        function sortFavoritesAlphabetically() {
+            let favs = getFavoriteChannels();
+            if (!favs || favs.length <= 1) {
+                showToast('No hay suficientes favoritos para ordenar', 'info');
+                return;
+            }
+
+            currentAzDirection = (currentAzDirection === 'asc') ? 'desc' : 'asc';
+            currentSortMode = 'az';
+
+            const getChanName = (favId) => {
+                const favSlug = toCanonicalSlug(favId);
+                const chan = epgChannels.find(c => c.id === favId || toCanonicalSlug(c.name) === favSlug || toCanonicalSlug(c.id) === favSlug);
+                return chan ? (chan.name || chan.id) : favId;
+            };
+
+            favs.sort((a, b) => {
+                const nameA = getChanName(a);
+                const nameB = getChanName(b);
+                const cmp = nameA.localeCompare(nameB, 'es', { sensitivity: 'base', numeric: true });
+                return (currentAzDirection === 'asc') ? cmp : -cmp;
             });
 
-            cards.forEach(card => container.appendChild(card));
-            recalculateDialsFromDOM(true);
-            showToast('🔤 Ordenados alfabéticamente (A-Z)', 'success');
+            localStorage.setItem('epg_favorites', JSON.stringify(favs));
+            syncFavoritesWithServer(favs);
+            renderEpg();
+            updateSortButtonsUI();
+
+            const orderText = currentAzDirection === 'asc' ? 'A-Z (Ascendente)' : 'Z-A (Descendente)';
+            showToast(`🔤 Favoritos ordenados: ${orderText}`, 'success');
+        }
+
+        async function sortByPopularity() {
+            if (isSortingPopularity) return;
+            const btnPop = document.getElementById('btn-sort-pop');
+            const iconPop = document.getElementById('btn-sort-pop-icon');
+            const labelPop = document.getElementById('btn-sort-pop-label');
+
+            let favs = getFavoriteChannels();
+            if (!favs || favs.length <= 1) {
+                showToast('No hay suficientes favoritos para ordenar', 'info');
+                return;
+            }
+
+            isSortingPopularity = true;
+            if (btnPop) btnPop.style.opacity = '0.7';
+            if (labelPop) labelPop.textContent = 'Evaluando...';
+            if (iconPop) iconPop.textContent = '⏳';
+
+            try {
+                const resp = await fetch('/epg?action=get_channels_popularity', {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                const popMap = (data && data.channels) ? data.channels : {};
+
+                currentSortMode = 'pop';
+                currentAzDirection = 'none';
+
+                const getPopData = (favId) => {
+                    const favSlug = toCanonicalSlug(favId);
+                    if (popMap[favId]) return popMap[favId];
+                    if (popMap[favSlug]) return popMap[favSlug];
+                    const chan = epgChannels.find(c => c.id === favId || toCanonicalSlug(c.name) === favSlug || toCanonicalSlug(c.id) === favSlug);
+                    if (chan) {
+                        const chanSlug = toCanonicalSlug(chan.name || chan.id);
+                        if (popMap[chan.name]) return popMap[chan.name];
+                        if (popMap[chan.id]) return popMap[chan.id];
+                        if (popMap[chanSlug]) return popMap[chanSlug];
+                    }
+                    return { has_active_source: false, score: -1000.0, peers: 0 };
+                };
+
+                favs.sort((a, b) => {
+                    const dataA = getPopData(a);
+                    const dataB = getPopData(b);
+
+                    // 1. Canales con fuentes activas van primero (candidato online y saludable)
+                    const activeA = Boolean(dataA.has_active_source && dataA.score > -500);
+                    const activeB = Boolean(dataB.has_active_source && dataB.score > -500);
+                    if (activeA !== activeB) {
+                        return activeB ? 1 : -1;
+                    }
+
+                    // 2. Puntuación de StreamScorer
+                    const scoreA = Number(dataA.score) || -1000;
+                    const scoreB = Number(dataB.score) || -1000;
+                    if (Math.abs(scoreB - scoreA) >= 1.0) {
+                        return scoreB - scoreA;
+                    }
+
+                    // 3. Peers activos
+                    const peersA = Number(dataA.peers) || 0;
+                    const peersB = Number(dataB.peers) || 0;
+                    if (peersB !== peersA) {
+                        return peersB - peersA;
+                    }
+
+                    // 4. Alfabetico como desempate
+                    const nameA = a.toString();
+                    const nameB = b.toString();
+                    return nameA.localeCompare(nameB, 'es', { sensitivity: 'base', numeric: true });
+                });
+
+                localStorage.setItem('epg_favorites', JSON.stringify(favs));
+                syncFavoritesWithServer(favs);
+                renderEpg();
+                updateSortButtonsUI();
+
+                showToast('🔥 Favoritos ordenados por popularidad (peers y salud de stream)', 'success');
+            } catch (err) {
+                console.error('Error al ordenar por popularidad:', err);
+                showToast('⚠ Error al evaluar popularidad de canales', 'error');
+            } finally {
+                isSortingPopularity = false;
+                if (btnPop) btnPop.style.opacity = '';
+                if (labelPop) labelPop.textContent = 'Popularidad';
+                if (iconPop) iconPop.textContent = '🔥';
+            }
         }
 
         function saveCurrentFavoritesOrder() {

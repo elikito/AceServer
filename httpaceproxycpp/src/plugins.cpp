@@ -1,6 +1,7 @@
 #include "httpaceproxycpp/plugins.hpp"
 #include "httpaceproxycpp/proxy.hpp"
 #include "httpaceproxycpp/favorites_worker.hpp"
+#include "httpaceproxycpp/stream_scorer.hpp"
 #include "httpaceproxycpp/util.hpp"
 
 #include <algorithm>
@@ -1333,6 +1334,107 @@ public:
                 res_obj["rule"] = pats.empty() ? "" : pats[0];
             }
             Json res = res_obj;
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
+            return true;
+        } else if (action == "get_channels_popularity" || action == "popularity") {
+            // v09.09.03: Evalúa la popularidad y salud del candidato ganador (Top 1 CID) de los canales
+            std::vector<std::string> req_channels;
+            auto q_chans = query_get(ctx.query, "channels");
+            if (q_chans.empty()) q_chans = query_get(ctx.query, "slugs");
+            if (!q_chans.empty()) {
+                std::stringstream ss(q_chans);
+                std::string item;
+                while (std::getline(ss, item, ',')) {
+                    item = trim(item);
+                    if (!item.empty()) req_channels.push_back(item);
+                }
+            } else if (!ctx.request.body.empty()) {
+                try {
+                    auto j = Json::parse(ctx.request.body);
+                    if (j.is_array()) {
+                        for (const auto& el : j.as_array()) {
+                            if (el.is_string() && !el.as_string().empty()) {
+                                req_channels.push_back(el.as_string());
+                            }
+                        }
+                    } else if (j.is_object() && j.contains("channels") && j["channels"].is_array()) {
+                        for (const auto& el : j["channels"].as_array()) {
+                            if (el.is_string() && !el.as_string().empty()) {
+                                req_channels.push_back(el.as_string());
+                            }
+                        }
+                    }
+                } catch (...) {}
+            }
+            if (req_channels.empty()) {
+                req_channels = proxy_.get_epg_favorites();
+            }
+
+            Json::object pop_map;
+            for (const auto& ch_name : req_channels) {
+                auto slug = canonical_slug(ch_name);
+                auto candidates = proxy_.find_candidates_for_channel(slug.empty() ? ch_name : slug);
+                StreamScorer::rank_candidates(candidates);
+
+                bool has_active = false;
+                std::string top_cid = "";
+                double score = -1000.0;
+                int peers = 0;
+                std::string health_str = "OFFLINE";
+                std::string quality_str = "unknown";
+
+                if (!candidates.empty()) {
+                    const auto& top = candidates.front();
+                    top_cid = top.content_id;
+                    score = top.score;
+                    peers = top.peers;
+                    switch (top.health) {
+                        case ChannelHealth::ONLINE:    health_str = "ONLINE"; break;
+                        case ChannelHealth::LOW_PEERS: health_str = "LOW_PEERS"; break;
+                        case ChannelHealth::OFFLINE:   health_str = "OFFLINE"; break;
+                        case ChannelHealth::BLOCKED:   health_str = "BLOCKED"; break;
+                        case ChannelHealth::ERROR:     health_str = "ERROR"; break;
+                        case ChannelHealth::PENDING:   health_str = "PENDING"; break;
+                        default:                       health_str = "UNKNOWN"; break;
+                    }
+                    switch (top.quality) {
+                        case StreamQuality::UHD_4K:   quality_str = "4k"; break;
+                        case StreamQuality::FHD_1080: quality_str = "1080p"; break;
+                        case StreamQuality::HD_720:   quality_str = "720p"; break;
+                        case StreamQuality::SD:       quality_str = "sd"; break;
+                        default:                      quality_str = "unknown"; break;
+                    }
+                    if (!top.is_disabled && top.score > -500.0 &&
+                        top.health != ChannelHealth::OFFLINE &&
+                        top.health != ChannelHealth::BLOCKED &&
+                        top.health != ChannelHealth::ERROR) {
+                        has_active = true;
+                    }
+                }
+
+                Json::object ch_data{
+                    {"slug", slug},
+                    {"channel", ch_name},
+                    {"top_cid", top_cid},
+                    {"score", score},
+                    {"peers", static_cast<double>(peers)},
+                    {"health", health_str},
+                    {"quality", quality_str},
+                    {"has_active_source", has_active},
+                    {"candidates_count", static_cast<double>(candidates.size())}
+                };
+                pop_map[ch_name] = ch_data;
+                if (!slug.empty() && slug != ch_name) {
+                    pop_map[slug] = ch_data;
+                }
+            }
+
+            Json res = Json::object{
+                {"status", "success"},
+                {"action", "get_channels_popularity"},
+                {"count", static_cast<double>(req_channels.size())},
+                {"channels", Json(pop_map)}
+            };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;
         } else if (action == "set_channel_filter" || action == "save_channel_filter") {

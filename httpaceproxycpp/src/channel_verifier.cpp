@@ -472,10 +472,32 @@ VerifyResult ChannelVerifier::run_pipeline(const std::string& content_id) {
         command_url = session.command_url;
 
         // -----------------------------------------------------------------------
-        // FASE 3 + 4: Observación DHT / swarm y lectura de bitrate
+        // FASE 3: Observación DHT / swarm y lectura de bitrate
         // -----------------------------------------------------------------------
         phase_observe(session.stat_url, result);
-        // phase_reached actualizado internamente hasta 4
+        result.phase_reached = 3;
+
+        // -----------------------------------------------------------------------
+        // FASE 4: Pre-flight Probe efímero real (timeout estricto 4s)
+        // Valida que el motor resuelva infohash y entregue paquetes TS (0x47)
+        // -----------------------------------------------------------------------
+        std::string play_target = session.playback_url;
+        if (play_target.empty()) {
+            play_target = engine_base_url() + "/ace/getstream?id=" + content_id;
+        }
+
+        bool probe_ok = phase_preflight(play_target, result);
+        if (probe_ok) {
+            result.phase_reached = 4;
+            result.health = ChannelHealth::ONLINE;
+            result.status_text = "dl";
+            if (result.peers < 2) result.peers = 2;
+        } else {
+            result.health = ChannelHealth::BLOCKED;
+            if (result.error.empty()) {
+                result.error = "Pre-flight probe falló: timeout 4s sin datos TS 0x47 o Cannot retrieve torrent";
+            }
+        }
 
     } catch (const std::runtime_error& e) {
         // Error en handshake o resolución de torrent.
@@ -581,22 +603,36 @@ ChannelVerifier::SessionUrls ChannelVerifier::phase_handshake(const std::string&
     // Buscar respuesta bajo la clave "response" (estructura getstream).
     const Json& response_node = j.contains("response") ? j["response"] : j;
 
-    const std::string stat_url    = response_node["stat_url"].as_string();
-    const std::string command_url = response_node["command_url"].as_string();
+    const std::string stat_url     = response_node["stat_url"].as_string();
+    const std::string command_url  = response_node["command_url"].as_string();
+    const std::string playback_url = response_node["playback_url"].as_string();
 
     // Validar que no contengan el mensaje de error conocido.
     auto contains_torrent_error = [](const std::string& s) {
-        return s.find("Cannot retrieve torrent") != std::string::npos;
+        return s.find("Cannot retrieve torrent") != std::string::npos ||
+               s.find("auth_error") != std::string::npos;
     };
 
     if (stat_url.empty() || contains_torrent_error(stat_url)) {
-        throw std::runtime_error("Fase2 stat_url inválida: " + stat_url.substr(0, 80));
+        throw std::runtime_error("Fase2 stat_url inválida o bloqueada: " + stat_url.substr(0, 80));
     }
-    if (command_url.empty()) {
-        throw std::runtime_error("Fase2 command_url ausente");
+    if (command_url.empty() || contains_torrent_error(command_url)) {
+        throw std::runtime_error("Fase2 command_url ausente o con error");
     }
 
-    return SessionUrls{stat_url, command_url};
+    std::string current_host;
+    int current_port = 6878;
+    {
+        std::lock_guard<std::mutex> lk(engine_mutex_);
+        current_host = ace_host_;
+        current_port = ace_http_port_;
+    }
+
+    std::string rew_stat = rewrite_url_host_port(stat_url, current_host, std::to_string(current_port));
+    std::string rew_cmd = rewrite_url_host_port(command_url, current_host, std::to_string(current_port));
+    std::string rew_play = playback_url.empty() ? "" : rewrite_url_host_port(playback_url, current_host, std::to_string(current_port));
+
+    return SessionUrls{rew_stat, rew_cmd, rew_play};
 }
 
 // ---------------------------------------------------------------------------
@@ -659,6 +695,66 @@ void ChannelVerifier::phase_observe(const std::string& stat_url, VerifyResult& r
     result.status_text = last_status;
     result.health      = classify(best_peers, best_speed, last_status,
                                   speed_threshold_.load());
+}
+
+// ---------------------------------------------------------------------------
+// Fase 4: Pre-flight Probe efímero real (4 segundos de timeout estricto)
+// ---------------------------------------------------------------------------
+
+bool ChannelVerifier::phase_preflight(const std::string& playback_url, VerifyResult& result) {
+    if (playback_url.empty()) return false;
+
+    using Clock = std::chrono::steady_clock;
+    auto start_time = Clock::now();
+    std::atomic<bool> cancel{false};
+    std::atomic<bool> ts_valid{false};
+
+    // Timeout estricto de 4 segundos
+    std::thread timer_thread([&cancel, start_time]() {
+        while (!cancel.load()) {
+            if (Clock::now() - start_time >= std::chrono::milliseconds(4000)) {
+                cancel.store(true);
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(40));
+        }
+    });
+
+    try {
+        http_client_.stream(playback_url, [&](const char* data, std::size_t size) -> bool {
+            if (data && size > 0) {
+                // Comprobar si el motor devolvió mensaje de error de texto
+                std::string peek(data, std::min<std::size_t>(size, 256));
+                if (peek.find("Cannot retrieve torrent") != std::string::npos ||
+                    peek.find("auth_error") != std::string::npos ||
+                    (peek.find("error") != std::string::npos && peek.find("failed") != std::string::npos)) {
+                    result.error = "Motor AceStream arrojó error en pre-flight: " + peek.substr(0, 80);
+                    return false;
+                }
+
+                // Comprobar presencia del byte de sincronismo Transport Stream (0x47)
+                for (std::size_t i = 0; i < std::min<std::size_t>(size, 188); ++i) {
+                    if (static_cast<unsigned char>(data[i]) == 0x47) {
+                        ts_valid.store(true);
+                        break;
+                    }
+                }
+            }
+            // Abortar inmediatamente tras el primer bloque de datos para no saturar el motor
+            return false;
+        }, cancel, 4, 4, 2048);
+    } catch (const std::exception& ex) {
+        result.error = std::string("Excepción en pre-flight probe: ") + ex.what();
+    } catch (...) {
+        result.error = "Fallo desconocido en pre-flight probe";
+    }
+
+    cancel.store(true);
+    if (timer_thread.joinable()) {
+        timer_thread.join();
+    }
+
+    return ts_valid.load();
 }
 
 // ---------------------------------------------------------------------------

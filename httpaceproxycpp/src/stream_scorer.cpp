@@ -194,11 +194,11 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
         return -1000.0;
     }
 
-    // Penalización total si está marcado como caído/erróneo
+    // Penalización total si está marcado como caído/erróneo o bloqueado por ISP / pre-flight
     if (candidate.health == ChannelHealth::OFFLINE ||
         candidate.health == ChannelHealth::ERROR ||
         candidate.health == ChannelHealth::BLOCKED) {
-        return -100.0;
+        return -1000.0;
     }
 
     double score = 0.0;

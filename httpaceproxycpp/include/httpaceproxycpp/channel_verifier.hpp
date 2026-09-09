@@ -57,6 +57,7 @@ inline constexpr long long kDefaultSpeedThreshold = 102400LL;
 // Concurrencia máxima del Worker Pool.
 // ---------------------------------------------------------------------------
 inline constexpr int kDefaultMaxWorkers = 2;
+inline constexpr int kDefaultCacheAgeSec = 90;
 
 // ---------------------------------------------------------------------------
 // Enum de estado de salud de un Content ID.
@@ -131,7 +132,7 @@ public:
     // ------------------------------------------------------------------
     VerifyResult verify_sync(const std::string& content_id,
                              int timeout_ms = 10000,
-                             int max_cache_age_s = 0);
+                             int max_cache_age_s = kDefaultCacheAgeSec);
 
     // ------------------------------------------------------------------
     // Encola una verificación asíncrona.
@@ -185,15 +186,19 @@ private:
     struct SessionUrls {
         std::string stat_url;
         std::string command_url;
+        std::string playback_url;
     };
 
     /// Fase 1+2: Handshake + resolución del torrent.
     /// Retorna SessionUrls si OK, lanza std::runtime_error en fallo.
     SessionUrls phase_handshake(const std::string& content_id);
 
-    /// Fase 3+4: Poll DHT/swarm + lectura de bitrate.
+    /// Fase 3: Poll DHT/swarm + lectura de bitrate.
     /// Modifica result en función de lo observado.
     void phase_observe(const std::string& stat_url, VerifyResult& result);
+
+    /// Fase 4: Pre-flight Probe efímero con timeout de 4s comprobando paquetes TS (0x47).
+    bool phase_preflight(const std::string& playback_url, VerifyResult& result);
 
     /// Cierre obligatorio: GET command_url?method=stop  (timeout 1.5s).
     void stop_session(const std::string& command_url) noexcept;

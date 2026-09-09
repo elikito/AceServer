@@ -88,18 +88,18 @@ void FavoritesHealthWorker::probe_channel(const std::string& slug) {
 
     StreamScorer::rank_candidates(candidates);
 
-    // Sondear los mejores candidatos del canal (máximo 3 para no sobrecargar el motor)
+    // Sondear los mejores candidatos del canal (Top 5 con Pre-flight Probe real)
     size_t count = 0;
     for (const auto& cand : candidates) {
         if (!running_) break;
         if (cand.is_disabled) continue;
-        if (count >= 3) break;
+        if (count >= 5) break;
 
         // Si ya está activo en vivo dentro de BroadcastManager, está confirmado online
         if (cand.is_active_stream) continue;
 
-        // Verificación de salud (timeout 3000ms, max_cache_age 300s = 5min para evitar re-sondeo innecesario)
-        verifier_.verify_sync(cand.content_id, 3000, 300);
+        // Verificación de salud con Pre-flight Probe (timeout 4500ms, max_cache_age 90s para proteger motor)
+        verifier_.verify_sync(cand.content_id, 4500, 90);
         count++;
 
         // Retardo estricto de 250 ms entre consultas para proteger el motor AceStream de saturación

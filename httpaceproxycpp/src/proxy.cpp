@@ -2259,11 +2259,89 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         );
         client->auto_slug = ctx.auto_slug;
         client->req_quality = ctx.req_quality;
+        client->content_id = infohash;
+        client->current_broadcast = broadcast;
         broadcast->start_once();
 
-        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (TIMEOUT 30s)
+        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS
+        // Para canales virtuales (/auto/<slug>), conmutación rápida en los primeros 5 segundos con auto-democión
         std::vector<char> first_chunk;
-        if (!client->queue->pop_timeout(first_chunk, std::chrono::seconds(30)) || first_chunk.empty()) {
+        bool initial_ok = false;
+
+        if (!ctx.auto_slug.empty()) {
+            int attempts = 0;
+            while (attempts < 5) {
+                attempts++;
+                if (client->queue->pop_timeout(first_chunk, std::chrono::seconds(5)) && !first_chunk.empty()) {
+                    initial_ok = true;
+                    break;
+                }
+
+                // Error o timeout sin datos en los primeros 5 segundos:
+                log_line("WARNING", "[AUTO-DEMOCIÓN] Error o sin datos en 5s para CID '" + req_value +
+                         "' en canal '" + ctx.auto_slug + "'. Penalizando a -1000.0 y conmutando...");
+                add_bunker_log("[AUTO-DEMOCIÓN] Cannot retrieve torrent / timeout 5s en CID " + req_value +
+                               " (canal: " + ctx.auto_slug + ") -> degradado a -1000.0");
+
+                VerifyResult vr;
+                vr.content_id = req_value;
+                vr.health = ChannelHealth::BLOCKED;
+                vr.error = "Cannot retrieve torrent o timeout de arranque (<=5s)";
+                vr.checked_at = unix_time();
+                channel_verifier_.update_state(vr);
+
+                // Desacoplar del broadcast fallido
+                broadcast->remove_client(client);
+                broadcasts_.remove_if_empty(infohash);
+
+                // Buscar el siguiente mejor candidato
+                auto candidates = find_candidates_for_channel(ctx.auto_slug);
+                StreamScorer::rank_candidates(candidates);
+
+                std::string next_cid;
+                std::string next_name;
+                for (const auto& c : candidates) {
+                    if (c.content_id != req_value && !c.is_disabled && !is_candidate_disabled(c.content_id) && c.score > -900.0) {
+                        next_cid = c.content_id;
+                        next_name = c.name;
+                        break;
+                    }
+                }
+
+                if (next_cid.empty()) {
+                    log_line("ERROR", "[AUTO-DEMOCIÓN] No quedan más candidatos viables para canal '" + ctx.auto_slug + "'");
+                    break;
+                }
+
+                log_line("INFO", "[AUTO-DEMOCIÓN] Conmutando canal '" + ctx.auto_slug + "' hacia siguiente candidato: " + next_cid);
+                req_value = next_cid;
+                infohash = next_cid;
+                params["content_id"] = next_cid;
+                if (!next_name.empty()) channel_name = next_name;
+
+                broadcast = broadcasts_.get_or_create(infohash, params);
+                client = broadcast->add_client(
+                    ctx.request.header("x-forwarded-for", ctx.request.client_ip),
+                    channel_name,
+                    epg_icon,
+                    user_agent,
+                    referer,
+                    full_stream_url,
+                    epg_title,
+                    epg_icon
+                );
+                client->auto_slug = ctx.auto_slug;
+                client->req_quality = ctx.req_quality;
+                client->content_id = infohash;
+                client->current_broadcast = broadcast;
+                broadcast->start_once();
+            }
+        } else {
+            // Petición directa a CID específico: esperar hasta 30s
+            initial_ok = client->queue->pop_timeout(first_chunk, std::chrono::seconds(30)) && !first_chunk.empty();
+        }
+
+        if (!initial_ok || first_chunk.empty()) {
             broadcast->remove_client(client);
             broadcasts_.remove_if_empty(infohash);
             add_bunker_log("[ERROR REPRODUCTOR] Canal offline / Cannot retrieve torrent para ID: " + req_value);
@@ -2350,6 +2428,24 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
 
                     auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now() - empty_start).count();
+
+                    if (!client->auto_slug.empty() && elapsed_sec >= 5) {
+                        // En canales virtuales, si el stream se corta por más de 5s, auto-demover CID y conmutar
+                        auto cur_b = client->current_broadcast.lock();
+                        std::string cur_h = cur_b ? cur_b->infohash() : infohash;
+                        VerifyResult vr;
+                        vr.content_id = cur_h;
+                        vr.health = ChannelHealth::BLOCKED;
+                        vr.error = "Corte de stream > 5s en canal virtual";
+                        vr.checked_at = unix_time();
+                        channel_verifier_.update_state(vr);
+
+                        if (cur_b && check_and_upgrade_stream(client, cur_b, cur_h, params)) {
+                            empty_timer_running = false;
+                            empty_start = std::chrono::steady_clock::now();
+                            continue;
+                        }
+                    }
 
                     if (ace_active && elapsed_sec < 45) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(50));
