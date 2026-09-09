@@ -65,6 +65,11 @@ void ChunkQueue::close() {
     cv_space_.notify_all();
 }
 
+bool ChunkQueue::is_closed() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return closed_;
+}
+
 std::size_t ChunkQueue::size() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return chunks_.size();
@@ -493,23 +498,8 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
                 it = broadcasts_.erase(it);
                 continue;
             }
-            auto cls = broadcast->clients();
-            bool has_active_reading_client = false;
-            for (const auto& cl : cls) {
-                if (cl) {
-                    auto idle_time = now - cl->last_activity.load();
-                    if (idle_time > max_idle_seconds) {
-                        log_line("INFO", "[" + broadcast->infohash().substr(0, std::min<std::size_t>(8, broadcast->infohash().size())) +
-                                         "] Reaper: cerrando cliente inactivo IP " + cl->client_ip + " (" + std::to_string(idle_time) + "s inactivo)");
-                        broadcast->remove_client(cl);
-                    } else {
-                        has_active_reading_client = true;
-                    }
-                }
-            }
-
             int subs = broadcast->get_subscribers();
-            if (subs <= 0 || !has_active_reading_client || broadcast->client_count() == 0) {
+            if (subs <= 0 || broadcast->client_count() == 0) {
                 auto zero_time = broadcast->get_zero_subscribers_time();
                 if (zero_time == 0) {
                     // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout

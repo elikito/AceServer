@@ -2263,75 +2263,64 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         client->current_broadcast = broadcast;
         broadcast->start_once();
 
-        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS
-        // Para canales virtuales (/auto/<slug>), margen de prebuffering de 25 segundos antes de conmutar
+        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (PIPE TRANSPARENTE)
+        // Mientras el reproductor mantenga la conexión TCP abierta, esperar datos sin temporizadores destructivos
         std::vector<char> first_chunk;
         bool initial_ok = false;
 
-        if (!ctx.auto_slug.empty()) {
-            int attempts = 0;
-            while (attempts < 5) {
-                attempts++;
-                if (client->queue->pop_timeout(first_chunk, std::chrono::seconds(25)) && !first_chunk.empty()) {
-                    initial_ok = true;
-                    break;
-                }
+        while (ctx.connection.is_connected()) {
+            if (client->queue->pop_timeout(first_chunk, std::chrono::milliseconds(100)) && !first_chunk.empty()) {
+                initial_ok = true;
+                break;
+            }
+            if (client->queue->is_closed()) {
+                // El motor P2P cerró la emisión o reportó error
+                if (!ctx.auto_slug.empty()) {
+                    // Si es un canal virtual, probar el siguiente candidato disponible
+                    broadcast->remove_client(client);
+                    broadcasts_.remove_if_empty(infohash);
 
-                // Timeout sin datos tras 25 segundos completos de prebuffering:
-                log_line("WARNING", "[STREAM-FAILOVER] Sin datos en 25s para CID '" + req_value +
-                         "' en canal '" + ctx.auto_slug + "'. Conmutando a siguiente candidato sin bloquear CID...");
-                add_bunker_log("[STREAM-FAILOVER] Timeout de arranque (25s) en CID " + req_value +
-                               " (canal: " + ctx.auto_slug + ") -> conmutando al siguiente candidato");
+                    auto candidates = find_candidates_for_channel(ctx.auto_slug);
+                    StreamScorer::rank_candidates(candidates);
 
-                // Desacoplar del broadcast fallido
-                broadcast->remove_client(client);
-                broadcasts_.remove_if_empty(infohash);
+                    std::string next_cid;
+                    std::string next_name;
+                    for (const auto& c : candidates) {
+                        if (c.content_id != req_value && !c.is_disabled && !is_candidate_disabled(c.content_id)) {
+                            next_cid = c.content_id;
+                            next_name = c.name;
+                            break;
+                        }
+                    }
 
-                // Buscar el siguiente mejor candidato
-                auto candidates = find_candidates_for_channel(ctx.auto_slug);
-                StreamScorer::rank_candidates(candidates);
+                    if (!next_cid.empty()) {
+                        log_line("INFO", "[TRANSPARENT-PROXY] Candidato cerrado por motor en '" + ctx.auto_slug + "', probando: " + next_cid);
+                        req_value = next_cid;
+                        infohash = next_cid;
+                        params["content_id"] = next_cid;
+                        if (!next_name.empty()) channel_name = next_name;
 
-                std::string next_cid;
-                std::string next_name;
-                for (const auto& c : candidates) {
-                    if (c.content_id != req_value && !c.is_disabled && !is_candidate_disabled(c.content_id) && c.score > -900.0) {
-                        next_cid = c.content_id;
-                        next_name = c.name;
-                        break;
+                        broadcast = broadcasts_.get_or_create(infohash, params);
+                        client = broadcast->add_client(
+                            ctx.request.header("x-forwarded-for", ctx.request.client_ip),
+                            channel_name,
+                            epg_icon,
+                            user_agent,
+                            referer,
+                            full_stream_url,
+                            epg_title,
+                            epg_icon
+                        );
+                        client->auto_slug = ctx.auto_slug;
+                        client->req_quality = ctx.req_quality;
+                        client->content_id = infohash;
+                        client->current_broadcast = broadcast;
+                        broadcast->start_once();
+                        continue;
                     }
                 }
-
-                if (next_cid.empty()) {
-                    log_line("ERROR", "[STREAM-FAILOVER] No quedan más candidatos viables para canal '" + ctx.auto_slug + "'");
-                    break;
-                }
-
-                log_line("INFO", "[STREAM-FAILOVER] Conmutando canal '" + ctx.auto_slug + "' hacia siguiente candidato: " + next_cid);
-                req_value = next_cid;
-                infohash = next_cid;
-                params["content_id"] = next_cid;
-                if (!next_name.empty()) channel_name = next_name;
-
-                broadcast = broadcasts_.get_or_create(infohash, params);
-                client = broadcast->add_client(
-                    ctx.request.header("x-forwarded-for", ctx.request.client_ip),
-                    channel_name,
-                    epg_icon,
-                    user_agent,
-                    referer,
-                    full_stream_url,
-                    epg_title,
-                    epg_icon
-                );
-                client->auto_slug = ctx.auto_slug;
-                client->req_quality = ctx.req_quality;
-                client->content_id = infohash;
-                client->current_broadcast = broadcast;
-                broadcast->start_once();
+                break;
             }
-        } else {
-            // Petición directa a CID específico: esperar hasta 30s
-            initial_ok = client->queue->pop_timeout(first_chunk, std::chrono::seconds(30)) && !first_chunk.empty();
         }
 
         if (!initial_ok || first_chunk.empty()) {
@@ -2373,23 +2362,11 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         }
         client->last_activity.store(unix_time(), std::memory_order_relaxed);
 
-        // 4. CONTINUAR STREAMING HABITUAL CON LOS SIGUIENTES CHUNKS Y MARGEN DE GRACIA DE 45s
+        // 4. BUCLE TRANSPARENTE DE STREAMING
         if (ok) {
             std::vector<char> chunk;
-            auto empty_start = std::chrono::steady_clock::now();
-            bool empty_timer_running = false;
-            auto last_upgrader_check = unix_time();
-
             while (true) {
-                // v09.09.01 — Comprobación periódica (cada 35s) de Dynamic Stream Upgrader
-                auto now = unix_time();
-                if (!client->auto_slug.empty() && (now - last_upgrader_check) >= 35) {
-                    last_upgrader_check = now;
-                    check_and_upgrade_stream(client, broadcast, infohash, params);
-                }
-
                 if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50))) {
-                    empty_timer_running = false;
                     if (chunked) {
                         std::ostringstream prefix;
                         prefix << std::hex << chunk.size() << "\r\n";
@@ -2399,56 +2376,15 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                     } else {
                         ok = ctx.connection.send_all(chunk.data(), chunk.size());
                     }
-                    if (!ok) break;
+                    if (!ok) break; // Fallo de socket (EPIPE / ECONNRESET)
                     client->last_activity.store(unix_time(), std::memory_order_relaxed);
                 } else {
-                    // La cola por cliente está vacía temporalmente.
-                    if (!empty_timer_running) {
-                        empty_timer_running = true;
-                        empty_start = std::chrono::steady_clock::now();
-                    }
-
-                    // Verificar si AceClient sigue en estado activo/descargando
-                    auto ace = client->ace.lock();
-                    bool ace_active = false;
-                    if (ace) {
-                        auto st_map = ace->status(1);
-                        std::string st = st_map.contains("status") ? lower(st_map["status"]) : "";
-                        if (st == "dl" || st == "main:dl" || st == "buf" || st == "prebuf" || st == "wait" || st == "check" || ace->alive()) {
-                            ace_active = true;
-                        }
-                    }
-
-                    auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now() - empty_start).count();
-
-                    if (!client->auto_slug.empty() && elapsed_sec >= 20) {
-                        // En canales virtuales, si el stream no recibe datos por más de 20s, intentar failover suave
-                        auto cur_b = client->current_broadcast.lock();
-                        std::string cur_h = cur_b ? cur_b->infohash() : infohash;
-
-                        if (cur_b && check_and_upgrade_stream(client, cur_b, cur_h, params)) {
-                            empty_timer_running = false;
-                            empty_start = std::chrono::steady_clock::now();
-                            continue;
-                        }
-                    }
-
-                    // Tolerancia del Reaper a micro-pausas:
-                    // Si el socket del cliente sigue conectado y el motor AceStream sigue vivo o no se han alcanzado 60s, no cortar
-                    bool client_connected = ctx.connection.is_connected();
-                    if (!client_connected) {
-                        // Cliente cerró la conexión TCP (EOF o ECONNRESET)
+                    // Micro-pausa de buffer del motor P2P:
+                    // El socket solo se cierra si read/write devuelve 0 o error irrecuperable, o la cola se cerró
+                    if (!ctx.connection.is_connected() || client->queue->is_closed()) {
                         break;
                     }
-
-                    if (elapsed_sec < 60) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                        continue;
-                    } else {
-                        // Se superaron 60 segundos consecutivos de inactividad total sin datos
-                        break;
-                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 }
             }
         }
@@ -4028,107 +3964,13 @@ void Proxy::save_epg_favorites() {
     }
 }
 
-bool Proxy::check_and_upgrade_stream(const std::shared_ptr<StreamClient>& client,
-                                      std::shared_ptr<Broadcast>& current_broadcast,
-                                      std::string& current_infohash,
-                                      const std::map<std::string, std::string>& params) {
-    if (!client || !current_broadcast || client->auto_slug.empty()) return false;
-
-    // 1. Obtener candidatos actualizados para el canal virtual
-    auto candidates = find_candidates_for_channel(client->auto_slug);
-    if (candidates.empty()) return false;
-    StreamScorer::rank_candidates(candidates);
-
-    // Filtrar deshabilitados
-    std::vector<ChannelCandidate> valid_cands;
-    for (const auto& c : candidates) {
-        if (!c.is_disabled && !is_candidate_disabled(c.content_id)) {
-            valid_cands.push_back(c);
-        }
-    }
-    if (valid_cands.empty()) return false;
-
-    // Identificar el candidato actual
-    const ChannelCandidate* current_cand = nullptr;
-    for (const auto& c : valid_cands) {
-        if (c.content_id == current_infohash) {
-            current_cand = &c;
-            break;
-        }
-    }
-
-    const auto& best_cand = valid_cands[0];
-    if (best_cand.content_id == current_infohash) {
-        return false;
-    }
-
-    // 2. Comprobar condiciones de conmutación:
-    // a) El stream actual cae por debajo del umbral de calidad requerido (bitrate < 450 KB/s durante 20s)
-    bool degraded = current_broadcast->is_bitrate_degraded(20);
-
-    // b) Aparece un candidato activo con mayor resolución/bitrate (ej. 1080p estable frente a 720p/SD en curso)
-    // ESTABILIZACIÓN: Si la sesión tiene menos de 60s de vida, prohibir conmutación en caliente por mejora teórica.
-    // Solo permitir conmutación si el stream está activamente degradado (corte de datos / buffer starving).
-    auto session_age = unix_time() - client->connection_time;
-    bool better_quality = false;
-    if (session_age >= 60 && !degraded) {
-        if (current_cand) {
-            if (static_cast<int>(best_cand.quality) > static_cast<int>(current_cand->quality) &&
-                (best_cand.is_active_stream || best_cand.health == ChannelHealth::ONLINE || best_cand.health == ChannelHealth::LOW_PEERS)) {
-                better_quality = true;
-            }
-        } else {
-            better_quality = true;
-        }
-    }
-
-    if (!degraded && !better_quality) {
-        return false;
-    }
-
-    log_line("INFO", "[DYNAMIC UPGRADER] Condición detectada para canal '" + client->auto_slug +
-             "' (" + (degraded ? "bitrate degradado < 450 KB/s" : "mejor calidad disponible") +
-             "). Iniciando precarga en background de " + best_cand.content_id.substr(0, std::min<std::size_t>(8, best_cand.content_id.size())) + "...");
-
-    // 3. Iniciar en background la precarga/buffer del nuevo CID en el motor AceStream
-    std::map<std::string, std::string> target_params = params;
-    target_params["content_id"] = best_cand.content_id;
-    target_params["sessionID"] = std::to_string(reinterpret_cast<std::uintptr_t>(client.get())) + "_upg";
-
-    auto new_broadcast = broadcasts_.get_or_create(best_cand.content_id, target_params);
-    new_broadcast->start_once();
-
-    // Esperar hasta 6 segundos a que entregue paquetes TS válidos
-    auto wait_start = std::chrono::steady_clock::now();
-    bool ts_ready = false;
-    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wait_start).count() < 6000) {
-        if (new_broadcast->has_valid_ts_data()) {
-            ts_ready = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
-    if (!ts_ready) {
-        log_line("WARNING", "[DYNAMIC UPGRADER] Candidato " + best_cand.content_id.substr(0, std::min<std::size_t>(8, best_cand.content_id.size())) +
-                 " no entregó paquetes TS válidos en el tiempo límite. Manteniendo stream actual.");
-        return false;
-    }
-
-    // 4. Conmutar el flujo de salida hacia el cliente de forma fluida (seamless handoff a nivel de socket / PAT-PMT)
-    current_broadcast->detach_client_for_migration(client);
-    new_broadcast->attach_migrated_client(client);
-    auto old_hash = current_infohash;
-    current_broadcast = new_broadcast;
-    current_infohash = best_cand.content_id;
-
-    log_line("INFO", "[DYNAMIC UPGRADER] Conmutación seamless completada para canal '" + client->auto_slug +
-             "': " + old_hash.substr(0, std::min<std::size_t>(8, old_hash.size())) + " -> " + current_infohash.substr(0, std::min<std::size_t>(8, current_infohash.size())));
-    add_bunker_log("[DYNAMIC UPGRADER] Stream conmutado en caliente para canal '" + client->auto_slug +
-                   "' de " + old_hash.substr(0, std::min<std::size_t>(8, old_hash.size())) + " a " + current_infohash.substr(0, std::min<std::size_t>(8, current_infohash.size())) +
-                   " (" + (degraded ? "recuperación degradación" : "upgrade resolución") + ")");
-
-    return true;
+bool Proxy::check_and_upgrade_stream(const std::shared_ptr<StreamClient>& /*client*/,
+                                      std::shared_ptr<Broadcast>& /*current_broadcast*/,
+                                      std::string& /*current_infohash*/,
+                                      const std::map<std::string, std::string>& /*params*/) {
+    // El proxy vuelve a su función original: mientras el cliente esté reproduciendo,
+    // NO conmutar el stream en caliente para evitar reseteos de socket o Reaper.
+    return false;
 }
 
 void Proxy::migrate_subscribers(const std::string& old_content_id) {

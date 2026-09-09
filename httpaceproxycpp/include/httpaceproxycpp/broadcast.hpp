@@ -31,6 +31,7 @@ public:
     bool pop(std::vector<char>& chunk);
     bool pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout);
     void close();
+    bool is_closed() const;
     std::size_t size() const;
     std::size_t bytes() const;
 
