@@ -100,6 +100,7 @@ public:
     // v09.09.01 — Safe Reaper & Dynamic Stream Upgrader helpers
     int get_subscribers() const { return subscribers_.load(); }
     std::int64_t get_zero_subscribers_time() const { return zero_subscribers_time_.load(); }
+    void reset_zero_subscribers_time() { zero_subscribers_time_.store(0, std::memory_order_relaxed); }
     bool has_valid_ts_data() const { return total_bytes_received_.load() >= 188; }
     double get_bitrate_kbps();
     bool is_bitrate_degraded(int seconds_threshold = 20);

@@ -536,6 +536,39 @@
             gap: 8px;
         }
 
+        .bunker-console-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bunker-autoscroll-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .bunker-autoscroll-toggle:hover {
+            color: var(--text-color);
+            border-color: #00e5ff;
+        }
+
+        .bunker-autoscroll-toggle input {
+            cursor: pointer;
+            accent-color: #00e5ff;
+            margin: 0;
+        }
+
         .clear-logs-btn {
             background-color: transparent;
             border: 1px solid var(--border-color);
@@ -546,6 +579,9 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .clear-logs-btn:hover {
@@ -554,34 +590,68 @@
             background: rgba(34, 197, 94, 0.08);
         }
 
+        .clear-logs-btn.copied {
+            color: #33d9b2 !important;
+            border-color: #33d9b2 !important;
+            background: rgba(51, 217, 178, 0.15) !important;
+        }
+
         .bunker-console-body {
             background-color: #050507;
             border: 1px solid #161822;
             border-radius: 4px;
             padding: 12px;
-            height: 220px;
+            height: 240px;
             overflow-y: auto;
             font-family: 'Courier New', Courier, monospace;
             font-size: 12px;
             line-height: 1.6;
-            color: #00ff66;
+            color: #70a1ff;
+            scroll-behavior: smooth;
         }
 
         .bunker-console-body .log-line {
             white-space: pre-wrap;
             word-break: break-all;
+            padding: 2px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
         }
 
-        .bunker-console-body .log-line.info {
-            color: #00ff66;
+        .bunker-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
         }
 
-        .bunker-console-body .log-line.warn {
-            color: #ffab00;
+        .bunker-badge.error, .bunker-console-body .log-line.error { color: #ff5252; }
+        .bunker-badge.error { background: rgba(255, 82, 82, 0.15); border: 1px solid rgba(255, 82, 82, 0.3); }
+
+        .bunker-badge.warn, .bunker-console-body .log-line.warn { color: #ffb142; }
+        .bunker-badge.warn { background: rgba(255, 177, 66, 0.15); border: 1px solid rgba(255, 177, 66, 0.3); }
+
+        .bunker-badge.disconnect, .bunker-console-body .log-line.disconnect { color: #ff793f; }
+        .bunker-badge.disconnect { background: rgba(255, 121, 63, 0.15); border: 1px solid rgba(255, 121, 63, 0.3); }
+
+        .bunker-badge.streaming, .bunker-console-body .log-line.streaming { color: #33d9b2; }
+        .bunker-badge.streaming { background: rgba(51, 217, 178, 0.15); border: 1px solid rgba(51, 217, 178, 0.3); }
+
+        .bunker-badge.info, .bunker-console-body .log-line.info { color: #70a1ff; }
+        .bunker-badge.info { background: rgba(112, 161, 255, 0.15); border: 1px solid rgba(112, 161, 255, 0.3); }
+
+        .log-timestamp {
+            color: #636e72;
+            font-size: 11px;
+            flex-shrink: 0;
         }
 
-        .bunker-console-body .log-line.error {
-            color: #ff5252;
+        .log-text {
+            flex-grow: 1;
         }
 
         /* Plugins list */
@@ -1786,10 +1856,17 @@
                     </svg>
                     CONSOLA DE EVENTOS DEL BÚNKER
                 </h3>
-                <button class="clear-logs-btn" onclick="clearBunkerConsole()">Limpiar Consola</button>
+                <div class="bunker-console-actions">
+                    <label class="bunker-autoscroll-toggle" title="Pausa el desplazamiento automático al explorar logs antiguos">
+                        <input type="checkbox" id="bunker-autoscroll" checked onchange="toggleBunkerAutoscroll(this.checked)">
+                        Auto-scroll
+                    </label>
+                    <button id="bunker-copy-btn" class="clear-logs-btn" onclick="copyBunkerLogs()" title="Copiar todos los logs al portapapeles">📋 Copiar Logs</button>
+                    <button class="clear-logs-btn" onclick="clearBunkerConsole()" title="Limpiar buffer visual y en memoria del servidor">🗑️ Limpiar Consola</button>
+                </div>
             </div>
             <div class="bunker-console-body" id="bunker-console-body">
-                <div class="log-line info">[BÚNKER] Inicializando consola de monitoreo en tiempo real...</div>
+                <div class="log-line info"><span class="bunker-badge info">[INFO]</span> <span class="log-text">[BÚNKER] Inicializando consola de monitoreo en tiempo real...</span></div>
             </div>
         </div>
     </div>
@@ -2046,28 +2123,164 @@
         }
 
         let lastLogsCount = 0;
+        let bunkerAutoScroll = true;
+        let bunkerClearedLocal = false;
+
+        function categorizeLog(raw) {
+            const upper = raw.toUpperCase();
+            if (upper.includes('ERROR') || upper.includes('FALL') || upper.includes('OFFLINE') || upper.includes('TIMEOUT') || upper.includes('CAÍDA') || upper.includes('BLOQUEADO')) {
+                return { category: 'error', badge: '[ERROR]' };
+            }
+            if (upper.includes('DESCONEXIÓN') || upper.includes('REAPER') || upper.includes('DETENIENDO') || upper.includes('CERRANDO') || upper.includes('CLOSED')) {
+                return { category: 'disconnect', badge: '[DESCONEXIÓN]' };
+            }
+            if (upper.includes('AVISO') || upper.includes('WARN') || upper.includes('BUFFER') || upper.includes('PEERS BAJOS') || upper.includes('REINTENTO') || upper.includes('ADVERTENCIA')) {
+                return { category: 'warn', badge: '[AVISO]' };
+            }
+            if (upper.includes('INICIO') || upper.includes('ARRANCANDO') || upper.includes('CONECTADO') || upper.includes('STREAM URL') || upper.includes('STREAMING') || upper.includes('NUEVO CLIENTE')) {
+                return { category: 'streaming', badge: '[STREAM]' };
+            }
+            return { category: 'info', badge: '[INFO]' };
+        }
+
+        function toggleBunkerAutoscroll(enabled) {
+            bunkerAutoScroll = !!enabled;
+            if (bunkerAutoScroll) {
+                const body = document.getElementById('bunker-console-body');
+                if (body) body.scrollTop = body.scrollHeight;
+            }
+        }
+
+        function initBunkerScrollListener() {
+            const body = document.getElementById('bunker-console-body');
+            if (!body || body._scrollBound) return;
+            body._scrollBound = true;
+            body.addEventListener('scroll', () => {
+                const atBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) <= 25;
+                const toggle = document.getElementById('bunker-autoscroll');
+                if (!atBottom && bunkerAutoScroll) {
+                    bunkerAutoScroll = false;
+                    if (toggle) toggle.checked = false;
+                } else if (atBottom && !bunkerAutoScroll) {
+                    bunkerAutoScroll = true;
+                    if (toggle) toggle.checked = true;
+                }
+            });
+        }
+
         function renderBunkerLogs(logs) {
             const body = document.getElementById('bunker-console-body');
             if (!body) return;
+            initBunkerScrollListener();
+
+            if (bunkerClearedLocal) {
+                if (logs.length === 0) {
+                    bunkerClearedLocal = false;
+                } else {
+                    return;
+                }
+            }
+
             if (logs.length === lastLogsCount) return;
             lastLogsCount = logs.length;
 
             body.innerHTML = '';
+            if (logs.length === 0) {
+                const emptyLine = document.createElement('div');
+                emptyLine.className = 'log-line info';
+                emptyLine.innerHTML = '<span class="bunker-badge info">[INFO]</span> <span class="log-text">Consola vacía / sin eventos recientes.</span>';
+                body.appendChild(emptyLine);
+                return;
+            }
+
             logs.forEach(log => {
                 const line = document.createElement('div');
-                line.className = 'log-line info';
-                if (log.includes('ERROR') || log.includes('Fall') || log.includes('Aviso')) line.className = 'log-line error';
-                else if (log.includes('Solicitado') || log.includes('Deteniendo') || log.includes('Arrancando')) line.className = 'log-line warn';
-                line.textContent = log;
+                const { category, badge } = categorizeLog(log);
+                line.className = `log-line ${category}`;
+
+                const tsMatch = log.match(/^(\[[0-9]{2}:[0-9]{2}:[0-9]{2}\])\s*(.*)$/);
+                let tsHtml = '';
+                let msg = log;
+                if (tsMatch) {
+                    tsHtml = `<span class="log-timestamp">${tsMatch[1]}</span>`;
+                    msg = tsMatch[2];
+                }
+
+                line.innerHTML = `${tsHtml}<span class="bunker-badge ${category}">${badge}</span><span class="log-text">${escapeHtml(msg)}</span>`;
                 body.appendChild(line);
             });
-            body.scrollTop = body.scrollHeight;
+
+            if (bunkerAutoScroll) {
+                body.scrollTop = body.scrollHeight;
+            }
         }
 
         function clearBunkerConsole() {
             const body = document.getElementById('bunker-console-body');
-            if (body) body.innerHTML = '';
+            if (body) {
+                body.innerHTML = '<div class="log-line info"><span class="bunker-badge info">[INFO]</span> <span class="log-text">Consola limpiada por el operador.</span></div>';
+            }
             lastLogsCount = 0;
+            bunkerClearedLocal = true;
+
+            fetch('/stat/?action=clear_bunker_logs')
+                .then(r => r.json())
+                .then(d => {
+                    bunkerClearedLocal = false;
+                    lastLogsCount = 0;
+                })
+                .catch(err => {
+                    console.warn('Error limpiando consola en servidor:', err);
+                    bunkerClearedLocal = false;
+                });
+        }
+
+        function copyBunkerLogs() {
+            const body = document.getElementById('bunker-console-body');
+            if (!body) return;
+            const lines = [];
+            body.querySelectorAll('.log-line').forEach(el => {
+                const txt = el.innerText || el.textContent;
+                if (txt) lines.push(txt.trim());
+            });
+            const fullText = lines.join('\n');
+            const copyBtn = document.getElementById('bunker-copy-btn');
+
+            const setCopiedUI = () => {
+                if (copyBtn) {
+                    const originalHtml = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '✓ ¡Copiado!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalHtml;
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                }
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(fullText)
+                    .then(setCopiedUI)
+                    .catch(() => fallbackBunkerCopy(fullText, setCopiedUI));
+            } else {
+                fallbackBunkerCopy(fullText, setCopiedUI);
+            }
+        }
+
+        function fallbackBunkerCopy(text, callback) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                if (callback) callback();
+            } catch (e) {
+                console.error('Fallback copy failed', e);
+            }
+            document.body.removeChild(ta);
         }
 
         // Probador de Motor AceStream & Generador .TS

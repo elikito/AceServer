@@ -292,12 +292,25 @@ void Broadcast::start_once() {
 }
 
 void Broadcast::stop() {
-    // Bloquear terminantemente el comando STOP si todavía existen suscriptores activos
-    if (subscribers_.load(std::memory_order_relaxed) > 0) {
+    // Bloquear terminantemente el comando STOP si todavía existen suscriptores activos o clientes conectados
+    if (subscribers_.load(std::memory_order_relaxed) > 0 || client_count() > 0) {
         log_line("WARNING", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
-                 "] Broadcast::stop bloqueado: sesión con " + std::to_string(subscribers_.load()) + " suscriptores activos.");
+                 "] Broadcast::stop bloqueado: sesión con " + std::to_string(subscribers_.load()) + " suscriptores y " +
+                 std::to_string(client_count()) + " clientes activos. PROHIBIDO enviar STOP a AceStream.");
         return;
     }
+
+    // Verificar período de gracia linger_timeout (mínimo 60s)
+    auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
+    auto now = unix_time();
+    int linger = std::max(60, config_.linger_timeout);
+    if (zero_time > 0 && (now - zero_time) < linger) {
+        log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                 "] Broadcast::stop aplazado: sesión en período de gracia (" + std::to_string(now - zero_time) + "/" +
+                 std::to_string(linger) + "s). Stream de fondo protegido.");
+        return;
+    }
+
     bool expected = false;
     if (!stopped_.compare_exchange_strong(expected, true)) return;
     running_ = false;
@@ -347,9 +360,12 @@ void Broadcast::stream_loop() {
         log_line("ERROR", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) + "] stream failed with unknown error");
     }
     running_ = false;
-    if (ace_) {
-        try { ace_->stop_broadcast(); } catch (...) {}
-        try { ace_->shutdown(); } catch (...) {}
+    // Solo enviar STOP al motor AceStream si NO quedan suscriptores ni clientes conectados
+    if (subscribers_.load(std::memory_order_relaxed) <= 0 && client_count() == 0) {
+        if (ace_) {
+            try { ace_->stop_broadcast(); } catch (...) {}
+            try { ace_->shutdown(); } catch (...) {}
+        }
     }
     for (auto& client : clients()) client->queue->close();
 }
@@ -357,13 +373,13 @@ void Broadcast::stream_loop() {
 void Broadcast::stream_http_url(const std::string& url) {
     http_client_.stream(url, [&](const char* data, std::size_t size) {
         broadcast_chunk(data, size);
-        return running_ && client_count() > 0;
+        return running_.load();
     }, running_, 5, config_.video_timeout, std::max(1, config_.curl_stream_buffer));
 }
 
 void Broadcast::stream_hls_url(const std::string& url) {
     std::vector<std::string> seen;
-    while (running_ && client_count() > 0) {
+    while (running_) {
         try {
             auto response = http_client_.get(url, {}, config_.video_timeout);
             auto base = parse_url(url);
@@ -381,7 +397,7 @@ void Broadcast::stream_hls_url(const std::string& url) {
                 stream_http_url(segment);
                 seen.push_back(segment);
                 if (seen.size() > 50) seen.erase(seen.begin());
-                if (!running_ || client_count() == 0) break;
+                if (!running_) break;
             }
         } catch (const std::exception& e) {
             log_line("ERROR", "HLS refresh failed: " + std::string(e.what()));
@@ -488,7 +504,7 @@ void BroadcastManager::stop_reaper() {
 
 void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
     auto now = unix_time();
-    int linger = std::max(1, config_.linger_timeout);
+    int linger = std::max(60, config_.linger_timeout);
     std::vector<std::shared_ptr<Broadcast>> to_stop;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -499,10 +515,12 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
                 continue;
             }
             int subs = broadcast->get_subscribers();
-            if (subs <= 0 || broadcast->client_count() == 0) {
+            std::size_t c_count = broadcast->client_count();
+            // Ambos deben ser cero: no deben quedar suscriptores ni clientes conectados
+            if (subs <= 0 && c_count == 0) {
                 auto zero_time = broadcast->get_zero_subscribers_time();
                 if (zero_time == 0) {
-                    // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout
+                    // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout (60s)
                     broadcast->detach_client_for_migration(nullptr);
                     ++it;
                 } else if ((now - zero_time) >= linger) {
@@ -511,10 +529,12 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
                     to_stop.push_back(broadcast);
                     it = broadcasts_.erase(it);
                 } else {
-                    // En período de gracia (linger_timeout)
+                    // En período de gracia (linger_timeout >= 60s)
                     ++it;
                 }
             } else {
+                // Hay clientes o suscriptores activos: mantener vivo y cancelar temporizador
+                broadcast->reset_zero_subscribers_time();
                 ++it;
             }
         }
@@ -549,7 +569,7 @@ void BroadcastManager::remove_if_empty(const std::string& infohash) {
             if (it->second->get_subscribers() <= 0 && it->second->client_count() == 0) {
                 auto now = unix_time();
                 auto zero_time = it->second->get_zero_subscribers_time();
-                int linger = std::max(1, config_.linger_timeout);
+                int linger = std::max(60, config_.linger_timeout);
                 if (zero_time > 0 && (now - zero_time) >= linger) {
                     removed = it->second;
                     broadcasts_.erase(it);

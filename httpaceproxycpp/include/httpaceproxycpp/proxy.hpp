@@ -131,6 +131,7 @@ public:
 
     void add_bunker_log(const std::string& message);
     Json get_bunker_logs_json() const;
+    void clear_bunker_logs();
     void set_limits(int max_connections, int max_concurrent_channels);
 
 private:

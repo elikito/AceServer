@@ -212,17 +212,9 @@ int extract_peer_count_from_title(const std::string& name) {
         } catch (...) {}
     }
 
-    // 2. Patrón de palabra clave en texto libre: ej. "150 peers", "45 seeds", "semillas: 80"
-    static const std::regex kw_after_regex(R"(\b([0-9]{1,4})\s*(?:peers?|seeds?|semillas?)\b)", std::regex::icase);
+    // 2. Patrón de prefijo de palabra clave en texto libre: ej. "seeds: 40", "peers: 150", "semillas: 80"
+    static const std::regex kw_before_regex(R"(\b(?:peers?|seeds?|semillas?)\s*[:=-]\s*([0-9]{1,4})\b)", std::regex::icase);
     std::smatch kw_match;
-    if (std::regex_search(name, kw_match, kw_after_regex)) {
-        try {
-            int val = std::stoi(kw_match[1].str());
-            if (val > 0) return val;
-        } catch (...) {}
-    }
-
-    static const std::regex kw_before_regex(R"(\b(?:peers?|seeds?|semillas?)\s*[:=-]?\s*([0-9]{1,4})\b)", std::regex::icase);
     if (std::regex_search(name, kw_match, kw_before_regex)) {
         try {
             int val = std::stoi(kw_match[1].str());
@@ -230,6 +222,18 @@ int extract_peer_count_from_title(const std::string& name) {
         } catch (...) {}
     }
 
+    // 3. Patrón de sufijo de palabra clave en texto libre: ej. "150 peers", "45 seeds", "semillas: 80"
+    static const std::regex kw_after_regex(R"(\b([0-9]{1,4})\s*(?:peers?|seeds?|semillas?)\b)", std::regex::icase);
+    if (std::regex_search(name, kw_match, kw_after_regex)) {
+        try {
+            int val = std::stoi(kw_match[1].str());
+            if (val > 0) return val;
+        } catch (...) {}
+    }
+
+    // PURGA CANÓNICA v09.10.02: Si el título no contiene una etiqueta numérica real explícita
+    // ([100 peers], seeds: 40, [299], (114)), el canal tiene estrictamente 0 peers.
+    // Los asteriscos ('*', '**', '***') o estrellas unicode ('★') jamás aportan peers.
     return 0;
 }
 

@@ -838,9 +838,9 @@ void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
     // 1. Verificación de versión base
     require(std::string(kAppVersion) >= "09.09.01", "App version compatibility");
 
-    // 2. Configuración de linger_timeout por defecto = 15s
+    // 2. Configuración de linger_timeout por defecto = 60s (v09.10.02)
     Config cfg;
-    require(cfg.linger_timeout == 15, "default linger_timeout must be 15s");
+    require(cfg.linger_timeout == 60, "default linger_timeout must be 60s");
 
     // 3. Verificación de score -1000 para candidatos desactivados
     ChannelCandidate dis;
@@ -976,8 +976,8 @@ void test_peer_count_extraction_and_popularity_ranking() {
 }
 
 void test_v09_10_01_peer_serialization_and_version() {
-    // 1. Verificación estricta de versión canónica v09.10.01
-    require(std::string(kAppVersion) == "09.10.01", "App version must be 09.10.01");
+    // 1. Verificación estricta de versión canónica v09.10.01+
+    require(std::string(kAppVersion) >= "09.10.01", "App version must be at least 09.10.01");
 
     // 2. Verificación de que asteriscos NO producen peers
     require(extract_peer_count_from_title("M+ Liga de Campeones 2 1080p ***") == 0, "three-star no peers");
@@ -995,6 +995,27 @@ void test_v09_10_01_peer_serialization_and_version() {
     require(list[0].content_id == "cid_live", "live stream with speed_down > 0 must rank first");
     require(list[0].score > 1000.0, "live stream must have high positive score");
     require(list[1].score == -1000.0, "offline candidate must have -1000.0 score");
+}
+
+void test_v09_10_02_reaper_and_asterisk_purge() {
+    // 1. Verificación canónica de versión v09.10.02
+    require(std::string(kAppVersion) == "09.10.02", "App version must be 09.10.02");
+
+    // 2. Verificación de purga física de asteriscos en títulos
+    require(extract_peer_count_from_title("M+ Golf 1080p **") == 0, "golf two-star no peers");
+    require(extract_peer_count_from_title("M+ Golf 1080p *") == 0, "golf one-star no peers");
+    require(extract_peer_count_from_title("DAZN 1 1080p **") == 0, "dazn two-star no peers");
+    require(extract_peer_count_from_title("DAZN 1 1080p [100 peers]") == 100, "bracket peer tag supported");
+    require(extract_peer_count_from_title("DAZN 1 seeds: 40") == 40, "seeds peer tag supported");
+
+    // 3. Verificación de puntuación sin inflación artificial (score 30 base, no 620)
+    ChannelCandidate c_stars{"M+ Golf 1080p **", "cid_golf", "unificada", "", "", "m-golf", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::UNKNOWN, false, false, false, 0.0};
+    double score = StreamScorer::calculate_score(c_stars);
+    require(score == 40.0, "Candidate with 0 peers in 1080p has base score 30 + 10 health");
+
+    // 4. Verificación de configuración linger_timeout por defecto = 60s
+    Config cfg;
+    require(cfg.linger_timeout == 60, "Config linger_timeout default must be 60s");
 }
 
 } // namespace
@@ -1034,6 +1055,7 @@ int main() {
         test_v09_09_06_reaper_tolerance_and_client_connection();
         test_peer_count_extraction_and_popularity_ranking();
         test_v09_10_01_peer_serialization_and_version();
+        test_v09_10_02_reaper_and_asterisk_purge();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

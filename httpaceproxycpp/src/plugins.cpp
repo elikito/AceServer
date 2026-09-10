@@ -752,6 +752,11 @@ public:
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", proxy_.get_bunker_logs_json().dump(2));
             return true;
         }
+        if (action == "clear_bunker_logs") {
+            proxy_.clear_bunker_logs();
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", "{\"status\":\"success\",\"cleared\":true}");
+            return true;
+        }
         if (action == "check_peers") {
             int max_wait = 10;
             try { max_wait = std::stoi(query_get(ctx.query, "max_wait", "10")); } catch (...) {}

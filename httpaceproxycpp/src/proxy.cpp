@@ -239,6 +239,11 @@ Json Proxy::get_bunker_logs_json() const {
     };
 }
 
+void Proxy::clear_bunker_logs() {
+    std::lock_guard<std::mutex> lock(bunker_mutex_);
+    bunker_logs_.clear();
+}
+
 void Proxy::set_limits(int max_connections, int max_concurrent_channels) {
     bool changed = false;
     if (max_connections >= 1 && max_connections <= 10 && config_.max_connections != max_connections) {
@@ -3548,6 +3553,9 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                         } else if (title_peers > c.peers) {
                             c.peers = std::max(c.peers, title_peers);
                         }
+                    } else if (live_peers <= 0) {
+                        // Purga canónica v09.10.02: Si no hay tag numérico real ([100 peers], seeds: 40), peers = 0
+                        c.peers = 0;
                     }
 
                     if (c.peers > 0) {
