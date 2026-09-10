@@ -2296,6 +2296,18 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                 break;
             }
             if (client->queue->is_closed()) {
+                // Durante los primeros 25 segundos de inicio, si el motor está en prebuffering / loading / dl / buf, no abortar prematuramente
+                auto now = unix_time();
+                auto start_t = broadcast->get_start_time();
+                if (start_t > 0 && (now - start_t) < 25) {
+                    auto p2p = broadcast->get_p2p_status();
+                    std::string st = p2p.contains("status") ? lower(p2p.at("status")) : "";
+                    if (st == "loading" || st == "starting" || st == "dl" || st == "buf" || st == "prebuf" || st == "wait" || st.empty()) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                        continue;
+                    }
+                }
+
                 // El motor P2P cerró la emisión o reportó error
                 if (!ctx.auto_slug.empty()) {
                     // Si es un canal virtual, probar el siguiente candidato disponible
@@ -2348,13 +2360,13 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         if (!initial_ok || first_chunk.empty()) {
             broadcast->remove_client(client);
             broadcasts_.remove_if_empty(infohash);
-            add_bunker_log("[ERROR REPRODUCTOR] Canal offline / Cannot retrieve torrent para ID: " + req_value);
+            add_bunker_log("[ERROR REPRODUCTOR] Canal sin datos o desconexión del cliente para ID: " + req_value + ". Sesión protegida.");
             std::map<std::string, std::string> err_headers = {
                 {"Content-Type", "application/json; charset=utf-8"},
                 {"Connection", "close"}
             };
             ctx.connection.send_response_headers(502, status_reason(502), err_headers);
-            ctx.connection.send_text("{\"error\":\"AceEngine: Cannot retrieve torrent or hash offline\",\"status\":502}");
+            ctx.connection.send_text("{\"error\":\"AceEngine: Prebuffering or waiting for data\",\"status\":502}");
             return;
         }
 
@@ -3467,6 +3479,12 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                           (item_cname == target_cname) ||
                           (!item_slug_compact.empty() && item_slug_compact == target_slug_compact) ||
                           (!item_cname_compact.empty() && item_cname_compact == target_cname_compact);
+                if (!matches) {
+                    std::string item_alias = item_slug;
+                    if (starts_with(item_alias, "movistar-")) item_alias = "m-" + item_alias.substr(9);
+                    else if (starts_with(item_alias, "m-")) item_alias = "movistar-" + item_alias.substr(2);
+                    matches = (item_alias == target_slug);
+                }
             }
 
             if (matches) {

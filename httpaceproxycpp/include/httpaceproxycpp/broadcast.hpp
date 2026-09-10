@@ -104,6 +104,7 @@ public:
     bool has_valid_ts_data() const { return total_bytes_received_.load() >= 188; }
     double get_bitrate_kbps();
     bool is_bitrate_degraded(int seconds_threshold = 20);
+    std::int64_t get_start_time() const { return start_time_.load(std::memory_order_relaxed); }
 
 private:
     void stream_loop();
@@ -130,6 +131,7 @@ private:
     // v09.09.01 — Ref-counting atómico y gracia linger_timeout
     std::atomic<int> subscribers_{0};
     std::atomic<std::int64_t> zero_subscribers_time_{0};
+    std::atomic<std::int64_t> start_time_{0};
 
     // PAT/PMT reinjection buffer
     mutable std::mutex pat_pmt_mutex_;

@@ -247,6 +247,9 @@ std::map<std::string, std::string> AceClient::get_cached_status() const {
 }
 
 void AceClient::stop_broadcast() {
+    if (!start_issued_) {
+        return;
+    }
     start_issued_ = false;
     try { write_line("STOP"); } catch (...) {}
 }

@@ -285,6 +285,7 @@ std::map<std::string, std::string> Broadcast::get_p2p_status() const {
 void Broadcast::start_once() {
     bool expected = false;
     if (started_.compare_exchange_strong(expected, true)) {
+        start_time_.store(unix_time(), std::memory_order_relaxed);
         running_ = true;
         stream_thread_ = std::thread(&Broadcast::stream_loop, this);
         keepalive_thread_ = std::thread(&Broadcast::keepalive_loop, this);
@@ -300,9 +301,23 @@ void Broadcast::stop() {
         return;
     }
 
+    // 1. Prohibido enviar STOP a AceStream durante los primeros 25 segundos de inicio si el motor respondió con éxito o está en loading/starting/dl/buf/prebuf
+    auto start_t = start_time_.load(std::memory_order_relaxed);
+    auto now = unix_time();
+    if (start_t > 0 && (now - start_t) < 25) {
+        auto st = get_p2p_status();
+        std::string status_val = st.contains("status") ? lower(st.at("status")) : "";
+        if (status_val == "loading" || status_val == "starting" || status_val == "dl" ||
+            status_val == "buf" || status_val == "prebuf" || status_val == "wait" || status_val.empty()) {
+            log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                     "] Broadcast::stop bloqueado: en ventana de inicio protegida (" +
+                     std::to_string(now - start_t) + "/25s, status: " + status_val + "). PROHIBIDO enviar STOP.");
+            return;
+        }
+    }
+
     // Verificar período de gracia linger_timeout (mínimo 60s)
     auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
-    auto now = unix_time();
     int linger = std::max(60, config_.linger_timeout);
     if (zero_time > 0 && (now - zero_time) < linger) {
         log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
@@ -348,6 +363,7 @@ void Broadcast::keepalive_loop() {
 }
 
 void Broadcast::stream_loop() {
+    start_time_.store(unix_time(), std::memory_order_relaxed);
     try {
         auto started = ace_->start_broadcast(start_params_);
         auto url = rewrite_url_host_port(url_decode(started.url), config_.ace_host, std::to_string(config_.ace_http_port));
@@ -360,21 +376,35 @@ void Broadcast::stream_loop() {
         log_line("ERROR", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) + "] stream failed with unknown error");
     }
     running_ = false;
-    // Solo enviar STOP al motor AceStream si NO quedan suscriptores ni clientes conectados
-    if (subscribers_.load(std::memory_order_relaxed) <= 0 && client_count() == 0) {
+
+    // Solo enviar STOP al motor AceStream si NO quedan suscriptores ni clientes conectados,
+    // NO estamos dentro de la ventana protegida de 25s, y el período de gracia ha transcurrido
+    auto now = unix_time();
+    auto start_t = start_time_.load(std::memory_order_relaxed);
+    bool in_startup_window = (start_t > 0 && (now - start_t) < 25);
+    auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
+    int linger = std::max(60, config_.linger_timeout);
+    bool in_grace = (zero_time > 0 && (now - zero_time) < linger);
+
+    if (!in_startup_window && !in_grace && subscribers_.load(std::memory_order_relaxed) <= 0 && client_count() == 0) {
         if (ace_) {
             try { ace_->stop_broadcast(); } catch (...) {}
             try { ace_->shutdown(); } catch (...) {}
         }
+    } else {
+        log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                 "] Fin de stream_loop con sesión protegida (in_startup=" + std::to_string(in_startup_window) +
+                 ", in_grace=" + std::to_string(in_grace) + "). NO se envía STOP a AceStream.");
     }
     for (auto& client : clients()) client->queue->close();
 }
 
 void Broadcast::stream_http_url(const std::string& url) {
+    long connect_timeout = std::max(30L, static_cast<long>(config_.video_timeout));
     http_client_.stream(url, [&](const char* data, std::size_t size) {
         broadcast_chunk(data, size);
         return running_.load();
-    }, running_, 5, config_.video_timeout, std::max(1, config_.curl_stream_buffer));
+    }, running_, connect_timeout, config_.video_timeout, std::max(1, config_.curl_stream_buffer));
 }
 
 void Broadcast::stream_hls_url(const std::string& url) {

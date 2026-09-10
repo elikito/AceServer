@@ -998,8 +998,8 @@ void test_v09_10_01_peer_serialization_and_version() {
 }
 
 void test_v09_10_02_reaper_and_asterisk_purge() {
-    // 1. Verificación canónica de versión v09.10.02
-    require(std::string(kAppVersion) == "09.10.02", "App version must be 09.10.02");
+    // 1. Verificación canónica de versión v09.10.02+
+    require(std::string(kAppVersion) >= "09.10.02", "App version must be at least 09.10.02");
 
     // 2. Verificación de purga física de asteriscos en títulos
     require(extract_peer_count_from_title("M+ Golf 1080p **") == 0, "golf two-star no peers");
@@ -1016,6 +1016,35 @@ void test_v09_10_02_reaper_and_asterisk_purge() {
     // 4. Verificación de configuración linger_timeout por defecto = 60s
     Config cfg;
     require(cfg.linger_timeout == 60, "Config linger_timeout default must be 60s");
+}
+
+void test_v09_10_03_watchdog_and_real_peer_selection() {
+    // 1. Verificación canónica de versión v09.10.03
+    require(std::string(kAppVersion) == "09.10.03", "App version must be 09.10.03");
+
+    // 2. Verificación de normalización de tags de peers y alias de nombres antiguos en canonical_slug
+    require(canonical_slug("DAZN 1 1080p [5 peers]") == "dazn-1", "dazn with peer tag resolves to dazn-1");
+    require(canonical_slug("Movistar Golf [5 peers]") == "movistar-golf", "movistar golf with peer tag resolves to movistar-golf");
+    require(canonical_slug("M+ Golf 1080p") == "m-golf", "m+ golf resolves to m-golf");
+
+    // 3. Verificación estricta de prioridad por peers reales sobre 0 peers (80 vs 170 score)
+    ChannelCandidate cand_zero{"M+ Golf 1080p", "cid_zero", "unificada", "", "", "m-golf", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate cand_five{"Movistar Golf 1080p [5 peers]", "cid_five", "unificada", "", "", "m-golf", StreamQuality::FHD_1080, 100, 5, 0, ChannelHealth::LOW_PEERS, false, false, false, 0.0};
+    
+    require(StreamScorer::calculate_score(cand_zero) == 80.0, "Candidate with 0 peers has score 80.0 (30 + 50 online)");
+    require(StreamScorer::calculate_score(cand_five) == 170.0, "Candidate with 5 peers has score 170.0 (100 + 50 + 20)");
+
+    std::vector<ChannelCandidate> list = {cand_zero, cand_five};
+    StreamScorer::rank_candidates(list);
+    require(list[0].content_id == "cid_five", "Candidate with 5 peers MUST rank ahead of 0 peers");
+    require(list[1].content_id == "cid_zero", "Candidate with 0 peers ranks second");
+
+    // 4. Candidato con peers reales supera a candidato con 0 peers incluso si el de 0 peers tiene mejor etiqueta de calidad
+    ChannelCandidate cand_sd_peers{"Canal SD [3 peers]", "cid_sd", "test", "", "", "canal", StreamQuality::SD, 30, 3, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate cand_fhd_zero{"Canal 1080p", "cid_fhd", "test", "", "", "canal", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    std::vector<ChannelCandidate> list_sd_first = {cand_fhd_zero, cand_sd_peers};
+    StreamScorer::rank_candidates(list_sd_first);
+    require(list_sd_first[0].content_id == "cid_sd", "Candidate with peers > 0 must strictly rank above 0 peers even in SD");
 }
 
 } // namespace
@@ -1056,6 +1085,7 @@ int main() {
         test_peer_count_extraction_and_popularity_ranking();
         test_v09_10_01_peer_serialization_and_version();
         test_v09_10_02_reaper_and_asterisk_purge();
+        test_v09_10_03_watchdog_and_real_peer_selection();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

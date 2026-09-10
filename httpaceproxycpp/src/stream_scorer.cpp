@@ -39,6 +39,7 @@ const std::unordered_set<std::string>& get_filter_tokens() {
         "50fps", "60fps", "25fps", "fps",
         "back", "backup", "opt", "alt", "directo", "live", "envivo",
         "castellano", "spanish", "spain", "espana", "acestream",
+        "peers", "peer", "seeds", "seed", "semillas", "semilla", "p", "s",
         "*", "**", "***", "#", "##"
     };
     return tokens;
@@ -64,6 +65,20 @@ std::string strip_origin_suffix(std::string text) {
             text = text.substr(0, pos);
         }
     }
+    return text;
+}
+
+// v09.10.03: Elimina etiquetas de peers explícitas en títulos para resolución canónica limpia
+std::string strip_peer_tags(std::string text) {
+    static const std::regex bracket_paren_regex(
+        R"([\[\(]\s*(?:(?:peers?|seeds?|semillas?|[ps])\s*[:=-]?\s*)?([0-9]{1,4})\s*(?:peers?|seeds?|semillas?)?\s*[\]\)])",
+        std::regex::icase
+    );
+    static const std::regex kw_before_regex(R"(\b(?:peers?|seeds?|semillas?)\s*[:=-]\s*([0-9]{1,4})\b)", std::regex::icase);
+    static const std::regex kw_after_regex(R"(\b([0-9]{1,4})\s*(?:peers?|seeds?|semillas?)\b)", std::regex::icase);
+    text = std::regex_replace(text, bracket_paren_regex, " ");
+    text = std::regex_replace(text, kw_before_regex, " ");
+    text = std::regex_replace(text, kw_after_regex, " ");
     return text;
 }
 
@@ -108,6 +123,7 @@ StreamQuality detect_stream_quality(const std::string& name) {
 
 std::string canonical_name(std::string name) {
     name = strip_origin_suffix(std::move(name));
+    name = strip_peer_tags(std::move(name));
     name = strip_replica_suffix(std::move(name));
     name = strip_dial_prefix(std::move(name));
     name = strip_accents_utf8(name);
@@ -128,7 +144,6 @@ std::string canonical_name(std::string name) {
     std::istringstream stream(name);
     std::string word;
     std::vector<std::string> valid_words;
-
     while (stream >> word) {
         word = trim(word);
         if (word.empty()) continue;
@@ -305,6 +320,24 @@ void StreamScorer::rank_candidates(std::vector<ChannelCandidate>& candidates) {
     }
 
     std::stable_sort(candidates.begin(), candidates.end(), [](const ChannelCandidate& a, const ChannelCandidate& b) {
+        // 1. Candidatos deshabilitados o en error/offline/bloqueados (-1000.0) siempre al final
+        bool a_valid = !a.is_disabled && a.score > -1000.0;
+        bool b_valid = !b.is_disabled && b.score > -1000.0;
+        if (a_valid != b_valid) {
+            return a_valid;
+        }
+        if (!a_valid) {
+            return a.score > b.score;
+        }
+
+        // 2. Prioridad absoluta: candidatos con peers > 0 DEBEN ordenarse por encima de cualquier candidato con 0 peers
+        bool a_has_peers = (a.peers > 0);
+        bool b_has_peers = (b.peers > 0);
+        if (a_has_peers != b_has_peers) {
+            return a_has_peers;
+        }
+
+        // 3. Desempate por score
         return a.score > b.score;
     });
 }
