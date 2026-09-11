@@ -28,6 +28,9 @@ services:
     restart: unless-stopped
     networks:
       - aceproxy-net
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "6878:6878/tcp"
       - "6878:6878/udp"
