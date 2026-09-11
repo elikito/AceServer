@@ -267,49 +267,35 @@ double StreamScorer::calculate_score(const ChannelCandidate& candidate) {
 
     double score = 0.0;
 
-    // Prioridad absoluta a canales con emisión activa o transferencia real de datos
-    if (candidate.is_active_stream) {
-        score += 2000.0;
-    }
-    if (candidate.speed_down > 0) {
-        // Canales con transferencia real confirmada (speed_down > 0) se priorizan por encima de cualquier candidato inactivo
-        score += 1000.0 + (static_cast<double>(candidate.speed_down) / 1024.0 * 0.5);
-    }
+    // v09.11.01: Normalización estricta en escala 0-100
+    // 1. Peers (Máx 50 pts): std::min(50.0, candidate.peers * 5.0)
+    score += std::min(50.0, static_cast<double>(std::max(0, candidate.peers)) * 5.0);
 
-    // Bonus por calidad detectada y ponderación contra peers (v08.26.02)
-    // - 1080p: Base mínima de +100 puntos si tiene al menos 3 peers activos (o +30 si < 3).
-    // - 720p: Base de +60 puntos si tiene al menos 3 peers activos (o +15 si < 3).
-    // - SD: Base máxima acotada (+30 puntos totales de calidad + peers) para evitar que supere a un 1080p/720p saludable.
-    if (candidate.quality == StreamQuality::UHD_4K) {
-        score += (candidate.peers >= 3) ? 120.0 : 40.0;
-        score += (candidate.peers * 10.0);
-    } else if (candidate.quality == StreamQuality::FHD_1080) {
-        score += (candidate.peers >= 3) ? 100.0 : 30.0;
-        score += (candidate.peers * 10.0);
+    // 2. Calidad (Máx 30 pts): 1080p/4K = 30.0, 720p = 20.0, SD = 10.0
+    if (candidate.quality == StreamQuality::UHD_4K || candidate.quality == StreamQuality::FHD_1080) {
+        score += 30.0;
     } else if (candidate.quality == StreamQuality::HD_720) {
-        score += (candidate.peers >= 3) ? 60.0 : 15.0;
-        score += (candidate.peers * 10.0);
-    } else {
-        // Calidad SD
-        double sd_peer_contrib = candidate.peers * 5.0;
-        score += std::min(30.0, sd_peer_contrib);
-    }
-
-    // Penalización por país/idioma extranjero no español
-    if (candidate.is_foreign) {
-        score -= 50.0;
-    }
-
-    // Bonus por estado confirmado
-    if (candidate.health == ChannelHealth::ONLINE) {
-        score += 50.0;
-    } else if (candidate.health == ChannelHealth::LOW_PEERS) {
         score += 20.0;
-    } else if (candidate.health == ChannelHealth::UNKNOWN) {
+    } else {
         score += 10.0;
     }
 
-    return score;
+    // 3. Salud/Estado (Máx 20 pts): ONLINE = 20.0, LOW_PEERS = 10.0, UNKNOWN = 5.0
+    if (candidate.health == ChannelHealth::ONLINE) {
+        score += 20.0;
+    } else if (candidate.health == ChannelHealth::LOW_PEERS) {
+        score += 10.0;
+    } else if (candidate.health == ChannelHealth::UNKNOWN) {
+        score += 5.0;
+    }
+
+    // 4. Penalización por país/idioma extranjero no español (-15.0 pts)
+    if (candidate.is_foreign) {
+        score -= 15.0;
+    }
+
+    // Acotar estrictamente en el rango [0.0, 100.0]
+    return std::clamp(score, 0.0, 100.0);
 }
 
 void StreamScorer::rank_candidates(std::vector<ChannelCandidate>& candidates) {

@@ -111,11 +111,15 @@ void test_stream_scorer() {
     std::vector<ChannelCandidate> list = {c4, c2, c3, c1};
     StreamScorer::rank_candidates(list);
 
-    // c1 (1080p con 10 peers) debe superar a c2 (720p con 4 peers) y a c4 (SD con 80 peers)
-    require(list[0].content_id == "cid1", "c1 1080p should rank highest");
-    require(list[1].content_id == "cid2", "c2 720p should rank second");
-    require(list[2].content_id == "cid4", "c4 sd should rank third");
-    require(list[3].content_id == "cid3", "c3 offline should rank lowest");
+    // Con la fórmula 0-100 (v09.11.01):
+    // c1 (1080p con 10 peers) = 50 + 30 + 20 = 100.0
+    // c4 (SD con 80 peers) = 50 + 10 + 20 = 80.0
+    // c2 (720p con 4 peers) = 20 + 20 + 20 = 60.0
+    // c3 (1080p OFFLINE) = -1000.0
+    require(list[0].content_id == "cid1", "c1 1080p should rank highest (100 pts)");
+    require(list[1].content_id == "cid4", "c4 sd with 80 peers should rank second (80 pts)");
+    require(list[2].content_id == "cid2", "c2 720p with 4 peers should rank third (60 pts)");
+    require(list[3].content_id == "cid3", "c3 offline should rank lowest (-1000 pts)");
     require(detect_is_foreign("Sport TV1 (PT)") == true, "foreign detected");
     require(detect_is_foreign("Teledeporte 1080p *") == false, "not foreign");
     require(detect_is_foreign("M+ LALIGA 9e38 → SPORT TV") == false, "spanish channel with sport tv origin is not foreign");
@@ -871,7 +875,7 @@ void test_v09_09_02_preflight_probe_and_warp() {
     online_cand.health = ChannelHealth::ONLINE;
     online_cand.peers = 5;
     online_cand.speed_down = 2048000;
-    require(StreamScorer::calculate_score(online_cand) > 150.0, "Online TS-confirmed candidate must have high positive score");
+    require(StreamScorer::calculate_score(online_cand) >= 70.0, "Online TS-confirmed candidate must have high positive score (0-100 range)");
 
     // 4. Verificación de TTL de caché de diagnóstico a 90 segundos
     require(kDefaultCacheAgeSec == 90, "Default cache age must be 90s");
@@ -972,7 +976,7 @@ void test_peer_count_extraction_and_popularity_ranking() {
     std::vector<ChannelCandidate> cands = {c2, c1};
     StreamScorer::rank_candidates(cands);
     require(cands[0].content_id == "cid_1", "candidate with 299 peers ranks first");
-    require(cands[0].score > cands[1].score + 2000.0, "score heavily reflects active peers");
+    require(cands[0].score > cands[1].score + 50.0, "score heavily reflects active peers (100 vs 35 in 0-100 scale)");
 }
 
 void test_v09_10_01_peer_serialization_and_version() {
@@ -993,7 +997,7 @@ void test_v09_10_01_peer_serialization_and_version() {
     std::vector<ChannelCandidate> list = {dead, live};
     StreamScorer::rank_candidates(list);
     require(list[0].content_id == "cid_live", "live stream with speed_down > 0 must rank first");
-    require(list[0].score > 1000.0, "live stream must have high positive score");
+    require(list[0].score >= 70.0, "live stream must have high positive score in 0-100 scale");
     require(list[1].score == -1000.0, "offline candidate must have -1000.0 score");
 }
 
@@ -1008,10 +1012,10 @@ void test_v09_10_02_reaper_and_asterisk_purge() {
     require(extract_peer_count_from_title("DAZN 1 1080p [100 peers]") == 100, "bracket peer tag supported");
     require(extract_peer_count_from_title("DAZN 1 seeds: 40") == 40, "seeds peer tag supported");
 
-    // 3. Verificación de puntuación sin inflación artificial (score 30 base, no 620)
+    // 3. Verificación de puntuación sin inflación artificial (escala 0-100)
     ChannelCandidate c_stars{"M+ Golf 1080p **", "cid_golf", "unificada", "", "", "m-golf", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::UNKNOWN, false, false, false, 0.0};
     double score = StreamScorer::calculate_score(c_stars);
-    require(score == 40.0, "Candidate with 0 peers in 1080p has base score 30 + 10 health");
+    require(score == 35.0, "Candidate with 0 peers in 1080p has score 35.0 (30 quality + 5 unknown health)");
 
     // 4. Verificación de configuración linger_timeout por defecto = 60s
     Config cfg;
@@ -1019,20 +1023,20 @@ void test_v09_10_02_reaper_and_asterisk_purge() {
 }
 
 void test_v09_10_03_watchdog_and_real_peer_selection() {
-    // 1. Verificación canónica de versión v09.10.03
-    require(std::string(kAppVersion) == "09.10.03", "App version must be 09.10.03");
+    // 1. Verificación canónica de versión v09.10.03+
+    require(std::string(kAppVersion) >= "09.10.03", "App version must be at least 09.10.03");
 
     // 2. Verificación de normalización de tags de peers y alias de nombres antiguos en canonical_slug
     require(canonical_slug("DAZN 1 1080p [5 peers]") == "dazn-1", "dazn with peer tag resolves to dazn-1");
     require(canonical_slug("Movistar Golf [5 peers]") == "movistar-golf", "movistar golf with peer tag resolves to movistar-golf");
     require(canonical_slug("M+ Golf 1080p") == "m-golf", "m+ golf resolves to m-golf");
 
-    // 3. Verificación estricta de prioridad por peers reales sobre 0 peers (80 vs 170 score)
+    // 3. Verificación estricta de prioridad por peers reales sobre 0 peers (50 vs 65 score en escala 0-100)
     ChannelCandidate cand_zero{"M+ Golf 1080p", "cid_zero", "unificada", "", "", "m-golf", StreamQuality::FHD_1080, 100, 0, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
     ChannelCandidate cand_five{"Movistar Golf 1080p [5 peers]", "cid_five", "unificada", "", "", "m-golf", StreamQuality::FHD_1080, 100, 5, 0, ChannelHealth::LOW_PEERS, false, false, false, 0.0};
     
-    require(StreamScorer::calculate_score(cand_zero) == 80.0, "Candidate with 0 peers has score 80.0 (30 + 50 online)");
-    require(StreamScorer::calculate_score(cand_five) == 170.0, "Candidate with 5 peers has score 170.0 (100 + 50 + 20)");
+    require(StreamScorer::calculate_score(cand_zero) == 50.0, "Candidate with 0 peers has score 50.0 (30 quality + 20 online)");
+    require(StreamScorer::calculate_score(cand_five) == 65.0, "Candidate with 5 peers has score 65.0 (25 peers + 30 quality + 10 low_peers)");
 
     std::vector<ChannelCandidate> list = {cand_zero, cand_five};
     StreamScorer::rank_candidates(list);
@@ -1045,6 +1049,37 @@ void test_v09_10_03_watchdog_and_real_peer_selection() {
     std::vector<ChannelCandidate> list_sd_first = {cand_fhd_zero, cand_sd_peers};
     StreamScorer::rank_candidates(list_sd_first);
     require(list_sd_first[0].content_id == "cid_sd", "Candidate with peers > 0 must strictly rank above 0 peers even in SD");
+}
+
+void test_v09_11_01_active_failover_and_scoring() {
+    // 1. Verificación canónica de versión v09.11.01
+    require(std::string(kAppVersion) == "09.11.01", "App version must be 09.11.01");
+
+    // 2. Verificación de fórmula 0-100 con garantía matemática de que 7 peers supera a 2 peers
+    ChannelCandidate cand_7peers{"DAZN F1 HD", "cid_7", "test", "", "", "dazn-f1", StreamQuality::HD_720, 60, 7, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate cand_2peers_1080{"DAZN F1 1080p", "cid_2_1080", "test", "", "", "dazn-f1", StreamQuality::FHD_1080, 100, 2, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate cand_2peers_720{"DAZN F1 720p", "cid_2_720", "test", "", "", "dazn-f1", StreamQuality::HD_720, 60, 2, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+
+    double s7 = StreamScorer::calculate_score(cand_7peers);
+    double s2_1080 = StreamScorer::calculate_score(cand_2peers_1080);
+    double s2_720 = StreamScorer::calculate_score(cand_2peers_720);
+
+    require(s7 == 75.0, "7 peers 720p score must be 75.0 (35 peers + 20 quality + 20 online)");
+    require(s2_1080 == 60.0, "2 peers 1080p score must be 60.0 (10 peers + 30 quality + 20 online)");
+    require(s2_720 == 50.0, "2 peers 720p score must be 50.0 (10 peers + 20 quality + 20 online)");
+
+    require(s7 > s2_1080, "Candidate with 7 peers must strictly beat 2 peers 1080p");
+    require(s7 > s2_720, "Candidate with 7 peers must strictly beat 2 peers 720p");
+    require(s7 <= 100.0 && s7 >= 0.0, "Score must be bounded in [0, 100]");
+
+    // 3. Verificación de penalización para offline/error/deshabilitados
+    ChannelCandidate dis_cand = cand_7peers;
+    dis_cand.is_disabled = true;
+    require(StreamScorer::calculate_score(dis_cand) == -1000.0, "Disabled candidate score must be -1000.0");
+
+    ChannelCandidate off_cand = cand_7peers;
+    off_cand.health = ChannelHealth::OFFLINE;
+    require(StreamScorer::calculate_score(off_cand) == -1000.0, "Offline candidate score must be -1000.0");
 }
 
 } // namespace
@@ -1086,6 +1121,7 @@ int main() {
         test_v09_10_01_peer_serialization_and_version();
         test_v09_10_02_reaper_and_asterisk_purge();
         test_v09_10_03_watchdog_and_real_peer_selection();
+        test_v09_11_01_active_failover_and_scoring();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

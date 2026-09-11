@@ -2840,13 +2840,16 @@
                 data.candidates.forEach(c => {
                     const isDis = c.is_disabled === true;
                     const badge = formatHealthBadge(c.health);
+                    const isActive = c.is_active === true || (c.speed_down && c.speed_down > 0);
+                    const activeBadgeHtml = isActive ? `<span class="badge-active-stream" style="background:#10b981; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(16,185,129,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[EN EMISIÓN]</span>` : '';
 
                     candHtml += `
-                        <tr class="${isDis ? 'candidate-disabled' : ''}">
+                        <tr class="${isDis ? 'candidate-disabled' : ''} ${isActive ? 'candidate-currently-active' : ''}" style="${isActive ? 'background:rgba(16, 185, 129, 0.08);' : ''}">
                             <td><span class="health-pill ${badge.cls}">${badge.text}</span></td>
                             <td style="font-weight:600; max-width:320px;">
                                 <div class="candidate-name-link" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID: ${c.content_id}">
                                     <span class="candidate-name-text">${c.name}</span>
+                                    ${activeBadgeHtml}
                                     <svg class="candidate-copy-icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5; flex-shrink:0; margin-left:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </div>
                                 <div class="candidate-cid-wrap" style="margin-top:3px;">

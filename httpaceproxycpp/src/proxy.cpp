@@ -2285,32 +2285,38 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         client->current_broadcast = broadcast;
         broadcast->start_once();
 
-        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (PIPE TRANSPARENTE)
-        // Mientras el reproductor mantenga la conexión TCP abierta, esperar datos sin temporizadores destructivos
+        // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (FAILOVER ACTIVO v09.11.01)
+        // Ventana de entrega de 6s por candidato en rutas virtuales /auto/<slug>
         std::vector<char> first_chunk;
         bool initial_ok = false;
+        std::unordered_set<std::string> attempted_cids;
+        attempted_cids.insert(req_value);
+
+        auto cand_start_tp = std::chrono::steady_clock::now();
+        constexpr double kFirstChunkTimeoutSec = 6.0;
 
         while (ctx.connection.is_connected()) {
             if (client->queue->pop_timeout(first_chunk, std::chrono::milliseconds(100)) && !first_chunk.empty()) {
                 initial_ok = true;
                 break;
             }
-            if (client->queue->is_closed()) {
-                // Durante los primeros 25 segundos de inicio, si el motor está en prebuffering / loading / dl / buf, no abortar prematuramente
-                auto now = unix_time();
-                auto start_t = broadcast->get_start_time();
-                if (start_t > 0 && (now - start_t) < 25) {
-                    auto p2p = broadcast->get_p2p_status();
-                    std::string st = p2p.contains("status") ? lower(p2p.at("status")) : "";
-                    if (st == "loading" || st == "starting" || st == "dl" || st == "buf" || st == "prebuf" || st == "wait" || st.empty()) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                        continue;
-                    }
-                }
 
-                // El motor P2P cerró la emisión o reportó error
+            auto elapsed_sec = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - cand_start_tp).count() / 1000.0;
+
+            bool cand_failed = false;
+            if (client->queue->is_closed()) {
+                cand_failed = true;
+            } else if (!ctx.auto_slug.empty() && elapsed_sec >= kFirstChunkTimeoutSec) {
+                cand_failed = true;
+            }
+
+            if (cand_failed) {
                 if (!ctx.auto_slug.empty()) {
-                    // Si es un canal virtual, probar el siguiente candidato disponible
+                    // Si es un canal virtual /auto/<slug>, conmutar inmediatamente al siguiente candidato válido
+                    log_line("WARNING", "[FAILOVER-AUTO] Candidato " + req_value +
+                             (client->queue->is_closed() ? " cerrado por motor" : " sin datos tras 6s") +
+                             " en '" + ctx.auto_slug + "'. Conmutando al siguiente candidato...");
                     broadcast->remove_client(client);
                     broadcasts_.remove_if_empty(infohash);
 
@@ -2320,7 +2326,8 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                     std::string next_cid;
                     std::string next_name;
                     for (const auto& c : candidates) {
-                        if (c.content_id != req_value && !c.is_disabled && !is_candidate_disabled(c.content_id)) {
+                        if (attempted_cids.find(c.content_id) == attempted_cids.end() &&
+                            !c.is_disabled && !is_candidate_disabled(c.content_id)) {
                             next_cid = c.content_id;
                             next_name = c.name;
                             break;
@@ -2328,12 +2335,14 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                     }
 
                     if (!next_cid.empty()) {
-                        log_line("INFO", "[TRANSPARENT-PROXY] Candidato cerrado por motor en '" + ctx.auto_slug + "', probando: " + next_cid);
+                        attempted_cids.insert(next_cid);
+                        log_line("INFO", "[FAILOVER-AUTO] Conmutado a candidato alternativo: " + next_cid + " (" + next_name + ")");
                         req_value = next_cid;
                         infohash = next_cid;
                         params["content_id"] = next_cid;
                         if (!next_name.empty()) channel_name = next_name;
 
+                        full_stream_url = "http://" + (raw_host.empty() ? "127.0.0.1:8888" : raw_host) + "/content_id/" + req_value + "/stream.ts";
                         broadcast = broadcasts_.get_or_create(infohash, params);
                         client = broadcast->add_client(
                             ctx.request.header("x-forwarded-for", ctx.request.client_ip),
@@ -2350,8 +2359,11 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                         client->content_id = infohash;
                         client->current_broadcast = broadcast;
                         broadcast->start_once();
+                        cand_start_tp = std::chrono::steady_clock::now();
                         continue;
                     }
+                    // No hay más candidatos disponibles
+                    log_line("WARNING", "[FAILOVER-AUTO] Todos los candidatos para '" + ctx.auto_slug + "' agotados sin datos.");
                 }
                 break;
             }
@@ -2366,7 +2378,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                 {"Connection", "close"}
             };
             ctx.connection.send_response_headers(502, status_reason(502), err_headers);
-            ctx.connection.send_text("{\"error\":\"AceEngine: Prebuffering or waiting for data\",\"status\":502}");
+            ctx.connection.send_text("{\"error\":\"AceEngine: All candidates exhausted or prebuffering\",\"status\":502}");
             return;
         }
 

@@ -31,7 +31,7 @@ namespace httpace {
 // Timeouts del pipeline (en segundos para get_single)
 // ---------------------------------------------------------------------------
 namespace {
-    constexpr long kHandshakeTimeoutSec = 4;       // Fase 1: getstream handshake
+    constexpr long kHandshakeTimeoutSec = 10;      // Fase 1: getstream handshake (v09.11.01: 10s para negociar DHT y metadatos)
     constexpr long kStatPollTimeoutSec  = 1;       // Fase 3: cada poll stat_url
     constexpr long kStopTimeoutSec      = 2;       // Cierre: command_url?method=stop
     constexpr int  kObserveTotalMs      = kDefaultObserveTotalMs;     // Fase 3: ventana de observación rápida (ms)
