@@ -366,6 +366,158 @@
             color: var(--text-muted);
         }
 
+        /* Banner de Decisión de Stream y CID Ganador */
+        .virtual-winner-card {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(16, 185, 129, 0.04));
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .winner-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .winner-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .winner-title-badge {
+            font-size: 11px;
+            font-weight: 800;
+            color: #10b981;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-status-pinned {
+            background: #f59e0b;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-status-auto {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-status-live {
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .badge-status-ready {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+        }
+
+        .winner-stream-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main, #fff);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .winner-meta-chips {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .winner-chip {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .winner-chip.quality { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .winner-chip.peers { background: rgba(16, 185, 129, 0.2); color: #34d399; font-family: monospace; }
+        .winner-chip.score { background: rgba(245, 158, 11, 0.2); color: #fbbf24; font-family: monospace; }
+        .winner-chip.origin { background: rgba(255, 255, 255, 0.07); color: var(--text-muted); }
+
+        .winner-cid-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .winner-cid-mono {
+            font-size: 11px;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+            word-break: break-all;
+            cursor: pointer;
+        }
+        .winner-cid-mono:hover {
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .candidate-winner-row {
+            background: rgba(16, 185, 129, 0.08) !important;
+            border-left: 3px solid #10b981 !important;
+        }
+
+        .badge-selected-stream {
+            background: #10b981;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            display: inline-block;
+            vertical-align: middle;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+            letter-spacing: 0.5px;
+        }
+
         /* Free Text Selection across EPG cards */
         .channel-epg-card,
         .channel-epg-header,
@@ -1981,7 +2133,7 @@
         function formatHealthBadge(rawHealth) {
             const h = (rawHealth || 'UNKNOWN').toUpperCase();
             if (h === 'ONLINE' || h === 'ACTIVO') {
-                return { cls: 'health-online', text: 'ACTIVO' };
+                return { cls: 'health-online', text: 'ONLINE' };
             } else if (h === 'LOW_PEERS' || h === 'POCOS PEERS' || h === 'LENTO') {
                 return { cls: 'health-low', text: 'LENTO' };
             } else if (h === 'OFFLINE' || h === 'CAÍDO' || h === 'CAIDO') {
@@ -2666,42 +2818,199 @@
             window.open(`/player/index.html?url=/auto/${slug}/stream.ts`, '_blank');
         }
 
+        function renderCandidatesDrawerHtml(slug, chanName, data) {
+            if (!data || !Array.isArray(data.candidates) || data.candidates.length === 0) {
+                return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <div style="font-size:13px; font-weight:700; color:var(--brand-color);">
+                            ⚙ Fuentes asignadas a "${chanName}"
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted);">Slug: <code style="color:#4CAF50;">/auto/${slug}</code></div>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-muted); padding:10px;">
+                        No se encontraron streams candidatos registrados para este canal.
+                    </div>
+                `;
+            }
+
+            const best = data.best_candidate || data.candidates[0] || {};
+            const resolvedCid = data.resolved_content_id || data.content_id || best.content_id || '';
+            const isPinned = Boolean(data.pinned_content_id && data.pinned_content_id === resolvedCid);
+            const isLive = Boolean(data.active_content_id && data.active_content_id === resolvedCid);
+
+            let winnerHtml = '';
+            if (best && best.content_id) {
+                const modeBadge = isPinned
+                    ? `<span class="badge-status-pinned">📌 FIJADO MANUALMENTE</span>`
+                    : `<span class="badge-status-auto">🤖 AUTO (TOP 1 PUNTUACIÓN P2P)</span>`;
+                const streamBadge = isLive
+                    ? `<span class="badge-status-live"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#fff; margin-right:4px;"></span> EN EMISIÓN EN VIVO</span>`
+                    : `<span class="badge-status-ready">✓ LISTO PARA EMITIR</span>`;
+
+                winnerHtml = `
+                    <div class="virtual-winner-card">
+                        <div class="winner-card-header">
+                            <div class="winner-title-wrap">
+                                <span class="winner-title-badge">🎯 Stream Elegido para /auto/${slug}</span>
+                                ${modeBadge}
+                                ${streamBadge}
+                            </div>
+                            <button class="action-btn-sm" onclick="copyFullContentId('${best.content_id}', this, event)" style="background:rgba(16,185,129,0.2); color:#10b981; border:1px solid rgba(16,185,129,0.4); padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;">
+                                📋 Copiar CID Elegido
+                            </button>
+                        </div>
+                        <div class="winner-stream-title">
+                            <span>${best.name || chanName}</span>
+                        </div>
+                        <div class="winner-meta-chips">
+                            <span class="winner-chip quality">${best.quality_label || 'SD'}</span>
+                            <span class="winner-chip peers">👥 ${best.peers || 0} peers</span>
+                            <span class="winner-chip score">★ ${Math.round(best.score || 0)}/100 pts</span>
+                            <span class="winner-chip origin">📦 ${best.plugin || 'el_cano'}</span>
+                            <code class="winner-cid-mono" onclick="copyFullContentId('${best.content_id}', this, event)" title="Clic para copiar CID">${best.content_id}</code>
+                        </div>
+                    </div>
+                `;
+            }
+
+            let candHtml = `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                    <div style="font-size:13px; font-weight:700; color:var(--brand-color);">
+                        ⚙ Fuentes y Candidatos (${data.candidates.length})
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button class="action-btn-sm btn-recheck" onclick="recheckChannelSources('${escapeJs(slug)}', this, event)" style="background:var(--brand-color); color:#fff; font-weight:700; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Re-comprobar en tiempo real el estado y peers de todas las fuentes">
+                            ⟳ Re-comprobar
+                        </button>
+                        <div style="font-size:11px; color:var(--text-muted);">URL Virtual: <code style="color:#4CAF50;">/auto/${slug}</code></div>
+                    </div>
+                </div>
+                ${winnerHtml}
+                <div class="candidates-table-wrap">
+                    <table class="candidates-table">
+                        <thead>
+                            <tr>
+                                <th>Salud P2P</th>
+                                <th>Original</th>
+                                <th>Calidad</th>
+                                <th>Peers</th>
+                                <th>0-100</th>
+                                <th>Origen</th>
+                                <th>Fijar</th>
+                                <th>Habilitado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            data.candidates.forEach(c => {
+                const isDis = c.is_disabled === true;
+                const badge = formatHealthBadge(c.health);
+                const isActive = c.is_active === true;
+                const isPinned = c.is_pinned === true;
+                const isWinner = (c.content_id === resolvedCid);
+
+                let statusBadgeHtml = '';
+                if (isActive) {
+                    statusBadgeHtml = `<span class="badge-active-stream" style="background:#10b981; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(16,185,129,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[EN EMISIÓN]</span>`;
+                } else if (isPinned) {
+                    statusBadgeHtml = `<span class="badge-pinned-stream" style="background:#f59e0b; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(245,158,11,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[FIJADO]</span>`;
+                } else if (isWinner) {
+                    statusBadgeHtml = `<span class="badge-selected-stream">[SELECCIONADO]</span>`;
+                }
+
+                const pinBtnHtml = isPinned ? `
+                    <button class="action-btn-sm" onclick="unpinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:#f59e0b; color:#fff; font-weight:700; border:none; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Desfijar este candidato (restablecer selección automática)">
+                        📌 Fijado
+                    </button>
+                ` : `
+                    <button class="action-btn-sm" onclick="pinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:rgba(255,255,255,0.06); color:var(--text-main); font-weight:600; border:1px solid rgba(255,255,255,0.15); padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Fijar y forzar emisión inmediata con este candidato">
+                        📌 Fijar
+                    </button>
+                `;
+
+                candHtml += `
+                    <tr class="${isDis ? 'candidate-disabled' : ''} ${isWinner ? 'candidate-winner-row' : ''} ${isActive ? 'candidate-currently-active' : ''}">
+                        <td><span class="health-pill ${badge.cls}">${badge.text}</span></td>
+                        <td style="font-weight:600; max-width:320px;">
+                            <div class="candidate-name-link" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID: ${c.content_id}">
+                                <span class="candidate-name-text">${c.name}</span>
+                                ${statusBadgeHtml}
+                                <svg class="candidate-copy-icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5; flex-shrink:0; margin-left:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </div>
+                            <div class="candidate-cid-wrap" style="margin-top:3px;">
+                                <code class="cid-copy-badge" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID completo (40 caracteres)">
+                                    <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                    ${c.content_id}
+                                </code>
+                            </div>
+                        </td>
+                        <td><span class="quality-badge quality-${(c.quality_label || 'SD').toLowerCase()}">${c.quality_label || 'SD'}</span></td>
+                        <td style="font-family:monospace; font-weight:700;">${c.peers || 0}</td>
+                        <td style="font-family:monospace; color:var(--brand-color); font-weight:700;">${Math.round(c.score || 0)}</td>
+                        <td><span class="channel-badge">${c.plugin || 'Lista'}</span></td>
+                        <td style="text-align:center;">
+                            ${pinBtnHtml}
+                        </td>
+                        <td style="text-align:center;">
+                            <label class="switch-toggle" title="${isDis ? 'Fuente excluida de la selección' : 'Fuente habilitada para la selección'}">
+                                <input type="checkbox" ${isDis ? '' : 'checked'} onchange="toggleCandidateCID('${c.content_id}', this, event)">
+                                <span class="slider"></span>
+                            </label>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            candHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return candHtml;
+        }
+
         async function recheckChannelSources(slug, btnEl, e) {
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            let card = (btnEl && typeof btnEl.closest === 'function') ? btnEl.closest('.channel-epg-card') : null;
+            if (!card && slug) {
+                const cards = Array.from(document.querySelectorAll('.channel-epg-card'));
+                card = cards.find(c => {
+                    const cSlug = toCanonicalSlug(c.dataset.channelName || '') || toCanonicalSlug(c.dataset.channelId || '');
+                    return cSlug === slug;
+                });
+            }
+
+            const drawer = card ? card.querySelector('.candidates-drawer') : null;
+
             if (btnEl && btnEl.innerHTML) {
                 btnEl.disabled = true;
-                btnEl.innerHTML = `⟳ Testeando...`;
+                btnEl.style.opacity = '0.75';
+                btnEl.innerHTML = `<span style="display:inline-block; animation:spin 1s linear infinite; margin-right:4px;">⟳</span> Comprobando...`;
             }
+
             try {
                 const resp = await fetch(`/statplugin?action=recheck_sources&slug=${encodeURIComponent(slug)}`, {
                     method: 'POST'
                 });
                 const res = await resp.json();
-                showToast('✓ Fuentes re-comprobadas y peers actualizados', 'success');
 
-                let card = (btnEl && typeof btnEl.closest === 'function') ? btnEl.closest('.channel-epg-card') : null;
-                if (!card && slug) {
-                    const cards = Array.from(document.querySelectorAll('.channel-epg-card'));
-                    card = cards.find(c => {
-                        const cSlug = toCanonicalSlug(c.dataset.channelName || '') || toCanonicalSlug(c.dataset.channelId || '');
-                        return cSlug === slug;
-                    });
+                if (drawer && card) {
+                    const chanName = card.dataset.channelName || slug;
+                    drawer.innerHTML = renderCandidatesDrawerHtml(slug, chanName, res);
                 }
 
-                if (card) {
-                    const chanName = card.dataset.channelName || slug;
-                    const chanId = card.dataset.channelId || slug;
-                    const drawer = card.querySelector('.candidates-drawer');
-                    if (drawer) drawer.remove();
-                    const sourcesBtn = card.querySelector('button[title*="Fuentes"]') || btnEl;
-                    if (sourcesBtn) {
-                        toggleCandidatesDrawer(chanName, chanId, sourcesBtn, null);
-                    }
+                const best = res.best_candidate || (res.candidates && res.candidates[0]);
+                if (best) {
+                    showToast(`✓ CID elegido para /auto/${slug}: "${best.name}" (${best.peers || 0} peers, ${Math.round(best.score || 0)} pts)`, 'success');
+                } else {
+                    showToast('✓ Fuentes re-comprobadas y peers actualizados', 'success');
                 }
             } catch (err) {
                 showToast('Error al re-comprobar: ' + err.message, 'error');
                 if (btnEl && btnEl.innerHTML) {
                     btnEl.disabled = false;
+                    btnEl.style.opacity = '1';
                     btnEl.innerHTML = `⟳ Re-comprobar`;
                 }
             }
@@ -2730,7 +3039,7 @@
 
             showToast(`⚡ Iniciando test de salud y peers para ${uniqueSlugs.length} canales favoritos...`, 'info');
             let completed = 0;
-            const concurrency = 3;
+            const concurrency = 2;
             for (let i = 0; i < uniqueSlugs.length; i += concurrency) {
                 const chunk = uniqueSlugs.slice(i, i + concurrency);
                 await Promise.all(chunk.map(async slug => {
@@ -2748,17 +3057,17 @@
                 btnEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span>Probar</span>`;
             }
 
-            // Actualizar drawers abiertos si los hay
-            document.querySelectorAll('.channel-epg-card').forEach(card => {
+            // Actualizar drawers abiertos in-situ sin cerrarlos
+            document.querySelectorAll('.channel-epg-card').forEach(async card => {
                 const drawer = card.querySelector('.candidates-drawer');
                 if (drawer) {
                     const chanName = card.dataset.channelName || '';
-                    const chanId = card.dataset.channelId || '';
-                    const sourcesBtn = card.querySelector('button[title*="Fuentes"]');
-                    if (sourcesBtn) {
-                        drawer.remove();
-                        toggleCandidatesDrawer(chanName, chanId, sourcesBtn, null);
-                    }
+                    const slug = toCanonicalSlug(chanName);
+                    try {
+                        const res = await fetch(`/auto/${slug}?action=list`);
+                        const data = await res.json();
+                        drawer.innerHTML = renderCandidatesDrawerHtml(slug, chanName, data);
+                    } catch (_) {}
                 }
             });
         }
@@ -2787,7 +3096,7 @@
                     </div>
                     <div style="font-size:11px; color:var(--text-muted);">Slug: <code style="color:#4CAF50;">/auto/${slug}</code></div>
                 </div>
-                <div class="candidates-loading" style="font-size:12px; color:var(--text-muted); padding:8px 0;">Consultando candidatos y salud del enjambre...</div>
+                <div class="candidates-loading" style="font-size:12px; color:var(--text-muted); padding:8px 0;"><span style="display:inline-block; animation:spin 1s linear infinite; margin-right:4px;">⟳</span> Consultando candidatos y métricas de enjambre...</div>
             `;
             const actionsGroup = card.querySelector('.channel-actions-group');
             if (actionsGroup) {
@@ -2800,113 +3109,7 @@
             try {
                 const res = await fetch(`/auto/${slug}?action=list`);
                 const data = await res.json();
-                if (!data || !Array.isArray(data.candidates) || data.candidates.length === 0) {
-                    drawer.innerHTML = `
-                        <div style="font-size:12px; color:var(--text-muted); padding:10px;">
-                            No se encontraron streams candidatos registrados para este canal.
-                        </div>
-                    `;
-                    return;
-                }
-
-                let candHtml = `
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-                        <div style="font-size:13px; font-weight:700; color:var(--brand-color);">
-                            ⚙ Fuentes y Candidatos (${data.candidates.length})
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <button class="action-btn-sm" onclick="recheckChannelSources('${escapeJs(slug)}', this, event)" style="background:var(--brand-color); color:#fff; font-weight:700; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Re-comprobar en tiempo real el estado y peers de todas las fuentes">
-                                ⟳ Re-comprobar
-                            </button>
-                            <div style="font-size:11px; color:var(--text-muted);">URL Virtual: <code style="color:#4CAF50;">/auto/${slug}</code></div>
-                        </div>
-                    </div>
-                    <div class="candidates-table-wrap">
-                        <table class="candidates-table">
-                            <thead>
-                                <tr>
-                                    <th>Estado</th>
-                                    <th>Original</th>
-                                    <th>Calidad</th>
-                                    <th>Peers</th>
-                                    <th>0-100</th>
-                                    <th>Origen</th>
-                                    <th>Fijar</th>
-                                    <th>Activo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-
-                data.candidates.forEach(c => {
-                    const isDis = c.is_disabled === true;
-                    const badge = formatHealthBadge(c.health);
-                    const isActive = c.is_active === true;
-                    const isPinned = c.is_pinned === true;
-                    const activeBadgeHtml = isActive ? `<span class="badge-active-stream" style="background:#10b981; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(16,185,129,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[EN EMISIÓN]</span>` : '';
-                    const pinnedBadgeHtml = isPinned ? `<span class="badge-pinned-stream" style="background:#f59e0b; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(245,158,11,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[FIJADO]</span>` : '';
-
-                    const pinBtnHtml = isPinned ? `
-                        <button class="action-btn-sm" onclick="unpinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:#f59e0b; color:#fff; font-weight:700; border:none; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Desfijar este candidato (restablecer selección automática)">
-                            📌 Fijado
-                        </button>
-                    ` : `
-                        <button class="action-btn-sm" onclick="pinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:rgba(255,255,255,0.06); color:var(--text-main); font-weight:600; border:1px solid rgba(255,255,255,0.15); padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Fijar y forzar emisión inmediata con este candidato">
-                            📌 Fijar
-                        </button>
-                    `;
-
-                    candHtml += `
-                        <tr class="${isDis ? 'candidate-disabled' : ''} ${isActive ? 'candidate-currently-active' : ''}" style="${isActive ? 'background:rgba(16, 185, 129, 0.08);' : ''}">
-                            <td><span class="health-pill ${badge.cls}">${badge.text}</span></td>
-                            <td style="font-weight:600; max-width:320px;">
-                                <div class="candidate-name-link" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID: ${c.content_id}">
-                                    <span class="candidate-name-text">${c.name}</span>
-                                    ${activeBadgeHtml}
-                                    ${pinnedBadgeHtml}
-                                    <svg class="candidate-copy-icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5; flex-shrink:0; margin-left:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </div>
-                                <div class="candidate-cid-wrap" style="margin-top:3px;">
-                                    <code class="cid-copy-badge" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID completo (40 caracteres)">
-                                        <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                        ${c.content_id}
-                                    </code>
-                                </div>
-                            </td>
-                            <td><span class="quality-badge quality-${(c.quality_label || 'SD').toLowerCase()}">${c.quality_label || 'SD'}</span></td>
-                            <td style="font-family:monospace; font-weight:700;">${c.peers || 0}</td>
-                            <td style="font-family:monospace; color:var(--brand-color); font-weight:700;">${Math.round(c.score || 0)}</td>
-                            <td><span class="channel-badge">${c.plugin || 'Lista'}</span></td>
-                            <td style="text-align:center;">
-                                ${pinBtnHtml}
-                            </td>
-                            <td style="text-align:center;">
-                                <label class="switch-toggle" title="${isDis ? 'Fuente excluida' : 'Fuente habilitada'}">
-                                    <input type="checkbox" ${isDis ? '' : 'checked'} onchange="toggleCandidateCID('${c.content_id}', this, event)">
-                                    <span class="slider"></span>
-                                </label>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                candHtml += `
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                drawer.innerHTML = candHtml;
-
-                // Auto-disparar recheck en segundo plano si los candidatos no han sido verificados
-                const hasUnverified = data.candidates.some(c => !c.health || c.health === 'UNKNOWN' || c.health === 'unknown');
-                if (hasUnverified) {
-                    setTimeout(() => {
-                        const recheckBtn = drawer.querySelector('button[onclick*="recheckChannelSources"]');
-                        if (recheckBtn) {
-                            recheckChannelSources(slug, recheckBtn, null);
-                        }
-                    }, 50);
-                }
+                drawer.innerHTML = renderCandidatesDrawerHtml(slug, chanName, data);
             } catch (err) {
                 drawer.innerHTML = `<div style="color:#ff5252; font-size:12px; padding:10px;">Error al obtener fuentes: ${err.message}</div>`;
             }
@@ -2919,15 +3122,14 @@
                 const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=pin&cid=${encodeURIComponent(cid)}`);
                 const data = await res.json();
                 if (data.status === 'success' || data.status === 'ok') {
-                    showToast('✓ Candidato fijado como prioritario indiscutible', 'success');
+                    showToast('✓ Candidato fijado como prioritario para emisión', 'success');
                     const card = btn ? btn.closest('.channel-epg-card') : null;
                     if (card) {
-                        const sourcesBtn = card.querySelector('button[title*="Fuentes"]');
                         const drawer = card.querySelector('.candidates-drawer');
-                        if (drawer) drawer.remove();
-                        if (sourcesBtn) {
-                            sourcesBtn.classList.remove('active');
-                            toggleCandidatesDrawer(card.dataset.channelName || slug, card.dataset.channelId || '', sourcesBtn, null);
+                        if (drawer) {
+                            const listRes = await fetch(`/auto/${encodeURIComponent(slug)}?action=list`);
+                            const listData = await listRes.json();
+                            drawer.innerHTML = renderCandidatesDrawerHtml(slug, card.dataset.channelName || slug, listData);
                         }
                     }
                 } else {
@@ -2948,14 +3150,15 @@
                     showToast('✓ Fijado eliminado. Se restablece la selección automática.', 'info');
                     const card = btn ? btn.closest('.channel-epg-card') : null;
                     if (card) {
-                        const sourcesBtn = card.querySelector('button[title*="Fuentes"]');
                         const drawer = card.querySelector('.candidates-drawer');
-                        if (drawer) drawer.remove();
-                        if (sourcesBtn) {
-                            sourcesBtn.classList.remove('active');
-                            toggleCandidatesDrawer(card.dataset.channelName || slug, card.dataset.channelId || '', sourcesBtn, null);
+                        if (drawer) {
+                            const listRes = await fetch(`/auto/${encodeURIComponent(slug)}?action=list`);
+                            const listData = await listRes.json();
+                            drawer.innerHTML = renderCandidatesDrawerHtml(slug, card.dataset.channelName || slug, listData);
                         }
                     }
+                } else {
+                    showToast('Error al desfijar candidato: ' + err.message, 'error');
                 }
             } catch (err) {
                 showToast('Error al desfijar candidato: ' + err.message, 'error');
@@ -3161,7 +3364,7 @@
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle; margin-right:3px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                             <span>Ver</span>
                         </button>
-                        <button class="action-btn-sm" onclick="toggleCandidatesDrawer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', this, event)" title="Ver y gestionar fuentes / candidatos asignados">
+                        <button class="action-btn-sm btn-sources" data-action="sources" onclick="toggleCandidatesDrawer('${escapeJs(chan.name)}', '${escapeJs(chan.id)}', this, event)" title="Ver y gestionar fuentes / candidatos asignados">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                             <span>Fuentes</span>
                         </button>

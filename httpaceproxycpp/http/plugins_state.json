@@ -14,6 +14,96 @@
       "name": "interna",
       "title": "Interna",
       "url": "/listas/locales/interna.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "new_era",
+      "title": "New Era",
+      "url": "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "el_cano",
+      "title": "El Cano",
+      "url": "https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json"
+    },
+    {
+      "enabled": true,
+      "name": "acepl",
+      "title": "AcePL",
+      "url": "https://api.acestream.me/all?api_version=1.0&api_key=test_api_key&language=spa"
+    },
+    {
+      "enabled": true,
+      "name": "aficionados",
+      "title": "Aficionados",
+      "url": "https://raw.githubusercontent.com/af1Series1/Tritolgia/refs/heads/main/AcEStREAM iDs.w3u"
+    },
+    {
+      "enabled": true,
+      "name": "tokio2",
+      "title": "tokio2",
+      "url": "https://git.gay/TokyoGhoulles/AceStream_IDs/raw/branch/main/hashes.json"
+    },
+    {
+      "enabled": true,
+      "name": "hashes2",
+      "title": "hashes2",
+      "url": "/listas/locales/hashes_acestream.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "elcano_ipns",
+      "title": "elcano_ipns",
+      "url": "http://127.0.0.1:8080/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes_acestream.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "elcano_ipns_backuo",
+      "title": "elcano_ipns_backuo",
+      "url": "http://127.0.0.1:8080/ipns/k51qzi5uqu5di462t7j4vu4akwfhvtjhy88qbupktvoacqfqe9uforjvhyi4wr/hashes_acestream.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "newera_ipns",
+      "title": "newera_ipns",
+      "url": "http://127.0.0.1:8080/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/<nombre_del_archivo>"
+    },
+    {
+      "enabled": true,
+      "name": "neweraelcano",
+      "title": "New era   Elcano",
+      "url": "http://127.0.0.1:43110/1JKe3VPvFe35bm1aiHdD4p1xcGCkZKhH3Q/"
+    },
+    {
+      "enabled": true,
+      "name": "tokyoghoulles1",
+      "title": "TokyoGhoulles1",
+      "url": "https://git.gay/TokyoGhoulles/AceStream_IDs/raw/branch/main/hashes.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "tokyoghoulles2",
+      "title": "TokyoGhoulles2",
+      "url": "https://git.gay/TokyoGhoulles/AceStream_IDs/raw/branch/main/hashes_acestream.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "zeronet1",
+      "title": "ZERONET1",
+      "url": "http://127.0.0.1:43110/14tqGWmUr21K2Gt6b8Gq4o2DGEeyLBCBLB/"
+    },
+    {
+      "enabled": true,
+      "name": "20260819",
+      "title": "20260819",
+      "url": "/listas/locales/lista_acestream_unificada.m3u"
+    },
+    {
+      "enabled": true,
+      "name": "20260903",
+      "title": "20260903",
+      "url": "/listas/locales/20260903.m3u"
     }
   ],
   "elcano": false,
@@ -25,5 +115,5 @@
     "epg": "https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv_sincolor0.xml.gz",
     "newera": "https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_iptv.m3u"
   },
-  "version": "09.10.03"
+  "version": "09.11.05"
 }

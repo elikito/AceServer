@@ -5130,24 +5130,56 @@ bool Proxy::matches_channel_filter(const std::string& slug_or_query, const std::
 Json Proxy::recheck_sources(const std::string& slug_or_channel) {
     if (!slug_or_channel.empty()) {
         auto candidates = find_candidates_for_channel(slug_or_channel);
+        std::vector<std::string> probe_cids;
         for (const auto& cand : candidates) {
-            channel_verifier_.clear_state(cand.content_id);
+            if (cand.is_disabled) continue; // No malgastar recursos sondeando fuentes desactivadas
+            auto b = broadcasts_.find(cand.content_id);
+            if (!b || b->client_count() == 0) {
+                channel_verifier_.clear_state(cand.content_id);
+                probe_cids.push_back(cand.content_id);
+            }
         }
 
-        std::vector<std::thread> workers;
-        for (const auto& cand : candidates) {
-            workers.emplace_back([this, cid = cand.content_id]() {
-                try {
-                    verify_channel(cid, 6000);
-                } catch (...) {}
-            });
-        }
-        for (auto& w : workers) {
-            if (w.joinable()) w.join();
+        // v09.11.05 / v09.11.06: Limitar concurrencia estricta a 2 hilos para NO saturar
+        // ni colapsar la cola de la API del motor AceStream (puerto 62062/6878).
+        if (!probe_cids.empty()) {
+            constexpr std::size_t kMaxConcurrentProbes = 2;
+            std::atomic<std::size_t> next_idx{0};
+            std::vector<std::thread> workers;
+            std::size_t num_workers = std::min(kMaxConcurrentProbes, probe_cids.size());
+            for (std::size_t w = 0; w < num_workers; ++w) {
+                workers.emplace_back([this, &probe_cids, &next_idx]() {
+                    while (true) {
+                        std::size_t i = next_idx.fetch_add(1);
+                        if (i >= probe_cids.size()) break;
+                        try {
+                            verify_channel(probe_cids[i], 4000);
+                        } catch (...) {}
+                    }
+                });
+            }
+            for (auto& w : workers) {
+                if (w.joinable()) w.join();
+            }
         }
 
         auto updated = find_candidates_for_channel(slug_or_channel);
         StreamScorer::rank_candidates(updated);
+
+        std::string norm_slug = canonical_slug(slug_or_channel);
+        std::string pinned_cid = get_virtual_pinned_cid(norm_slug);
+        std::string active_cid = get_virtual_active_cid(norm_slug);
+        std::string resolved_cid = pinned_cid.empty() ? (updated.empty() ? "" : updated[0].content_id) : pinned_cid;
+
+        bool pinned_is_transmitting = false;
+        if (!pinned_cid.empty()) {
+            auto b = broadcasts_.find(pinned_cid);
+            if (b && (b->client_count() > 0 || (b->is_running() && b->has_valid_ts_data()) || (b->is_running() && active_cid == pinned_cid))) {
+                pinned_is_transmitting = true;
+            }
+        }
+
+        Json best_cand_json = nullptr;
         Json::array arr;
         for (const auto& c : updated) {
             std::string quality_str = "SD";
@@ -5172,7 +5204,15 @@ Json Proxy::recheck_sources(const std::string& slug_or_channel) {
                 }
             }
 
-            arr.push_back(Json::object{
+            bool is_cand_pinned = (!pinned_cid.empty() && c.content_id == pinned_cid);
+            bool is_cand_active = false;
+            if (!pinned_cid.empty()) {
+                is_cand_active = (is_cand_pinned && pinned_is_transmitting);
+            } else {
+                is_cand_active = (!active_cid.empty() && c.content_id == active_cid);
+            }
+
+            auto cand_obj = Json::object{
                 {"name", c.name},
                 {"peers", static_cast<double>(cand_peers)},
                 {"content_id", c.content_id},
@@ -5182,15 +5222,34 @@ Json Proxy::recheck_sources(const std::string& slug_or_channel) {
                 {"quality_bonus", static_cast<double>(c.quality_bonus)},
                 {"speed_down", static_cast<double>(c.speed_down)},
                 {"health", health_to_string(cand_health)},
-                {"is_active", c.is_active_stream},
+                {"is_active", is_cand_active},
+                {"is_pinned", is_cand_pinned},
                 {"is_disabled", c.is_disabled},
                 {"is_foreign", c.is_foreign},
                 {"score", c.score}
-            });
+            };
+            if (!pinned_cid.empty() && c.content_id == pinned_cid) {
+                best_cand_json = cand_obj;
+            }
+            arr.push_back(cand_obj);
         }
+
+        if (best_cand_json.is_null() && !arr.empty()) {
+            best_cand_json = arr[0];
+        }
+
+        std::string reported_active_cid = pinned_cid.empty() ? active_cid : (pinned_is_transmitting ? pinned_cid : "");
+
         return Json::object{
             {"status", "success"},
+            {"slug", norm_slug},
+            {"canonical_name", canonical_name(slug_or_channel)},
             {"channel", slug_or_channel},
+            {"content_id", resolved_cid},
+            {"resolved_content_id", resolved_cid},
+            {"active_content_id", reported_active_cid},
+            {"pinned_content_id", pinned_cid},
+            {"best_candidate", best_cand_json},
             {"candidates", arr},
             {"total", static_cast<double>(updated.size())}
         };
