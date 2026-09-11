@@ -316,9 +316,9 @@ void Broadcast::stop() {
         }
     }
 
-    // Verificar período de gracia linger_timeout (mínimo 60s)
+    // Verificar período de gracia linger_timeout (mínimo 3s)
     auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
-    int linger = std::max(60, config_.linger_timeout);
+    int linger = std::max(3, config_.linger_timeout);
     if (zero_time > 0 && (now - zero_time) < linger) {
         log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
                  "] Broadcast::stop aplazado: sesión en período de gracia (" + std::to_string(now - zero_time) + "/" +
@@ -383,7 +383,7 @@ void Broadcast::stream_loop() {
     auto start_t = start_time_.load(std::memory_order_relaxed);
     bool in_startup_window = (start_t > 0 && (now - start_t) < 25);
     auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
-    int linger = std::max(60, config_.linger_timeout);
+    int linger = std::max(3, config_.linger_timeout);
     bool in_grace = (zero_time > 0 && (now - zero_time) < linger);
 
     if (!in_startup_window && !in_grace && subscribers_.load(std::memory_order_relaxed) <= 0 && client_count() == 0) {
@@ -534,7 +534,7 @@ void BroadcastManager::stop_reaper() {
 
 void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
     auto now = unix_time();
-    int linger = std::max(60, config_.linger_timeout);
+    int linger = std::max(3, config_.linger_timeout);
     std::vector<std::shared_ptr<Broadcast>> to_stop;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -559,7 +559,7 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
                     to_stop.push_back(broadcast);
                     it = broadcasts_.erase(it);
                 } else {
-                    // En período de gracia (linger_timeout >= 60s)
+                    // En período de gracia (linger_timeout >= 3s)
                     ++it;
                 }
             } else {
@@ -599,7 +599,7 @@ void BroadcastManager::remove_if_empty(const std::string& infohash) {
             if (it->second->get_subscribers() <= 0 && it->second->client_count() == 0) {
                 auto now = unix_time();
                 auto zero_time = it->second->get_zero_subscribers_time();
-                int linger = std::max(60, config_.linger_timeout);
+                int linger = std::max(3, config_.linger_timeout);
                 if (zero_time > 0 && (now - zero_time) >= linger) {
                     removed = it->second;
                     broadcasts_.erase(it);
