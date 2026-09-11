@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.12.01] - 2026-09-12
+
+### 📱 Optimización de Reproducción Móvil con URL Virtual Directa y Retoque EPG/UX Legacy
+
+#### 1. Reproducción Móvil Simplificada (`/mobile/index.html`)
+- **Streaming Directo a URL Virtual**: La reproducción móvil ahora sintoniza directamente la ruta canónica `/auto/<slug>/stream.ts`, permitiendo que el núcleo C++ gestione el algoritmo de scoring de candidatos, balanceo de enjambre P2P y conmutación transparente por failover sin intermediación manual.
+- **Eliminación del Selector de Calidades**: Se eliminaron las pestañas/pills de selección de calidad (`Auto`, `720p`, `SD`) y el código JS/CSS asociado, limpiando la interfaz para dispositivos móviles y evitando bifurcaciones innecesarias de peticiones HTTP hacia CIDs fijos.
+- **Telemetría en Segundo Plano**: La ficha del canal mantiene la consulta asíncrona de metadatos (`/auto/<slug>?action=list`) para reflejar en el visor el Content ID activo resuelto, las semillas disponibles y permitir su copia al portapapeles.
+
+#### 2. Mejoras en Reproductor Legacy e Integración EPG (`/player/legacy.html`)
+- **Compatibilidad iOS 12 (iPad Air 9.7" / Brave / Safari)**:
+  - Integración completa de guía EPG en tiempo real (barra de progreso del programa actual, tiempo restante, ficha de emisión).
+  - Modernización visual con iconos SVG vectoriales sin dependencias externas pesadas.
+  - Mantenimiento estricto de enlaces directos para reproducción fluida en VLC.
+- **Estabilidad de Flujo en Reproductores Externos**: Mitigación de paradas y pausas continuas en streaming MPEG-TS/TS mediante la optimización de los intervalos de transferencia y buffers TCP a nivel proxy.
+
+#### 3. Sincronización Canónica de Versión a `09.12.01`
+- Sistema de compilación: `httpaceproxycpp/CMakeLists.txt` (`VERSION 9.12.1`, `HTTPACEPROXYCPP_VERSION "09.12.01"`).
+- Cabecera canónica: `httpaceproxycpp/include/httpaceproxycpp/version.hpp` (`kAppVersion = "09.12.01"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_11_05_zero_copy_fanout_and_version`).
+- Componentes Web: `http/js/navbar.js`, `http/js/footer.js` y `http/plugins_state.json` (`09.12.01`).
+
 ## [09.11.05] - 2026-09-11
 
 ### ⚡ Fan-Out Zero-Copy con ChunkPtr Compartido y Optimización de Memoria para Streaming Concurrente

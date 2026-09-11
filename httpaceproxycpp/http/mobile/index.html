@@ -463,59 +463,9 @@
             line-clamp: unset;
         }
 
-        /* 3. Selector de Calidad Dinámico en Cajitas de Texto / Pills */
-        .qualities-pills-bar {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            padding: 2px 0;
-        }
 
-        .qualities-pills-bar::-webkit-scrollbar {
-            display: none;
-        }
+        /* 3. Lista Inferior de Canales (Pestañas Favoritos / Todos) */
 
-        .quality-pill {
-            flex: 1;
-            min-height: 34px;
-            padding: 0 10px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            white-space: nowrap;
-            user-select: none;
-        }
-
-        .quality-pill:active {
-            transform: scale(0.97);
-        }
-
-        .quality-pill.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #ffffff;
-            box-shadow: 0 2px 8px var(--accent-glow);
-        }
-
-        .quality-pill-seeds {
-            font-size: 9px;
-            opacity: 0.8;
-            font-family: var(--font-mono);
-            font-weight: normal;
-        }
-
-        /* 4. Lista Inferior de Canales (Pestañas Favoritos / Todos) */
         .channels-section {
             flex: 1;
             display: flex;
@@ -996,13 +946,6 @@
                 </div>
             </div>
 
-            <!-- Cajitas de Texto / Pills para Calidades y Variantes (Auto, 1080p, 720p) -->
-            <div id="qualities-container" class="qualities-pills-bar">
-                <button class="quality-pill active" data-quality="auto"
-                    onclick="selectQualityOption('auto')">Auto</button>
-                <button class="quality-pill" data-quality="1080p" onclick="selectQualityOption('1080p')">1080p</button>
-                <button class="quality-pill" data-quality="720p" onclick="selectQualityOption('720p')">720p</button>
-            </div>
         </section>
 
         <!-- 3. Lista Inferior de Canales EPG (Pestañas Favoritos / Todos) -->
@@ -1070,8 +1013,6 @@
         let favoriteList = [];
         let currentTab = 'favs'; // 'favs' o 'all'
         let activeChannel = null;
-        let activeCandidates = [];
-        let activeQualityFilter = 'auto';
         let currentPlayingCid = '';
         let searchQuery = '';
         let mpegtsPlayer = null;
@@ -1675,9 +1616,34 @@
             updateActiveProgramCard();
             renderChannelsList();
 
-            // Consultar candidatos y variantes para este canal canónico
+            // Sintonizar directamente la URL VIRTUAL canónica
             const slug = chan.slug || toCanonicalSlug(chan.name);
-            await fetchCandidatesAndBuildQualityPills(slug, startPlayback);
+            const streamUrl = `/auto/${encodeURIComponent(slug)}/stream.ts`;
+            const cidStrip = document.getElementById('active-cid-text');
+            if (cidStrip) cidStrip.textContent = `URL Virtual: /auto/${slug}`;
+
+            if (startPlayback) {
+                startPlaybackUrl(streamUrl, 'Auto Engine', '');
+            }
+
+            // Consultar datos en segundo plano para telemetría y resolución de CID
+            try {
+                fetch(`/auto/${encodeURIComponent(slug)}?action=list`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && cidStrip) {
+                            const resCid = data.resolved_content_id || (data.best_candidate && data.best_candidate.content_id) || '';
+                            if (resCid) {
+                                currentPlayingCid = resCid;
+                                const best = data.best_candidate;
+                                const peers = (best && best.peers !== undefined && best.peers > 0) ? ` (${best.peers} seeds)` : '';
+                                const q = (best && best.quality_label) ? ` [${best.quality_label}]` : '';
+                                cidStrip.textContent = `CID: ${resCid.substring(0, 16)}...${peers}${q} · /auto/${slug}`;
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            } catch (e) {}
         }
 
         async function selectAndPlayChannel(slugOrId, dial) {
@@ -1698,162 +1664,6 @@
                     selectChannel(list[0].chan, list[0].dial, true);
                 }
             }
-        }
-
-        // Extrae y clasifica la etiqueta de calidad estrictamente en 1080p, 720p o SD (4K descartado)
-        function extractCandidateQualityTag(candName, qualityLabel) {
-            const str = ((candName || '') + ' ' + (qualityLabel || '')).toLowerCase();
-            if (/\b(1080p|1080i|1080|fhd|fhda|1080a)\b/i.test(str)) {
-                return '1080p';
-            }
-            if (/\b(720p|720i|720|hd|720a)\b/i.test(str)) {
-                return '720p';
-            }
-            return 'SD';
-        }
-
-        async function fetchCandidatesAndBuildQualityPills(slug, shouldPlay = true) {
-            const qContainer = document.getElementById('qualities-container');
-            qContainer.innerHTML = `<span style="font-size: 11px; color: var(--text-muted); padding: 4px 8px;">Consultando versiones...</span>`;
-
-            try {
-                const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=list`);
-                const data = await res.json();
-                let rawCandidates = (data && Array.isArray(data.candidates)) ? data.candidates : [];
-                // v09.08.06: Descartar 4K por completo
-                activeCandidates = rawCandidates.filter(c => {
-                    const s = ((c.name || '') + ' ' + (c.quality_label || '')).toLowerCase();
-                    return !/\b(4k|uhd|4ka|2160p)\b/i.test(s) && c.quality !== 3;
-                });
-
-                if (activeCandidates.length === 0) {
-                    qContainer.innerHTML = `
-                        <button class="quality-pill active" data-quality="auto">Auto</button>
-                    `;
-                    if (shouldPlay) {
-                        startPlaybackUrl(`/auto/${encodeURIComponent(slug)}/stream.ts`, 'Auto Engine', '');
-                    }
-                    return;
-                }
-
-                // Extraer variantes únicas de calidad estandarizadas (Auto, 1080p, 720p, SD)
-                const qualityMap = new Map();
-                // Primera opción siempre Auto (sintoniza la mejor opción por semillas)
-                qualityMap.set('auto', {
-                    key: 'auto',
-                    label: 'Auto',
-                    candidate: data.best_candidate || activeCandidates[0]
-                });
-
-                const qualityOrder = ['1080p', '720p', 'SD'];
-                const bestCandidatePerQuality = {};
-
-                activeCandidates.forEach(cand => {
-                    const tag = extractCandidateQualityTag(cand.name, cand.quality_label);
-                    if (!bestCandidatePerQuality[tag] || (cand.peers || 0) > (bestCandidatePerQuality[tag].peers || 0)) {
-                        bestCandidatePerQuality[tag] = cand;
-                    }
-                });
-
-                qualityOrder.forEach(qKey => {
-                    if (bestCandidatePerQuality[qKey]) {
-                        qualityMap.set(qKey, {
-                            key: qKey,
-                            label: qKey,
-                            candidate: bestCandidatePerQuality[qKey]
-                        });
-                    }
-                });
-
-                // Construir cajitas de texto / pills
-                let pillsHtml = '';
-                qualityMap.forEach((val, key) => {
-                    const cand = val.candidate;
-                    const peersText = (cand && cand.peers > 0) ? ` <span class="quality-pill-seeds">(${cand.peers})</span>` : '';
-                    pillsHtml += `
-                        <button class="quality-pill ${key === activeQualityFilter ? 'active' : ''}" data-quality="${escapeHtml(key)}" onclick="selectQualityOption('${escapeHtml(key)}')">
-                            ${escapeHtml(val.label)}${peersText}
-                        </button>
-                    `;
-                });
-                qContainer.innerHTML = pillsHtml;
-
-                // Reproducir el canal cargando por defecto el que tenga más semillas (best_candidate)
-                if (shouldPlay) {
-                    const topCand = data.best_candidate || activeCandidates[0];
-                    activeQualityFilter = 'auto';
-                    updateQualityPillsActiveState('auto');
-                    playStreamCandidate(topCand, slug);
-                }
-
-            } catch (err) {
-                console.warn('Error listando candidatos:', err);
-                qContainer.innerHTML = `<button class="quality-pill active" data-quality="auto">Auto</button>`;
-                if (shouldPlay) {
-                    startPlaybackUrl(`/auto/${encodeURIComponent(slug)}/stream.ts`, 'Auto Engine', '');
-                }
-            }
-        }
-
-        function updateQualityPillsActiveState(qKey) {
-            document.querySelectorAll('.quality-pill').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-quality') === qKey);
-            });
-        }
-
-        async function selectQualityOption(qualityKey) {
-            activeQualityFilter = qualityKey;
-            updateQualityPillsActiveState(qualityKey);
-
-            if (!activeChannel) return;
-            const slug = activeChannel.slug || toCanonicalSlug(activeChannel.name);
-
-            if (qualityKey === 'auto') {
-                showToast(`Auto: Seleccionando candidato con más semillas`);
-                const topCand = activeCandidates.length > 0 ? activeCandidates[0] : null;
-                if (topCand) {
-                    playStreamCandidate(topCand, slug);
-                } else {
-                    startPlaybackUrl(`/auto/${encodeURIComponent(slug)}/stream.ts`, 'Auto Engine', '');
-                }
-                return;
-            }
-
-            // Buscar el mejor candidato que coincide con este tag de calidad estandarizado
-            let matched = null;
-            let maxPeers = -1;
-            activeCandidates.forEach(c => {
-                const tag = extractCandidateQualityTag(c.name, c.quality_label);
-                if (tag.toLowerCase() === qualityKey.toLowerCase()) {
-                    if ((c.peers || 0) > maxPeers) {
-                        maxPeers = c.peers || 0;
-                        matched = c;
-                    }
-                }
-            });
-
-            if (matched) {
-                showToast(`Calidad seleccionada: ${qualityKey}`);
-                playStreamCandidate(matched, slug);
-            } else {
-                showToast(`Sintonizando ${qualityKey}...`);
-                startPlaybackUrl(`/auto/${encodeURIComponent(slug)}?quality=${encodeURIComponent(qualityKey)}`, `Filtro ${qualityKey}`, '');
-            }
-        }
-
-        function playStreamCandidate(cand, slug) {
-            currentPlayingCid = cand.content_id || '';
-            const cidStrip = document.getElementById('active-cid-text');
-            if (currentPlayingCid) {
-                const peersLabel = (cand.peers !== undefined && cand.peers !== null) ? ` (${cand.peers} seeds)` : '';
-                cidStrip.textContent = `CID: ${currentPlayingCid}${peersLabel}`;
-            } else {
-                cidStrip.textContent = `Auto Engine`;
-            }
-
-            const streamUrl = currentPlayingCid ? `/content_id/${currentPlayingCid}/stream.ts` : `/auto/${encodeURIComponent(slug)}/stream.ts`;
-            const engineLabel = cand.name ? cand.name.substring(0, 20) : 'Auto Engine';
-            startPlaybackUrl(streamUrl, engineLabel, currentPlayingCid);
         }
 
         // --- REPRODUCTOR HLS & MPEGTS ---
