@@ -5,7 +5,7 @@ networks:
 services:
   httpaceproxy:
     build:
-      context: ./httpaceproxycpp
+      context: .
       dockerfile: Dockerfile
     container_name: httpaceproxy
     restart: unless-stopped
