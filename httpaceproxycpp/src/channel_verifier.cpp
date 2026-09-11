@@ -159,6 +159,10 @@ void ChannelVerifier::set_active_stream_checker(ActiveChecker checker) {
     active_checker_ = std::move(checker);
 }
 
+void ChannelVerifier::set_active_streaming_predicate(StreamingPredicate pred) {
+    streaming_predicate_ = std::move(pred);
+}
+
 // ---------------------------------------------------------------------------
 // Estado en memoria
 // ---------------------------------------------------------------------------
@@ -366,12 +370,35 @@ void ChannelVerifier::worker_loop() {
         Task task;
         {
             std::unique_lock<std::mutex> lk(queue_mutex_);
-            queue_cv_.wait(lk, [this] {
-                return stop_.load() || !task_queue_.empty();
-            });
+            while (!stop_.load()) {
+                if (task_queue_.empty()) {
+                    queue_cv_.wait(lk, [this] {
+                        return stop_.load() || !task_queue_.empty();
+                    });
+                    continue;
+                }
+                // v09.11.03 — Pausar tareas en background mientras haya clientes consumiendo stream
+                if (streaming_predicate_ && streaming_predicate_() && !task_queue_.front().force) {
+                    queue_cv_.wait_for(lk, std::chrono::milliseconds(500), [this] {
+                        return stop_.load() || !streaming_predicate_ || !streaming_predicate_() ||
+                               (!task_queue_.empty() && task_queue_.front().force);
+                    });
+                    continue;
+                }
+                break;
+            }
             if (stop_.load() && task_queue_.empty()) break;
             task = std::move(task_queue_.front());
             task_queue_.pop();
+        }
+
+        if (!task.force && streaming_predicate_ && streaming_predicate_()) {
+            std::unique_lock<std::mutex> lk(queue_mutex_);
+            task_queue_.push(std::move(task));
+            queue_cv_.wait_for(lk, std::chrono::milliseconds(500), [this] {
+                return stop_.load() || !streaming_predicate_ || !streaming_predicate_();
+            });
+            continue;
         }
 
         // Bypass para streams activos antes de solicitar semáforo o motor

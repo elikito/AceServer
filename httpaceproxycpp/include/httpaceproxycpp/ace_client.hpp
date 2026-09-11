@@ -42,7 +42,7 @@ public:
     void start_broadcast_async(const std::map<std::string, std::string>& params);
     std::map<std::string, std::string> status(int timeout_seconds = 1);
     std::map<std::string, std::string> get_cached_status() const;
-    void stop_broadcast();
+    void stop_broadcast(const std::string& id = "");
     void shutdown();
     bool alive() const { return running_; }
     std::string engine_version() const {

@@ -91,7 +91,7 @@ public:
     std::size_t client_count() const;
     std::vector<std::shared_ptr<StreamClient>> clients() const;
     void start_once();
-    void stop();
+    void stop(bool force = false);
     std::shared_ptr<AceClient> ace() const { return ace_; }
     std::string infohash() const { return infohash_; }
     std::map<std::string, std::string> get_p2p_status() const;
@@ -162,6 +162,7 @@ public:
     void reap_inactive_sessions(std::int64_t max_idle_seconds = 20);
     void start_reaper();
     void stop_reaper();
+    void force_stop_broadcast(const std::string& infohash);
     void stop_all();
 
 private:

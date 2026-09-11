@@ -83,6 +83,15 @@ void FavoritesHealthWorker::request_channel_probe(const std::string& slug_or_cha
 void FavoritesHealthWorker::probe_channel(const std::string& slug) {
     if (!running_ || slug.empty()) return;
 
+    // v09.11.03 — Pausar temporalmente si hay al menos un cliente consumiendo stream
+    while (running_ && proxy_.get_active_client_count() > 0) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait_for(lock, std::chrono::seconds(1), [this] {
+            return !running_ || proxy_.get_active_client_count() == 0;
+        });
+    }
+    if (!running_) return;
+
     auto candidates = proxy_.find_candidates_for_channel(slug);
     if (candidates.empty()) return;
 
@@ -173,6 +182,15 @@ void FavoritesHealthWorker::probe_all_favorites() {
     for (const auto& fav_slug : favs) {
         if (!running_) break;
 
+        // v09.11.03 — Pausar si hay clientes activos consumiendo un stream
+        while (running_ && proxy_.get_active_client_count() > 0) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait_for(lock, std::chrono::seconds(1), [this] {
+                return !running_ || proxy_.get_active_client_count() == 0;
+            });
+        }
+        if (!running_) break;
+
         // Procesar cualquier petición prioritaria urgente acumulada antes del siguiente canal
         while (running_) {
             std::string urgent_slug;
@@ -212,6 +230,13 @@ void FavoritesHealthWorker::run() {
     if (!running_) return;
 
     // Calentamiento inicial de la caché con los canales favoritos
+    while (running_ && proxy_.get_active_client_count() > 0) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait_for(lock, std::chrono::seconds(1), [this] {
+            return !running_ || proxy_.get_active_client_count() == 0;
+        });
+    }
+    if (!running_) return;
     probe_all_favorites();
 
     while (running_) {

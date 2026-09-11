@@ -81,6 +81,7 @@ public:
     std::vector<std::string> get_disabled_candidates() const;
     const Config& get_config() const { return config_; }
     FavoritesHealthWorker* get_favorites_worker() { return favorites_worker_.get(); }
+    std::size_t get_active_client_count() const { return broadcasts_.client_count(); }
 
     // v09.09.01 — Dynamic Stream Upgrader
     bool check_and_upgrade_stream(const std::shared_ptr<StreamClient>& client,
@@ -97,6 +98,9 @@ public:
     void set_virtual_pinned_cid(const std::string& slug, const std::string& cid);
     void clear_virtual_pinned_cid(const std::string& slug);
     bool pin_candidate(const std::string& slug, const std::string& cid);
+
+    // v09.11.03 — Saneamiento de discontinuidad MPEG-TS
+    static bool apply_ts_discontinuity_to_packet(unsigned char* pkt);
 
     // Logos personalizados persistentes (custom_logos.json)
     std::map<std::string, std::string> get_custom_logos() const;

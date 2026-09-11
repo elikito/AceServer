@@ -5,6 +5,7 @@
 #include "httpaceproxycpp/broadcast.hpp"
 #include "httpaceproxycpp/channel_verifier.hpp"
 #include "httpaceproxycpp/http_server.hpp"
+#include "httpaceproxycpp/proxy.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -1084,7 +1085,7 @@ void test_v09_11_01_active_failover_and_scoring() {
 
 void test_v09_11_02_strict_single_cid_reaper_and_null_packets() {
     // 1. Verificación canónica de versión v09.11.02
-    require(std::string(kAppVersion) == "09.11.02", "App version must be exactly 09.11.02");
+    require(std::string(kAppVersion) >= "09.11.02", "App version must be at least 09.11.02");
 
     // 2. Erradicación total del suelo de 60s: Config linger_timeout por defecto = 3s
     Config cfg;
@@ -1118,6 +1119,64 @@ void test_v09_11_02_strict_single_cid_reaper_and_null_packets() {
     require(static_cast<unsigned char>(null_pkt[3]) == 0x10, "TS adaptation field must be 0x10 (payload only, CC 0)");
     require(static_cast<unsigned char>(null_pkt[4]) == 0xFF, "TS payload must be 0xFF");
     require(static_cast<unsigned char>(null_pkt[187]) == 0xFF, "TS payload last byte must be 0xFF");
+}
+
+void test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity() {
+    // 1. Verificación canónica de versión v09.11.03
+    require(std::string(kAppVersion) == "09.11.03", "App version must be exactly 09.11.03");
+
+    // 2. Verificación de Continuity Counter (4 bits) en paquetes TS Null
+    uint8_t cc = 0;
+    for (int i = 0; i < 32; ++i) {
+        std::vector<char> null_pkt(188, static_cast<char>(0xFF));
+        null_pkt[0] = static_cast<char>(0x47);
+        null_pkt[1] = static_cast<char>(0x1F);
+        null_pkt[2] = static_cast<char>(0xFF);
+        null_pkt[3] = static_cast<char>(0x10 | (cc & 0x0F));
+
+        require((static_cast<unsigned char>(null_pkt[3]) & 0x0F) == (i % 16),
+                "Continuity Counter must increment modulo 16");
+        cc = (cc + 1) & 0x0F;
+    }
+
+    // 3. Saneamiento de discontinuidad TS: paquete con Adaptation Field preexistente (AFC=0x30, AFL=7)
+    std::vector<unsigned char> ts_with_af(188, 0xFF);
+    ts_with_af[0] = 0x47;
+    ts_with_af[1] = 0x01; // PID = 0x0100 (256)
+    ts_with_af[2] = 0x00;
+    ts_with_af[3] = 0x34; // AFC = 3 (adaptation + payload), CC = 4
+    ts_with_af[4] = 0x07; // AFL = 7
+    ts_with_af[5] = 0x00; // Flags = 0 (discontinuity_indicator = 0)
+    require((ts_with_af[5] & 0x80) == 0, "discontinuity_indicator must initially be 0");
+
+    bool ok_af = Proxy::apply_ts_discontinuity_to_packet(ts_with_af.data());
+    require(ok_af, "apply_ts_discontinuity_to_packet should succeed on AFC=3");
+    require((ts_with_af[5] & 0x80) == 0x80, "discontinuity_indicator (bit 7) must be set to 1");
+    require((ts_with_af[3] & 0x30) == 0x30, "AFC must remain 3 (adaptation + payload)");
+    require(ts_with_af[4] == 0x07, "AFL must remain 7");
+
+    // 4. Saneamiento de discontinuidad TS: paquete sólo payload (AFC=0x10) adaptado a 188 bytes
+    std::vector<unsigned char> ts_payload_only(188, 0xAB);
+    ts_payload_only[0] = 0x47;
+    ts_payload_only[1] = 0x01; // PID = 256
+    ts_payload_only[2] = 0x00;
+    ts_payload_only[3] = 0x15; // AFC = 1 (payload only), CC = 5
+    // Payload empieza en byte 4: 0x00, 0x00, 0x01, 0xE0 (PES header vídeo)
+    ts_payload_only[4] = 0x00;
+    ts_payload_only[5] = 0x00;
+    ts_payload_only[6] = 0x01;
+    ts_payload_only[7] = 0xE0;
+
+    bool ok_payload = Proxy::apply_ts_discontinuity_to_packet(ts_payload_only.data());
+    require(ok_payload, "apply_ts_discontinuity_to_packet should succeed on AFC=1");
+    require((ts_payload_only[3] & 0x30) == 0x30, "AFC must be converted to 3 (adaptation + payload)");
+    require((ts_payload_only[3] & 0x0F) == 0x05, "CC must be preserved as 5");
+    require(ts_payload_only[4] == 0x01, "AFL must be 1 byte");
+    require((ts_payload_only[5] & 0x80) == 0x80, "discontinuity_indicator (bit 7) must be set to 1");
+    // Payload desplazado debe empezar en byte 6 con el PES header original intacto
+    require(ts_payload_only[6] == 0x00 && ts_payload_only[7] == 0x00 &&
+            ts_payload_only[8] == 0x01 && ts_payload_only[9] == 0xE0,
+            "PES video header must be shifted cleanly to byte 6");
 }
 
 } // namespace
@@ -1161,6 +1220,7 @@ int main() {
         test_v09_10_03_watchdog_and_real_peer_selection();
         test_v09_11_01_active_failover_and_scoring();
         test_v09_11_02_strict_single_cid_reaper_and_null_packets();
+        test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

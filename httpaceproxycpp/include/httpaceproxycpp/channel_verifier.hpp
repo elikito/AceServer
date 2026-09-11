@@ -168,6 +168,10 @@ public:
     using ActiveChecker = std::function<std::optional<VerifyResult>(const std::string&)>;
     void set_active_stream_checker(ActiveChecker checker);
 
+    // v09.11.03 — Pausa de background verifier ante streaming activo
+    using StreamingPredicate = std::function<bool()>;
+    void set_active_streaming_predicate(StreamingPredicate pred);
+
     // ------------------------------------------------------------------
     // Actualización y limpieza de estado en memoria
     // ------------------------------------------------------------------
@@ -255,6 +259,7 @@ private:
 
     // Bypass de streams activos
     ActiveChecker                   active_checker_;
+    StreamingPredicate              streaming_predicate_;
 
     // Notificación para verify_sync (por CID)
     mutable std::mutex              sync_mutex_;

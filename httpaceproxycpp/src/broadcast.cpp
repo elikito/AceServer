@@ -292,38 +292,44 @@ void Broadcast::start_once() {
     }
 }
 
-void Broadcast::stop() {
-    // Bloquear terminantemente el comando STOP si todavía existen suscriptores activos o clientes conectados
-    if (subscribers_.load(std::memory_order_relaxed) > 0 || client_count() > 0) {
-        log_line("WARNING", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
-                 "] Broadcast::stop bloqueado: sesión con " + std::to_string(subscribers_.load()) + " suscriptores y " +
-                 std::to_string(client_count()) + " clientes activos. PROHIBIDO enviar STOP a AceStream.");
-        return;
-    }
-
-    // 1. Prohibido enviar STOP a AceStream durante los primeros 25 segundos de inicio si el motor respondió con éxito o está en loading/starting/dl/buf/prebuf
-    auto start_t = start_time_.load(std::memory_order_relaxed);
-    auto now = unix_time();
-    if (start_t > 0 && (now - start_t) < 25) {
-        auto st = get_p2p_status();
-        std::string status_val = st.contains("status") ? lower(st.at("status")) : "";
-        if (status_val == "loading" || status_val == "starting" || status_val == "dl" ||
-            status_val == "buf" || status_val == "prebuf" || status_val == "wait" || status_val.empty()) {
-            log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
-                     "] Broadcast::stop bloqueado: en ventana de inicio protegida (" +
-                     std::to_string(now - start_t) + "/25s, status: " + status_val + "). PROHIBIDO enviar STOP.");
+void Broadcast::stop(bool force) {
+    if (!force) {
+        // Bloquear terminantemente el comando STOP si todavía existen suscriptores activos o clientes conectados
+        if (subscribers_.load(std::memory_order_relaxed) > 0 || client_count() > 0) {
+            log_line("WARNING", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                     "] Broadcast::stop bloqueado: sesión con " + std::to_string(subscribers_.load()) + " suscriptores y " +
+                     std::to_string(client_count()) + " clientes activos. PROHIBIDO enviar STOP a AceStream.");
             return;
         }
-    }
 
-    // Verificar período de gracia linger_timeout (mínimo 3s)
-    auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
-    int linger = std::max(3, config_.linger_timeout);
-    if (zero_time > 0 && (now - zero_time) < linger) {
+        // 1. Prohibido enviar STOP a AceStream durante los primeros 25 segundos de inicio si el motor respondió con éxito o está en loading/starting/dl/buf/prebuf
+        auto start_t = start_time_.load(std::memory_order_relaxed);
+        auto now = unix_time();
+        if (start_t > 0 && (now - start_t) < 25) {
+            auto st = get_p2p_status();
+            std::string status_val = st.contains("status") ? lower(st.at("status")) : "";
+            if (status_val == "loading" || status_val == "starting" || status_val == "dl" ||
+                status_val == "buf" || status_val == "prebuf" || status_val == "wait" || status_val.empty()) {
+                log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                         "] Broadcast::stop bloqueado: en ventana de inicio protegida (" +
+                         std::to_string(now - start_t) + "/25s, status: " + status_val + "). PROHIBIDO enviar STOP.");
+                return;
+            }
+        }
+
+        // Verificar período de gracia linger_timeout (mínimo 3s)
+        auto zero_time = zero_subscribers_time_.load(std::memory_order_relaxed);
+        int linger = std::max(3, config_.linger_timeout);
+        if (zero_time > 0 && (now - zero_time) < linger) {
+            log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                     "] Broadcast::stop aplazado: sesión en período de gracia (" + std::to_string(now - zero_time) + "/" +
+                     std::to_string(linger) + "s). Stream de fondo protegido.");
+            return;
+        }
+    } else {
         log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
-                 "] Broadcast::stop aplazado: sesión en período de gracia (" + std::to_string(now - zero_time) + "/" +
-                 std::to_string(linger) + "s). Stream de fondo protegido.");
-        return;
+                 "] Broadcast::stop FORZADO: enviando STOP inmediato a AceStream y liberando sesión.");
+        subscribers_.store(0, std::memory_order_relaxed);
     }
 
     bool expected = false;
@@ -340,7 +346,7 @@ void Broadcast::stop() {
     }
     for (auto& client : clients()) client->queue->close();
     if (ace_) {
-        try { ace_->stop_broadcast(); } catch (...) {}
+        try { ace_->stop_broadcast(infohash_); } catch (...) {}
         try { ace_->shutdown(); } catch (...) {}
     }
 
@@ -388,7 +394,7 @@ void Broadcast::stream_loop() {
 
     if (!in_startup_window && !in_grace && subscribers_.load(std::memory_order_relaxed) <= 0 && client_count() == 0) {
         if (ace_) {
-            try { ace_->stop_broadcast(); } catch (...) {}
+            try { ace_->stop_broadcast(infohash_); } catch (...) {}
             try { ace_->shutdown(); } catch (...) {}
         }
     } else {
@@ -630,6 +636,23 @@ std::vector<std::shared_ptr<StreamClient>> BroadcastManager::all_clients() const
         out.insert(out.end(), clients.begin(), clients.end());
     }
     return out;
+}
+
+void BroadcastManager::force_stop_broadcast(const std::string& infohash) {
+    std::shared_ptr<Broadcast> removed;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = broadcasts_.find(infohash);
+        if (it != broadcasts_.end()) {
+            removed = it->second;
+            broadcasts_.erase(it);
+        }
+    }
+    if (removed) {
+        log_line("INFO", "[" + infohash.substr(0, std::min<std::size_t>(8, infohash.size())) +
+                 "] BroadcastManager::force_stop_broadcast: enviando STOP síncrono e inmediato a AceStream");
+        removed->stop(/*force=*/true);
+    }
 }
 
 void BroadcastManager::stop_all() {

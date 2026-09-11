@@ -246,12 +246,17 @@ std::map<std::string, std::string> AceClient::get_cached_status() const {
     return cached_status_;
 }
 
-void AceClient::stop_broadcast() {
+void AceClient::stop_broadcast(const std::string& id) {
     if (!start_issued_) {
         return;
     }
     start_issued_ = false;
-    try { write_line("STOP"); } catch (...) {}
+    try {
+        if (!id.empty()) {
+            write_line("STOP " + id);
+        }
+        write_line("STOP");
+    } catch (...) {}
 }
 
 void AceClient::shutdown() {

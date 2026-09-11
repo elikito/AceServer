@@ -3,6 +3,7 @@
 #include "httpaceproxycpp/util.hpp"
 
 #include <algorithm>
+#include <cstring>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -369,6 +370,11 @@ Proxy::Proxy(Config config)
             return r;
         }
         return std::nullopt;
+    });
+
+    // v09.11.03 — Pausar tareas de verificación en segundo plano mientras haya streaming activo
+    channel_verifier_.set_active_streaming_predicate([this]() -> bool {
+        return broadcasts_.client_count() > 0;
     });
 
     if (config_.ace_host == "auto" || config_.ace_host == "aceserve-engine") {
@@ -2387,7 +2393,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                              (client->queue->is_closed() ? " cerrado por motor" : " sin datos tras 6s") +
                              " en '" + ctx.auto_slug + "'. Conmutando al siguiente candidato...");
                     broadcast->remove_client(client);
-                    broadcasts_.remove_if_empty(infohash);
+                    broadcasts_.force_stop_broadcast(infohash);
 
                     auto candidates = find_candidates_for_channel(ctx.auto_slug);
                     StreamScorer::rank_candidates(candidates);
@@ -2481,23 +2487,62 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         }
         client->last_activity.store(unix_time(), std::memory_order_relaxed);
 
-        // MPEG-TS Null Packet estándar (188 bytes: 0x47, 0x1F, 0xFF, 0x10 seguido de 184 bytes 0xFF)
-        static const std::vector<char> kTsNullPacket = []() {
-            std::vector<char> pkt(188, static_cast<char>(0xFF));
-            pkt[0] = static_cast<char>(0x47);
-            pkt[1] = static_cast<char>(0x1F);
-            pkt[2] = static_cast<char>(0xFF);
-            pkt[3] = static_cast<char>(0x10);
-            return pkt;
-        }();
-
         // 4. BUCLE TRANSPARENTE DE STREAMING (CON TS NULL PACKETS KEEP-ALIVE EN RUTAS VIRTUALES)
         if (ok) {
             std::vector<char> chunk;
             auto last_null_packet_tp = std::chrono::steady_clock::now();
+            uint8_t null_packet_cc = 0;
+            bool pending_discontinuity = false;
+            int known_video_pid = -1;
 
             while (true) {
                 if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50))) {
+                    if (pending_discontinuity && !chunk.empty()) {
+                        // Localizar el primer paquete TS de vídeo y activar el flag de adaptación discontinuity_indicator
+                        for (std::size_t offset = 0; offset + 188 <= chunk.size(); offset += 188) {
+                            unsigned char* pkt = reinterpret_cast<unsigned char*>(chunk.data() + offset);
+                            if (pkt[0] != 0x47) continue;
+
+                            int pid = ((pkt[1] & 0x1F) << 8) | pkt[2];
+                            // Omitir PAT (0), CAT (1), TSDT (2) y NULL packets (0x1FFF / 8191)
+                            if (pid == 0 || pid == 1 || pid == 2 || pid == 0x1FFF) continue;
+
+                            bool is_video = false;
+                            if (known_video_pid > 0 && pid == known_video_pid) {
+                                is_video = true;
+                            } else {
+                                bool pusi = (pkt[1] & 0x40) != 0;
+                                if (pusi) {
+                                    int afc = (pkt[3] >> 4) & 0x03;
+                                    int payload_offset = 4;
+                                    if (afc == 3) payload_offset = 5 + pkt[4];
+                                    if (afc != 2 && payload_offset + 4 <= 188) {
+                                        if (pkt[payload_offset] == 0x00 && pkt[payload_offset + 1] == 0x00 && pkt[payload_offset + 2] == 0x01) {
+                                            unsigned char stream_id = pkt[payload_offset + 3];
+                                            if ((stream_id >= 0xE0 && stream_id <= 0xEF) || stream_id == 0xFD) {
+                                                is_video = true;
+                                                known_video_pid = pid;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (!is_video && known_video_pid <= 0 && pid >= 32 && pid < 0x1FFF) {
+                                    is_video = true;
+                                    known_video_pid = pid;
+                                }
+                            }
+
+                            if (is_video) {
+                                if (apply_ts_discontinuity_to_packet(pkt)) {
+                                    log_line("INFO", "[TS DISCONTINUITY] Inyectado discontinuity_indicator en PID " +
+                                             std::to_string(pid) + " tras sequía de buffer");
+                                    pending_discontinuity = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     if (chunked) {
                         std::ostringstream prefix;
                         prefix << std::hex << chunk.size() << "\r\n";
@@ -2521,17 +2566,25 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                         auto now_tp = std::chrono::steady_clock::now();
                         auto drought_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now_tp - last_null_packet_tp).count();
                         if (drought_ms >= 250) {
+                            std::vector<char> null_pkt(188, static_cast<char>(0xFF));
+                            null_pkt[0] = static_cast<char>(0x47);
+                            null_pkt[1] = static_cast<char>(0x1F);
+                            null_pkt[2] = static_cast<char>(0xFF);
+                            null_pkt[3] = static_cast<char>(0x10 | (null_packet_cc & 0x0F));
+                            null_packet_cc = (null_packet_cc + 1) & 0x0F;
+
                             if (chunked) {
                                 std::ostringstream prefix;
-                                prefix << std::hex << kTsNullPacket.size() << "\r\n";
+                                prefix << std::hex << null_pkt.size() << "\r\n";
                                 ok = ctx.connection.send_text(prefix.str())
-                                  && ctx.connection.send_all(kTsNullPacket.data(), kTsNullPacket.size())
+                                  && ctx.connection.send_all(null_pkt.data(), null_pkt.size())
                                   && ctx.connection.send_text("\r\n");
                             } else {
-                                ok = ctx.connection.send_all(kTsNullPacket.data(), kTsNullPacket.size());
+                                ok = ctx.connection.send_all(null_pkt.data(), null_pkt.size());
                             }
                             if (!ok) break;
                             last_null_packet_tp = now_tp;
+                            pending_discontinuity = true;
                         }
 
                         // Si la cola del motor fue cerrada inesperadamente durante la reproducción:
@@ -2539,13 +2592,13 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                             log_line("WARNING", "[FAILOVER-MIDSTREAM] Cola cerrada en canal virtual '" + ctx.auto_slug +
                                                 "' (CID: " + infohash + "). Intentando conmutación en caliente a siguiente candidato...");
                             auto current_b_lock = client->current_broadcast.lock();
+                            std::string old_cid = current_b_lock ? current_b_lock->infohash() : infohash;
                             if (current_b_lock) {
                                 current_b_lock->remove_client(client);
-                                broadcasts_.remove_if_empty(current_b_lock->infohash());
                             } else {
                                 broadcast->remove_client(client);
-                                broadcasts_.remove_if_empty(infohash);
                             }
+                            broadcasts_.force_stop_broadcast(old_cid);
 
                             auto candidates = find_candidates_for_channel(ctx.auto_slug);
                             StreamScorer::rank_candidates(candidates);
@@ -2576,6 +2629,8 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                                 broadcast->attach_migrated_client(client);
                                 broadcast->start_once();
                                 last_null_packet_tp = std::chrono::steady_clock::now();
+                                pending_discontinuity = true;
+                                known_video_pid = -1;
                                 continue;
                             }
                             // No hay más candidatos viables para conmutar
@@ -4292,6 +4347,10 @@ void Proxy::migrate_subscribers(const std::string& old_content_id) {
         add_bunker_log("[MIGRACIÓN INMEDIATA] Suscriptor migrado de " + old_content_id.substr(0, std::min<std::size_t>(8, old_content_id.size())) +
                        " a " + target_cid.substr(0, std::min<std::size_t>(8, target_cid.size())) + " por desactivación manual.");
     }
+
+    if (old_b->client_count() == 0) {
+        broadcasts_.force_stop_broadcast(old_content_id);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -4416,9 +4475,35 @@ bool Proxy::pin_candidate(const std::string& slug, const std::string& cid) {
                     }
                 }
             }
+            // v09.11.03 — Cancelación activa e inmediata del broadcast anterior en AceStream
+            broadcasts_.force_stop_broadcast(old_active);
         }
     }
     return true;
+}
+
+bool Proxy::apply_ts_discontinuity_to_packet(unsigned char* pkt) {
+    if (!pkt || pkt[0] != 0x47) return false;
+    int afc = (pkt[3] >> 4) & 0x03;
+    if (afc == 0x03 || afc == 0x02) {
+        int afl = pkt[4];
+        if (afl >= 1) {
+            pkt[5] |= 0x80; // Discontinuity indicator (bit 7 de Adaptation Field, ISO/IEC 13818-1)
+            return true;
+        } else {
+            pkt[4] = 0x01;
+            pkt[5] = 0x80;
+            return true;
+        }
+    } else if (afc == 0x01) {
+        // Convertir paquete sólo payload (AFC=0x10) en Adaptación + Payload (AFC=0x30)
+        pkt[3] = static_cast<unsigned char>((pkt[3] & 0xCF) | 0x30);
+        std::memmove(pkt + 6, pkt + 4, 182);
+        pkt[4] = 0x01; // AFL = 1
+        pkt[5] = 0x80; // Discontinuity indicator = 1
+        return true;
+    }
+    return false;
 }
 
 bool Proxy::toggle_disabled_candidate(const std::string& content_id, bool disabled) {
