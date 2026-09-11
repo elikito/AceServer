@@ -30,9 +30,14 @@ void ensure_local_m3u_structure(const httpace::Config& config) {
         // 1. epg_favorites.json en config_dir
         auto cfg_favs = config_dir / "epg_favorites.json";
         auto root_favs = listas_dir / "epg_favorites.json";
+        auto def_favs = listas_dir / "epg_favorites.json.default";
         if (!std::filesystem::exists(cfg_favs)) {
-            if (std::filesystem::exists(root_favs) && std::filesystem::file_size(root_favs) > 5) {
+            if (std::filesystem::exists(cfg_favs.string() + ".bak") && std::filesystem::file_size(cfg_favs.string() + ".bak") > 5) {
+                std::filesystem::copy_file(cfg_favs.string() + ".bak", cfg_favs);
+            } else if (std::filesystem::exists(root_favs) && std::filesystem::file_size(root_favs) > 5) {
                 std::filesystem::copy_file(root_favs, cfg_favs, std::filesystem::copy_options::skip_existing);
+            } else if (std::filesystem::exists(def_favs) && std::filesystem::file_size(def_favs) > 5) {
+                std::filesystem::copy_file(def_favs, cfg_favs, std::filesystem::copy_options::skip_existing);
             } else {
                 std::ofstream out(cfg_favs);
                 out << "{\n  \"favorites\": [],\n  \"disabled_cids\": []\n}\n";
@@ -42,9 +47,12 @@ void ensure_local_m3u_structure(const httpace::Config& config) {
         // 2. plugins_state.json en config_dir
         auto cfg_plugins = config_dir / "plugins_state.json";
         auto root_plugins = std::filesystem::path(config.root_dir) / "http" / "plugins_state.json";
+        auto def_plugins = std::filesystem::path(config.root_dir) / "http" / "plugins_state.json.default";
         if (!std::filesystem::exists(cfg_plugins)) {
             if (std::filesystem::exists(root_plugins) && std::filesystem::file_size(root_plugins) > 5) {
                 std::filesystem::copy_file(root_plugins, cfg_plugins, std::filesystem::copy_options::skip_existing);
+            } else if (std::filesystem::exists(def_plugins) && std::filesystem::file_size(def_plugins) > 5) {
+                std::filesystem::copy_file(def_plugins, cfg_plugins, std::filesystem::copy_options::skip_existing);
             }
         }
 

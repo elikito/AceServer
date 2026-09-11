@@ -3610,7 +3610,8 @@ void Proxy::load_plugins_state() {
     std::lock_guard<std::recursive_mutex> lock(plugins_state_mutex_);
     auto cfg_path = config_.get_config_dir() / "plugins_state.json";
     auto root_path = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json";
-    auto target = std::filesystem::exists(cfg_path) ? cfg_path : root_path;
+    auto def_path = std::filesystem::path(config_.root_dir) / "http" / "plugins_state.json.default";
+    auto target = std::filesystem::exists(cfg_path) ? cfg_path : (std::filesystem::exists(root_path) ? root_path : def_path);
     std::ifstream file(target.string());
     if (!file.is_open()) return;
     std::stringstream buffer;
@@ -4318,6 +4319,11 @@ void Proxy::load_epg_favorites() {
     if (!loaded && std::filesystem::exists(root_bak)) {
         auto bak_content = read_file_binary(root_bak.string());
         loaded = parse_fav_content(bak_content);
+    }
+    auto root_def = std::filesystem::path(config_.root_dir) / "http" / "listas" / "epg_favorites.json.default";
+    if (!loaded && std::filesystem::exists(root_def)) {
+        auto def_content = read_file_binary(root_def.string());
+        loaded = parse_fav_content(def_content);
     }
     // NUNCA inyectar canales fantasma por defecto si la lista está vacía
 }
