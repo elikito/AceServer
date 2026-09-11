@@ -2455,7 +2455,14 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                              (client->queue->is_closed() ? " cerrado por motor" : " sin datos tras 6s") +
                              " en '" + ctx.auto_slug + "'. Conmutando al siguiente candidato...");
                     broadcast->remove_client(client);
-                    broadcasts_.force_stop_broadcast(infohash);
+                    // v09.11.04: Solo detener el broadcast si no quedan otros suscriptores o clientes legítimos
+                    if (broadcast->get_subscribers() <= 0 && broadcast->client_count() == 0) {
+                        broadcasts_.force_stop_broadcast(infohash);
+                    } else {
+                        log_line("INFO", "[FAILOVER-AUTO] Broadcast " + infohash + " preservado para otros clientes (" +
+                                 std::to_string(broadcast->get_subscribers()) + " suscriptores / " +
+                                 std::to_string(broadcast->client_count()) + " clientes activos)");
+                    }
 
                     auto candidates = find_candidates_for_channel(ctx.auto_slug);
                     StreamScorer::rank_candidates(candidates);
@@ -2661,12 +2668,20 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                                                 "' (CID: " + infohash + "). Intentando conmutación en caliente a siguiente candidato...");
                             auto current_b_lock = client->current_broadcast.lock();
                             std::string old_cid = current_b_lock ? current_b_lock->infohash() : infohash;
+                            auto target_b_to_check = current_b_lock ? current_b_lock : broadcast;
                             if (current_b_lock) {
                                 current_b_lock->remove_client(client);
                             } else {
                                 broadcast->remove_client(client);
                             }
-                            broadcasts_.force_stop_broadcast(old_cid);
+                            // v09.11.04: Solo detener el broadcast previo si no quedan otros clientes activos
+                            if (target_b_to_check && target_b_to_check->get_subscribers() <= 0 && target_b_to_check->client_count() == 0) {
+                                broadcasts_.force_stop_broadcast(old_cid);
+                            } else if (target_b_to_check) {
+                                log_line("INFO", "[FAILOVER-MIDSTREAM] Broadcast previo " + old_cid + " preservado para otros clientes (" +
+                                         std::to_string(target_b_to_check->get_subscribers()) + " suscriptores / " +
+                                         std::to_string(target_b_to_check->client_count()) + " clientes activos)");
+                            }
 
                             auto candidates = find_candidates_for_channel(ctx.auto_slug);
                             StreamScorer::rank_candidates(candidates);

@@ -4,6 +4,33 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.11.04] - 2026-09-11
+
+### 🛡️ Release de Estabilidad y Concurrencia: Ampliación de ThreadPool a 64 Workers, Sockets TCP_NODELAY y Blindaje Anti-Colisión en Failover
+
+#### 1. Ampliación del ThreadPool HTTP (`http_server.hpp` / `http_server.cpp`)
+- **Escala de Workers a 64 Hilos Concurrentes**:
+  - Se elevó `MAX_WORKERS` de 16 a **64** y `DEFAULT_QUEUE_DEPTH` a **512**.
+  - Se modificó el cálculo dinámico de workers para escalar en escenarios I/O-bound (`hardware_concurrency * 16`, capped a 64), garantizando que hasta 50 clientes de streaming no agoten los hilos del servidor ni bloqueen la API, EPG o el panel web.
+- **Sintonización de Sockets de Streaming**:
+  - Configuración activa de **`TCP_NODELAY`** en cada conexión entrante para evitar la retención de paquetes del algoritmo de Nagle.
+  - Asignación de buffer de envío **`SO_SNDBUF` de 256 KB** (262144 bytes) para mitigar ráfagas de congestión en la entrega de tramas MPEG-TS.
+
+#### 2. Blindaje de Failover contra Colisiones Multi-Cliente (`proxy.cpp` y `broadcast.cpp`)
+- **Protección de Sesión en `BroadcastManager::force_stop_broadcast`**:
+  - Antes de destruir o enviar `STOP` al motor AceStream por un candidato que falló en un cliente individual, se verifica rigurosamente `subscribers > 0` o `client_count > 0`.
+  - Si hay otros clientes legítimos reproduciendo o esperando el mismo infohash/CID, la orden de parada forzada se omite y el stream se mantiene vivo.
+- **Protección Forzada en `Broadcast::stop(force=true)`**:
+  - El método de detención forzada rechaza el `STOP` destructivo mientras existan suscriptores o clientes activos en la sesión.
+- **Manejo Seguro en Conmutación Automática y Midstream (`proxy.cpp`)**:
+  - En `FAILOVER-AUTO` y `FAILOVER-MIDSTREAM`, el proxy desvincula al cliente fallido (`remove_client`) pero preserva el broadcast si permanecen otros clientes concurrentes.
+
+#### 3. Sincronización Canónica de Versión a `09.11.04`
+- Sistema de compilación: `httpaceproxycpp/CMakeLists.txt` (`VERSION 9.11.4`, `HTTPACEPROXYCPP_VERSION "09.11.04"`).
+- Cabecera canónica: `httpaceproxycpp/include/httpaceproxycpp/version.hpp` (`kAppVersion = "09.11.04"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_11_04_pinned_virtual_cid_logic`).
+- Componentes Web: `http/js/navbar.js` y `http/js/footer.js` (`09.11.04`).
+
 ## [09.10.01] - 2026-09-10
 
 ### 🚀 Release Mayor: Propagación Definitiva de Peers, Normalización de Estado y Clasificación de Popularidad

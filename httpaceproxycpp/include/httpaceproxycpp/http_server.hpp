@@ -47,8 +47,9 @@ public:
     std::size_t active_workers() const noexcept { return active_.load(std::memory_order_relaxed); }
 
 private:
-    static constexpr std::size_t MAX_WORKERS     = 16;
-    static constexpr std::size_t DEFAULT_QUEUE_DEPTH = 256;
+    // v09.11.04 — Ampliación a 64 workers para streaming concurrente multi-cliente
+    static constexpr std::size_t MAX_WORKERS     = 64;
+    static constexpr std::size_t DEFAULT_QUEUE_DEPTH = 512;
 
     void worker_loop();
 

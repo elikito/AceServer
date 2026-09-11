@@ -327,6 +327,14 @@ void Broadcast::stop(bool force) {
             return;
         }
     } else {
+        // v09.11.04: Si aún quedan suscriptores o clientes legítimos, bloquear STOP destructivo
+        if (subscribers_.load(std::memory_order_relaxed) > 0 || client_count() > 0) {
+            log_line("WARNING", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
+                     "] Broadcast::stop forzado BLOQUEADO: sesión con " + std::to_string(subscribers_.load()) +
+                     " suscriptores y " + std::to_string(client_count()) +
+                     " clientes activos. PROHIBIDO enviar STOP destructivo.");
+            return;
+        }
         log_line("INFO", "[" + infohash_.substr(0, std::min<std::size_t>(8, infohash_.size())) +
                  "] Broadcast::stop FORZADO: enviando STOP inmediato a AceStream y liberando sesión.");
         subscribers_.store(0, std::memory_order_relaxed);
@@ -653,6 +661,16 @@ void BroadcastManager::force_stop_broadcast(const std::string& infohash) {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = broadcasts_.find(infohash);
         if (it != broadcasts_.end()) {
+            // v09.11.04: Blindaje de concurrencia multi-cliente.
+            // Si todavía existen suscriptores activos o clientes conectados a este broadcast,
+            // NO destruir la sesión ni enviar STOP destructivo a AceStream.
+            if (it->second->get_subscribers() > 0 || it->second->client_count() > 0) {
+                log_line("WARNING", "[" + infohash.substr(0, std::min<std::size_t>(8, infohash.size())) +
+                         "] BroadcastManager::force_stop_broadcast omitido: la sesión todavía tiene " +
+                         std::to_string(it->second->get_subscribers()) + " suscriptores y " +
+                         std::to_string(it->second->client_count()) + " clientes activos.");
+                return;
+            }
             removed = it->second;
             broadcasts_.erase(it);
         }

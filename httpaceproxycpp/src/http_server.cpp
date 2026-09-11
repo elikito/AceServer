@@ -8,6 +8,7 @@
 #include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sstream>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -155,6 +156,14 @@ void HttpServer::accept_loop() {
         }
         char ip[INET_ADDRSTRLEN] = {0};
         ::inet_ntop(AF_INET, &client.sin_addr, ip, sizeof(ip));
+
+        // v09.11.04: TCP_NODELAY y buffer de envío de 256 KB para streaming fluido MPEG-TS sin jitter
+        int nodelay = 1;
+        ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+
+        int sndbuf = 262144; // 256 KB
+        ::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
+
         if (client_send_timeout_ > 0) {
             timeval tv{client_send_timeout_, 0};
             ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
@@ -260,8 +269,9 @@ void send_simple_response(ClientConnection& connection, int status, const std::s
 ThreadPool::ThreadPool(std::size_t max_workers, std::size_t max_queue)
     : max_queue_(max_queue == 0 ? DEFAULT_QUEUE_DEPTH : max_queue) {
     if (max_workers == 0) {
-        max_workers = std::min(MAX_WORKERS, static_cast<std::size_t>(std::thread::hardware_concurrency() * 2));
-        if (max_workers == 0) max_workers = 2;
+        // v09.11.04: Permitir escala completa hasta MAX_WORKERS (64) para streaming I/O concurrente
+        max_workers = std::min(MAX_WORKERS, std::max<std::size_t>(32, static_cast<std::size_t>(std::thread::hardware_concurrency() * 16)));
+        if (max_workers == 0) max_workers = MAX_WORKERS;
     }
     for (std::size_t i = 0; i < max_workers; ++i) {
         workers_.emplace_back([this] { worker_loop(); });

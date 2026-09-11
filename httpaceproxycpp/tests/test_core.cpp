@@ -1122,8 +1122,8 @@ void test_v09_11_02_strict_single_cid_reaper_and_null_packets() {
 }
 
 void test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity() {
-    // 1. Verificación canónica de versión v09.11.03
-    require(std::string(kAppVersion) == "09.11.03", "App version must be exactly 09.11.03");
+    // 1. Verificación canónica de versión v09.11.03+
+    require(std::string(kAppVersion) >= "09.11.03", "App version must be at least 09.11.03");
 
     // 2. Verificación de Continuity Counter (4 bits) en paquetes TS Null
     uint8_t cc = 0;
@@ -1225,6 +1225,14 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
     // Desfijar
     proxy.clear_virtual_pinned_cid(slug);
     require(proxy.get_virtual_pinned_cid(slug).empty(), "Virtual pinned CID must be empty after clear");
+
+    // 6. Verificación canónica de versión v09.11.04
+    require(std::string(kAppVersion) == "09.11.04", "App version must be exactly 09.11.04");
+
+    // 7. Verificación de ampliación del ThreadPool HTTP (escala hasta MAX_WORKERS = 64)
+    ThreadPool pool;
+    require(pool.worker_count() >= 32, "ThreadPool worker count must scale up for streaming");
+    require(pool.worker_count() <= 64, "ThreadPool worker count must be capped at 64");
 }
 
 } // namespace
