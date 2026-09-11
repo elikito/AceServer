@@ -6,19 +6,30 @@ services:
   httpaceproxy:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: httpaceproxycpp/Dockerfile
     container_name: httpaceproxy
     restart: unless-stopped
     ports:
       - "8888:8888"
+    environment:
+      - TZ=Europe/Madrid
+      - ACESTREAM_HOST=aceserve-modern
+      - ACESTREAM_API_PORT=62062
+      - ACESTREAM_HTTP_PORT=6878
+      - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
     networks:
       - aceproxy-net
     depends_on:
       - aceserve-modern
       - ipfs-node
     volumes:
-      - ./config:/opt/HTTPAceProxy/config
+      - ./config:/app/config
+      - ./httpaceproxycpp/http:/app/http
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
       - /run/cloudflare-warp:/run/cloudflare-warp
+      - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
 
   aceserve-modern:
@@ -30,6 +41,8 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "6878:6878/tcp"
       - "6878:6878/udp"
@@ -38,6 +51,7 @@ services:
       - "62062:62062/tcp"
       - "8622-8630:8622-8630/udp"
     environment:
+      - TZ=Europe/Madrid
       - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --live-cache-type memory --live-mem-cache-size 524288000
     command:
       - python
@@ -54,18 +68,28 @@ services:
       - "500"
       - --max-peers
       - "100"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
 
   ipfs-node:
-    image: ipfs/go-ipfs:latest
+    image: ipfs/kubo:latest
     container_name: ipfs-node
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    environment:
+      - TZ=Europe/Madrid
+      - IPFS_PROFILE=server,lowpower
     networks:
       - aceproxy-net
     ports:
-      - "4001:4001"
-      - "8080:8080"
+      - "127.0.0.1:8180:8080"
+      - "127.0.0.1:5010:5001"
+      - "4010:4010/tcp"
     volumes:
-      - ipfs_data:/data/ipfs
-
-volumes:
-  ipfs_data:
+      - ./config/ipfs_data:/data/ipfs
+      - ./config/ipfs_staging:/export
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
