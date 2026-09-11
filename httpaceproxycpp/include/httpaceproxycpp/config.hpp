@@ -25,7 +25,7 @@ struct Config {
     int client_queue_size = 256;
     int client_write_timeout = 30;
     int curl_stream_buffer = 1048576;
-    int linger_timeout = 60;
+    int linger_timeout = 3;
     bool use_chunked = true;
     bool firewall = false;
     bool firewall_blacklist_mode = false;

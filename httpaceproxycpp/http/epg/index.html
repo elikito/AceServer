@@ -2831,6 +2831,7 @@
                                     <th>Peers</th>
                                     <th>0-100</th>
                                     <th>Origen</th>
+                                    <th>Fijar</th>
                                     <th>Activo</th>
                                 </tr>
                             </thead>
@@ -2840,8 +2841,20 @@
                 data.candidates.forEach(c => {
                     const isDis = c.is_disabled === true;
                     const badge = formatHealthBadge(c.health);
-                    const isActive = c.is_active === true || (c.speed_down && c.speed_down > 0);
+                    const isActive = c.is_active === true;
+                    const isPinned = c.is_pinned === true;
                     const activeBadgeHtml = isActive ? `<span class="badge-active-stream" style="background:#10b981; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(16,185,129,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[EN EMISIÓN]</span>` : '';
+                    const pinnedBadgeHtml = isPinned ? `<span class="badge-pinned-stream" style="background:#f59e0b; color:#ffffff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-left:6px; box-shadow:0 0 10px rgba(245,158,11,0.6); letter-spacing:0.5px; vertical-align:middle; display:inline-block;">[FIJADO]</span>` : '';
+
+                    const pinBtnHtml = isPinned ? `
+                        <button class="action-btn-sm" onclick="unpinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:#f59e0b; color:#fff; font-weight:700; border:none; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Desfijar este candidato (restablecer selección automática)">
+                            📌 Fijado
+                        </button>
+                    ` : `
+                        <button class="action-btn-sm" onclick="pinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:rgba(255,255,255,0.06); color:var(--text-main); font-weight:600; border:1px solid rgba(255,255,255,0.15); padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Fijar y forzar emisión inmediata con este candidato">
+                            📌 Fijar
+                        </button>
+                    `;
 
                     candHtml += `
                         <tr class="${isDis ? 'candidate-disabled' : ''} ${isActive ? 'candidate-currently-active' : ''}" style="${isActive ? 'background:rgba(16, 185, 129, 0.08);' : ''}">
@@ -2850,6 +2863,7 @@
                                 <div class="candidate-name-link" onclick="copyFullContentId('${c.content_id}', this, event)" title="Clic para copiar Content ID: ${c.content_id}">
                                     <span class="candidate-name-text">${c.name}</span>
                                     ${activeBadgeHtml}
+                                    ${pinnedBadgeHtml}
                                     <svg class="candidate-copy-icon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5; flex-shrink:0; margin-left:4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </div>
                                 <div class="candidate-cid-wrap" style="margin-top:3px;">
@@ -2863,6 +2877,9 @@
                             <td style="font-family:monospace; font-weight:700;">${c.peers || 0}</td>
                             <td style="font-family:monospace; color:var(--brand-color); font-weight:700;">${Math.round(c.score || 0)}</td>
                             <td><span class="channel-badge">${c.plugin || 'Lista'}</span></td>
+                            <td style="text-align:center;">
+                                ${pinBtnHtml}
+                            </td>
                             <td style="text-align:center;">
                                 <label class="switch-toggle" title="${isDis ? 'Fuente excluida' : 'Fuente habilitada'}">
                                     <input type="checkbox" ${isDis ? '' : 'checked'} onchange="toggleCandidateCID('${c.content_id}', this, event)">
@@ -2892,6 +2909,56 @@
                 }
             } catch (err) {
                 drawer.innerHTML = `<div style="color:#ff5252; font-size:12px; padding:10px;">Error al obtener fuentes: ${err.message}</div>`;
+            }
+        }
+
+        async function pinCandidate(slug, cid, btn, e) {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            try {
+                if (btn) btn.disabled = true;
+                const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=pin&cid=${encodeURIComponent(cid)}`);
+                const data = await res.json();
+                if (data.status === 'success' || data.status === 'ok') {
+                    showToast('✓ Candidato fijado como prioritario indiscutible', 'success');
+                    const card = btn ? btn.closest('.channel-epg-card') : null;
+                    if (card) {
+                        const sourcesBtn = card.querySelector('button[title*="Fuentes"]');
+                        const drawer = card.querySelector('.candidates-drawer');
+                        if (drawer) drawer.remove();
+                        if (sourcesBtn) {
+                            sourcesBtn.classList.remove('active');
+                            toggleCandidatesDrawer(card.dataset.channelName || slug, card.dataset.channelId || '', sourcesBtn, null);
+                        }
+                    }
+                } else {
+                    showToast('Error al fijar candidato: ' + (data.error || 'desconocido'), 'error');
+                }
+            } catch (err) {
+                showToast('Error al fijar candidato: ' + err.message, 'error');
+            }
+        }
+
+        async function unpinCandidate(slug, cid, btn, e) {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            try {
+                if (btn) btn.disabled = true;
+                const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=unpin`);
+                const data = await res.json();
+                if (data.status === 'success' || data.status === 'ok') {
+                    showToast('✓ Fijado eliminado. Se restablece la selección automática.', 'info');
+                    const card = btn ? btn.closest('.channel-epg-card') : null;
+                    if (card) {
+                        const sourcesBtn = card.querySelector('button[title*="Fuentes"]');
+                        const drawer = card.querySelector('.candidates-drawer');
+                        if (drawer) drawer.remove();
+                        if (sourcesBtn) {
+                            sourcesBtn.classList.remove('active');
+                            toggleCandidatesDrawer(card.dataset.channelName || slug, card.dataset.channelId || '', sourcesBtn, null);
+                        }
+                    }
+                }
+            } catch (err) {
+                showToast('Error al desfijar candidato: ' + err.message, 'error');
             }
         }
 

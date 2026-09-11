@@ -507,9 +507,48 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         };
 
         auto action = query_get(ctx.query, "action");
+        if (action == "pin") {
+            auto pin_cid = query_get(ctx.query, "cid");
+            if (pin_cid.empty()) {
+                send_error(connection, 400, "Missing 'cid' parameter for pin action");
+                return;
+            }
+            bool success = pin_candidate(slug, pin_cid);
+            Json res = Json::object{
+                {"status", success ? "success" : "error"},
+                {"action", "pin"},
+                {"slug", canonical_slug(slug)},
+                {"pinned_content_id", pin_cid}
+            };
+            connection.send_response_headers(200, status_reason(200), {
+                {"Access-Control-Allow-Origin", "*"},
+                {"Content-Type", "application/json; charset=utf-8"},
+                {"Connection", "close"}
+            });
+            connection.send_text(res.dump());
+            return;
+        } else if (action == "unpin") {
+            clear_virtual_pinned_cid(slug);
+            Json res = Json::object{
+                {"status", "success"},
+                {"action", "unpin"},
+                {"slug", canonical_slug(slug)}
+            };
+            connection.send_response_headers(200, status_reason(200), {
+                {"Access-Control-Allow-Origin", "*"},
+                {"Content-Type", "application/json; charset=utf-8"},
+                {"Connection", "close"}
+            });
+            connection.send_text(res.dump());
+            return;
+        }
+
         if (action == "resolve" || action == "list" || action == "status" || action == "stream_status") {
             auto candidates = find_candidates_for_channel(slug);
             StreamScorer::rank_candidates(candidates);
+
+            std::string active_cid = get_virtual_active_cid(slug);
+            std::string pinned_cid = get_virtual_pinned_cid(slug);
 
             // v09.08.05: Si la caché para el canal está vacía, encolar comprobación asíncrona sin bloquear
             bool all_unknown = true;
@@ -561,6 +600,9 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     }
                 }
 
+                bool is_cand_active = (!active_cid.empty() && c.content_id == active_cid);
+                bool is_cand_pinned = (!pinned_cid.empty() && c.content_id == pinned_cid);
+
                 arr.push_back(Json::object{
                     {"name", c.name},
                     {"peers", static_cast<double>(cand_peers)},
@@ -571,7 +613,8 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     {"quality_bonus", static_cast<double>(c.quality_bonus)},
                     {"speed_down", static_cast<double>(c.speed_down)},
                     {"health", health_to_string(cand_health)},
-                    {"is_active", c.is_active_stream},
+                    {"is_active", is_cand_active},
+                    {"is_pinned", is_cand_pinned},
                     {"is_disabled", c.is_disabled},
                     {"is_foreign", c.is_foreign},
                     {"score", c.score}
@@ -584,6 +627,8 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                 {"canonical_name", canonical_name(slug)},
                 {"content_id", resolved_cid},
                 {"resolved_content_id", resolved_cid},
+                {"active_content_id", active_cid},
+                {"pinned_content_id", pinned_cid},
                 {"candidates_count", static_cast<double>(candidates.size())},
                 {"best_candidate", candidates.empty() ? Json(nullptr) : arr[0]},
                 {"candidates", Json(arr)}
@@ -629,10 +674,31 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         }
 
         std::optional<ChannelCandidate> best = std::nullopt;
-        for (const auto& c : candidates) {
-            if (!c.is_disabled) {
-                best = c;
-                break;
+        std::string pinned_cid = get_virtual_pinned_cid(slug);
+        std::string active_cid = get_virtual_active_cid(slug);
+
+        if (!pinned_cid.empty()) {
+            for (const auto& c : candidates) {
+                if (c.content_id == pinned_cid) {
+                    best = c;
+                    break;
+                }
+            }
+        }
+        if (!best.has_value() && !active_cid.empty()) {
+            for (const auto& c : candidates) {
+                if (c.content_id == active_cid && !c.is_disabled) {
+                    best = c;
+                    break;
+                }
+            }
+        }
+        if (!best.has_value()) {
+            for (const auto& c : candidates) {
+                if (!c.is_disabled) {
+                    best = c;
+                    break;
+                }
             }
         }
 
@@ -2284,6 +2350,9 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         client->content_id = infohash;
         client->current_broadcast = broadcast;
         broadcast->start_once();
+        if (!ctx.auto_slug.empty()) {
+            set_virtual_active_cid(ctx.auto_slug, infohash);
+        }
 
         // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (FAILOVER ACTIVO v09.11.01)
         // Ventana de entrega de 6s por candidato en rutas virtuales /auto/<slug>
@@ -2340,6 +2409,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                         req_value = next_cid;
                         infohash = next_cid;
                         params["content_id"] = next_cid;
+                        set_virtual_active_cid(ctx.auto_slug, next_cid);
                         if (!next_name.empty()) channel_name = next_name;
 
                         full_stream_url = "http://" + (raw_host.empty() ? "127.0.0.1:8888" : raw_host) + "/content_id/" + req_value + "/stream.ts";
@@ -2372,6 +2442,9 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         if (!initial_ok || first_chunk.empty()) {
             broadcast->remove_client(client);
             broadcasts_.remove_if_empty(infohash);
+            if (!ctx.auto_slug.empty()) {
+                clear_virtual_active_cid(ctx.auto_slug, infohash);
+            }
             add_bunker_log("[ERROR REPRODUCTOR] Canal sin datos o desconexión del cliente para ID: " + req_value + ". Sesión protegida.");
             std::map<std::string, std::string> err_headers = {
                 {"Content-Type", "application/json; charset=utf-8"},
@@ -2408,9 +2481,21 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         }
         client->last_activity.store(unix_time(), std::memory_order_relaxed);
 
-        // 4. BUCLE TRANSPARENTE DE STREAMING
+        // MPEG-TS Null Packet estándar (188 bytes: 0x47, 0x1F, 0xFF, 0x10 seguido de 184 bytes 0xFF)
+        static const std::vector<char> kTsNullPacket = []() {
+            std::vector<char> pkt(188, static_cast<char>(0xFF));
+            pkt[0] = static_cast<char>(0x47);
+            pkt[1] = static_cast<char>(0x1F);
+            pkt[2] = static_cast<char>(0xFF);
+            pkt[3] = static_cast<char>(0x10);
+            return pkt;
+        }();
+
+        // 4. BUCLE TRANSPARENTE DE STREAMING (CON TS NULL PACKETS KEEP-ALIVE EN RUTAS VIRTUALES)
         if (ok) {
             std::vector<char> chunk;
+            auto last_null_packet_tp = std::chrono::steady_clock::now();
+
             while (true) {
                 if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50))) {
                     if (chunked) {
@@ -2424,11 +2509,83 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                     }
                     if (!ok) break; // Fallo de socket (EPIPE / ECONNRESET)
                     client->last_activity.store(unix_time(), std::memory_order_relaxed);
+                    last_null_packet_tp = std::chrono::steady_clock::now();
                 } else {
-                    // Micro-pausa de buffer del motor P2P:
-                    // El socket solo se cierra si read/write devuelve 0 o error irrecuperable, o la cola se cerró
-                    if (!ctx.connection.is_connected() || client->queue->is_closed()) {
+                    // Si el cliente cerró el socket de reproducción, salir inmediatamente
+                    if (!ctx.connection.is_connected()) {
                         break;
+                    }
+
+                    // En rutas virtuales /auto/<slug>: enviar paquetes nulos MPEG-TS (188 bytes) cada 250ms durante sequía de buffer
+                    if (!ctx.auto_slug.empty()) {
+                        auto now_tp = std::chrono::steady_clock::now();
+                        auto drought_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now_tp - last_null_packet_tp).count();
+                        if (drought_ms >= 250) {
+                            if (chunked) {
+                                std::ostringstream prefix;
+                                prefix << std::hex << kTsNullPacket.size() << "\r\n";
+                                ok = ctx.connection.send_text(prefix.str())
+                                  && ctx.connection.send_all(kTsNullPacket.data(), kTsNullPacket.size())
+                                  && ctx.connection.send_text("\r\n");
+                            } else {
+                                ok = ctx.connection.send_all(kTsNullPacket.data(), kTsNullPacket.size());
+                            }
+                            if (!ok) break;
+                            last_null_packet_tp = now_tp;
+                        }
+
+                        // Si la cola del motor fue cerrada inesperadamente durante la reproducción:
+                        if (client->queue->is_closed()) {
+                            log_line("WARNING", "[FAILOVER-MIDSTREAM] Cola cerrada en canal virtual '" + ctx.auto_slug +
+                                                "' (CID: " + infohash + "). Intentando conmutación en caliente a siguiente candidato...");
+                            auto current_b_lock = client->current_broadcast.lock();
+                            if (current_b_lock) {
+                                current_b_lock->remove_client(client);
+                                broadcasts_.remove_if_empty(current_b_lock->infohash());
+                            } else {
+                                broadcast->remove_client(client);
+                                broadcasts_.remove_if_empty(infohash);
+                            }
+
+                            auto candidates = find_candidates_for_channel(ctx.auto_slug);
+                            StreamScorer::rank_candidates(candidates);
+
+                            std::string next_cid;
+                            std::string next_name;
+                            for (const auto& c : candidates) {
+                                if (attempted_cids.find(c.content_id) == attempted_cids.end() &&
+                                    !c.is_disabled && !is_candidate_disabled(c.content_id)) {
+                                    next_cid = c.content_id;
+                                    next_name = c.name;
+                                    break;
+                                }
+                            }
+
+                            if (!next_cid.empty()) {
+                                attempted_cids.insert(next_cid);
+                                log_line("INFO", "[FAILOVER-MIDSTREAM] Conmutando en caliente a candidato: " + next_cid);
+                                infohash = next_cid;
+                                req_value = next_cid;
+                                params["content_id"] = next_cid;
+                                set_virtual_active_cid(ctx.auto_slug, next_cid);
+
+                                broadcast = broadcasts_.get_or_create(next_cid, params);
+                                client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)), 8 * 1024 * 1024);
+                                client->content_id = next_cid;
+                                client->current_broadcast = broadcast;
+                                broadcast->attach_migrated_client(client);
+                                broadcast->start_once();
+                                last_null_packet_tp = std::chrono::steady_clock::now();
+                                continue;
+                            }
+                            // No hay más candidatos viables para conmutar
+                            break;
+                        }
+                    } else {
+                        // En rutas directas no virtuales, salir si la cola del stream fue cerrada
+                        if (client->queue->is_closed()) {
+                            break;
+                        }
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 }
@@ -2442,6 +2599,10 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         } else {
             broadcast->remove_client(client);
             broadcasts_.remove_if_empty(infohash);
+        }
+
+        if (!ctx.auto_slug.empty()) {
+            clear_virtual_active_cid(ctx.auto_slug, current_b ? current_b->infohash() : infohash);
         }
 
         // TELEMETRÍA: AL DETENER STREAM (TCP FIN / RST / CIERRE REPRODUCTOR)
@@ -3531,11 +3692,16 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 c.is_disabled = is_candidate_disabled(cid);
                 c.is_foreign = detect_is_foreign(item.name);
 
-                // Chequear si ya está activo en BroadcastManager
+                // Exclusividad estricta de emisión para rutas virtuales /auto/ y pin manual
+                std::string pinned_cid = get_virtual_pinned_cid(target_slug);
+                std::string active_virtual_cid = get_virtual_active_cid(target_slug);
+                c.is_pinned = (!pinned_cid.empty() && cid == pinned_cid);
+                c.is_active_stream = (!active_virtual_cid.empty() && cid == active_virtual_cid);
+
+                // Chequear si ya está activo en BroadcastManager para métricas P2P
                 auto broadcast = broadcasts_.find(cid);
                 int live_peers = 0;
                 if (broadcast && (broadcast->client_count() > 0 || broadcast->is_running())) {
-                    c.is_active_stream = true;
                     auto p2p = broadcast->get_p2p_status();
                     if (p2p.contains("peers")) {
                         try { live_peers = std::stoi(p2p.at("peers")); } catch (...) {}
@@ -4126,6 +4292,133 @@ void Proxy::migrate_subscribers(const std::string& old_content_id) {
         add_bunker_log("[MIGRACIÓN INMEDIATA] Suscriptor migrado de " + old_content_id.substr(0, std::min<std::size_t>(8, old_content_id.size())) +
                        " a " + target_cid.substr(0, std::min<std::size_t>(8, target_cid.size())) + " por desactivación manual.");
     }
+}
+
+// ---------------------------------------------------------------------------
+// v09.11.02 — Exclusividad estricta de CID y fijado manual en URLs virtuales (/auto/)
+// ---------------------------------------------------------------------------
+
+std::string Proxy::get_virtual_active_cid(const std::string& slug) {
+    if (slug.empty()) return "";
+    std::string norm = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+    auto it = virtual_active_cid_.find(norm);
+    if (it != virtual_active_cid_.end()) {
+        auto b = broadcasts_.find(it->second);
+        if (b && (b->get_subscribers() > 0 || b->client_count() > 0 || b->is_running())) {
+            return it->second;
+        }
+        virtual_active_cid_.erase(it);
+    }
+    return "";
+}
+
+void Proxy::set_virtual_active_cid(const std::string& slug, const std::string& cid) {
+    if (slug.empty()) return;
+    std::string norm = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+    if (cid.empty()) {
+        virtual_active_cid_.erase(norm);
+    } else {
+        virtual_active_cid_[norm] = cid;
+    }
+}
+
+void Proxy::clear_virtual_active_cid(const std::string& slug, const std::string& cid) {
+    if (slug.empty()) return;
+    std::string norm = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+    auto it = virtual_active_cid_.find(norm);
+    if (it != virtual_active_cid_.end()) {
+        if (cid.empty() || it->second == cid) {
+            auto b = broadcasts_.find(it->second);
+            if (!b || (b->get_subscribers() <= 0 && b->client_count() == 0)) {
+                virtual_active_cid_.erase(it);
+            }
+        }
+    }
+}
+
+std::string Proxy::get_virtual_pinned_cid(const std::string& slug) const {
+    if (slug.empty()) return "";
+    std::string norm = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+    auto it = virtual_pinned_cid_.find(norm);
+    return it != virtual_pinned_cid_.end() ? it->second : "";
+}
+
+void Proxy::set_virtual_pinned_cid(const std::string& slug, const std::string& cid) {
+    if (slug.empty()) return;
+    std::string norm = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+    if (cid.empty()) {
+        virtual_pinned_cid_.erase(norm);
+    } else {
+        virtual_pinned_cid_[norm] = cid;
+    }
+}
+
+void Proxy::clear_virtual_pinned_cid(const std::string& slug) {
+    if (slug.empty()) return;
+    std::string norm = canonical_slug(slug);
+    std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+    virtual_pinned_cid_.erase(norm);
+}
+
+bool Proxy::pin_candidate(const std::string& slug, const std::string& cid) {
+    if (slug.empty() || cid.empty()) return false;
+    std::string norm = canonical_slug(slug);
+    std::string old_active;
+    {
+        std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+        virtual_pinned_cid_[norm] = cid;
+        auto it = virtual_active_cid_.find(norm);
+        if (it != virtual_active_cid_.end()) {
+            old_active = it->second;
+        }
+        virtual_active_cid_[norm] = cid;
+    }
+
+    log_line("INFO", "[PIN MANUAL] Fijado CID " + cid + " para canal virtual '" + norm + "'");
+    add_bunker_log("[PIN MANUAL] Fijado candidato manual " + cid.substr(0, std::min<std::size_t>(8, cid.size())) +
+                   " para canal virtual " + norm);
+
+    // Si hay una sesión activa en /auto/ transmitiendo otro CID, migrar inmediatamente sus clientes al CID fijado
+    if (!old_active.empty() && old_active != cid) {
+        auto old_b = broadcasts_.find(old_active);
+        if (old_b) {
+            auto clients = old_b->clients();
+            if (!clients.empty()) {
+                std::map<std::string, std::string> params = {
+                    {"file_indexes", "0"}, {"developer_id", "0"}, {"affiliate_id", "0"}, {"zone_id", "0"}, {"stream_id", "0"},
+                    {"stream_type", config_.stream_type_string()},
+                    {"content_id", cid},
+                    {"sessionID", std::to_string(unix_time()) + "_pinmig"}
+                };
+                auto target_b = broadcasts_.get_or_create(cid, params);
+                target_b->start_once();
+
+                // Esperar hasta 3s a que el nuevo stream tenga datos válidos
+                auto wait_start = std::chrono::steady_clock::now();
+                while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wait_start).count() < 3000) {
+                    if (target_b->has_valid_ts_data()) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
+
+                for (const auto& client : clients) {
+                    if (!client) continue;
+                    std::string c_slug = client->auto_slug;
+                    if (c_slug.empty()) c_slug = canonical_slug(client->channel_name);
+                    if (c_slug == norm) {
+                        old_b->detach_client_for_migration(client);
+                        target_b->attach_migrated_client(client);
+                        add_bunker_log("[PIN MANUAL] Cliente migrado en caliente a CID forzado " + cid.substr(0, std::min<std::size_t>(8, cid.size())));
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 bool Proxy::toggle_disabled_candidate(const std::string& content_id, bool disabled) {

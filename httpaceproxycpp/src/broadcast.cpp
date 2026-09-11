@@ -511,7 +511,7 @@ void BroadcastManager::start_reaper() {
             while (reaper_running_) {
                 {
                     std::unique_lock<std::mutex> lock(reaper_mutex_);
-                    reaper_cv_.wait_for(lock, std::chrono::seconds(15), [this] {
+                    reaper_cv_.wait_for(lock, std::chrono::seconds(1), [this] {
                         return !reaper_running_;
                     });
                 }
@@ -550,7 +550,7 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
             if (subs <= 0 && c_count == 0) {
                 auto zero_time = broadcast->get_zero_subscribers_time();
                 if (zero_time == 0) {
-                    // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout (60s)
+                    // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout (dinámico, mín 3s)
                     broadcast->detach_client_for_migration(nullptr);
                     ++it;
                 } else if ((now - zero_time) >= linger) {

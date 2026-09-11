@@ -306,6 +306,11 @@ void StreamScorer::rank_candidates(std::vector<ChannelCandidate>& candidates) {
     }
 
     std::stable_sort(candidates.begin(), candidates.end(), [](const ChannelCandidate& a, const ChannelCandidate& b) {
+        // 0. Manual pin: un candidato fijado manualmente tiene prioridad absoluta (bypass scoring)
+        if (a.is_pinned != b.is_pinned) {
+            return a.is_pinned;
+        }
+
         // 1. Candidatos deshabilitados o en error/offline/bloqueados (-1000.0) siempre al final
         bool a_valid = !a.is_disabled && a.score > -1000.0;
         bool b_valid = !b.is_disabled && b.score > -1000.0;

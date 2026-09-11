@@ -48,6 +48,7 @@ struct ChannelCandidate {
     bool          is_disabled = false;
     bool          is_foreign = false;
     double        score = 0.0;
+    bool          is_pinned = false;
 };
 
 /// Motor de evaluación y puntuación de candidatos a stream.

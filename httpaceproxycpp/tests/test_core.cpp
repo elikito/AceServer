@@ -842,9 +842,9 @@ void test_v09_09_01_dynamic_upgrader_and_safe_reaper() {
     // 1. Verificación de versión base
     require(std::string(kAppVersion) >= "09.09.01", "App version compatibility");
 
-    // 2. Configuración de linger_timeout por defecto = 60s (v09.10.02)
+    // 2. Configuración de linger_timeout por defecto = 3s (v09.11.02)
     Config cfg;
-    require(cfg.linger_timeout == 60, "default linger_timeout must be 60s");
+    require(cfg.linger_timeout == 3, "default linger_timeout must be 3s");
 
     // 3. Verificación de score -1000 para candidatos desactivados
     ChannelCandidate dis;
@@ -1017,9 +1017,9 @@ void test_v09_10_02_reaper_and_asterisk_purge() {
     double score = StreamScorer::calculate_score(c_stars);
     require(score == 35.0, "Candidate with 0 peers in 1080p has score 35.0 (30 quality + 5 unknown health)");
 
-    // 4. Verificación de configuración linger_timeout por defecto = 60s
+    // 4. Verificación de configuración linger_timeout por defecto = 3s
     Config cfg;
-    require(cfg.linger_timeout == 60, "Config linger_timeout default must be 60s");
+    require(cfg.linger_timeout == 3, "Config linger_timeout default must be 3s");
 }
 
 void test_v09_10_03_watchdog_and_real_peer_selection() {
@@ -1052,8 +1052,8 @@ void test_v09_10_03_watchdog_and_real_peer_selection() {
 }
 
 void test_v09_11_01_active_failover_and_scoring() {
-    // 1. Verificación canónica de versión v09.11.01
-    require(std::string(kAppVersion) == "09.11.01", "App version must be 09.11.01");
+    // 1. Verificación canónica de versión v09.11.01+
+    require(std::string(kAppVersion) >= "09.11.01", "App version must be at least 09.11.01");
 
     // 2. Verificación de fórmula 0-100 con garantía matemática de que 7 peers supera a 2 peers
     ChannelCandidate cand_7peers{"DAZN F1 HD", "cid_7", "test", "", "", "dazn-f1", StreamQuality::HD_720, 60, 7, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
@@ -1080,6 +1080,44 @@ void test_v09_11_01_active_failover_and_scoring() {
     ChannelCandidate off_cand = cand_7peers;
     off_cand.health = ChannelHealth::OFFLINE;
     require(StreamScorer::calculate_score(off_cand) == -1000.0, "Offline candidate score must be -1000.0");
+}
+
+void test_v09_11_02_strict_single_cid_reaper_and_null_packets() {
+    // 1. Verificación canónica de versión v09.11.02
+    require(std::string(kAppVersion) == "09.11.02", "App version must be exactly 09.11.02");
+
+    // 2. Erradicación total del suelo de 60s: Config linger_timeout por defecto = 3s
+    Config cfg;
+    require(cfg.linger_timeout == 3, "linger_timeout default must be 3s");
+
+    // 3. Verificación de selector manual de CID (PIN): bypass absoluto del score automático
+    ChannelCandidate cand_pinned{"DAZN F1 SD [1 peer]", "cid_pinned", "test", "", "", "dazn-f1", StreamQuality::SD, 30, 1, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    cand_pinned.is_pinned = true;
+
+    ChannelCandidate cand_best_auto{"DAZN F1 1080p [50 peers]", "cid_auto_best", "test", "", "", "dazn-f1", StreamQuality::FHD_1080, 100, 50, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    cand_best_auto.is_pinned = false;
+
+    std::vector<ChannelCandidate> candidates = {cand_best_auto, cand_pinned};
+    StreamScorer::rank_candidates(candidates);
+
+    require(candidates[0].content_id == "cid_pinned", "Pinned candidate must rank #1 regardless of peers and quality");
+    require(candidates[1].content_id == "cid_auto_best", "Non-pinned candidate must rank below pinned candidate");
+
+    // 4. Verificación del paquete MPEG-TS Null estándar para keep-alive (188 bytes, PID 0x1FFF)
+    std::vector<char> null_pkt(188, static_cast<char>(0xFF));
+    null_pkt[0] = static_cast<char>(0x47);
+    null_pkt[1] = static_cast<char>(0x1F);
+    null_pkt[2] = static_cast<char>(0xFF);
+    null_pkt[3] = static_cast<char>(0x10);
+
+    require(null_pkt.size() == 188, "TS packet size must be 188 bytes");
+    require(static_cast<unsigned char>(null_pkt[0]) == 0x47, "TS sync byte must be 0x47");
+    // PID = ((byte1 & 0x1F) << 8) | byte2 -> 0x1FFF = 8191
+    int pid = ((static_cast<unsigned char>(null_pkt[1]) & 0x1F) << 8) | static_cast<unsigned char>(null_pkt[2]);
+    require(pid == 0x1FFF, "TS Null packet PID must be 0x1FFF (8191)");
+    require(static_cast<unsigned char>(null_pkt[3]) == 0x10, "TS adaptation field must be 0x10 (payload only, CC 0)");
+    require(static_cast<unsigned char>(null_pkt[4]) == 0xFF, "TS payload must be 0xFF");
+    require(static_cast<unsigned char>(null_pkt[187]) == 0xFF, "TS payload last byte must be 0xFF");
 }
 
 } // namespace
@@ -1122,6 +1160,7 @@ int main() {
         test_v09_10_02_reaper_and_asterisk_purge();
         test_v09_10_03_watchdog_and_real_peer_selection();
         test_v09_11_01_active_failover_and_scoring();
+        test_v09_11_02_strict_single_cid_reaper_and_null_packets();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

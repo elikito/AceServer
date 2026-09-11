@@ -89,6 +89,15 @@ public:
                                   const std::map<std::string, std::string>& params);
     void migrate_subscribers(const std::string& old_content_id);
 
+    // v09.11.02 — Exclusividad estricta de CID y fijado manual en URLs virtuales (/auto/)
+    std::string get_virtual_active_cid(const std::string& slug);
+    void set_virtual_active_cid(const std::string& slug, const std::string& cid);
+    void clear_virtual_active_cid(const std::string& slug, const std::string& cid = "");
+    std::string get_virtual_pinned_cid(const std::string& slug) const;
+    void set_virtual_pinned_cid(const std::string& slug, const std::string& cid);
+    void clear_virtual_pinned_cid(const std::string& slug);
+    bool pin_candidate(const std::string& slug, const std::string& cid);
+
     // Logos personalizados persistentes (custom_logos.json)
     std::map<std::string, std::string> get_custom_logos() const;
     void set_custom_logo(const std::string& channel_or_slug, const std::string& logo_url);
@@ -183,6 +192,11 @@ private:
 
     // v09.08.05 — Servicio en background exclusivo para Favoritos
     std::unique_ptr<FavoritesHealthWorker> favorites_worker_;
+
+    // v09.11.02 — Exclusividad estricta de CID y fijado manual en URLs virtuales (/auto/)
+    mutable std::mutex virtual_state_mutex_;
+    std::unordered_map<std::string, std::string> virtual_active_cid_;
+    std::unordered_map<std::string, std::string> virtual_pinned_cid_;
 };
 
 } // namespace httpace

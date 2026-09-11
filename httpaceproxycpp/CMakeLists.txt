@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(httpaceproxycpp VERSION 9.11.1 LANGUAGES CXX)
+project(httpaceproxycpp VERSION 9.11.2 LANGUAGES CXX)
 set(HTTPACEPROXYCPP_VERSION "09.11.02")
 
 set(CMAKE_CXX_STANDARD 20)
