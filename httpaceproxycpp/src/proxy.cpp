@@ -556,6 +556,15 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             std::string active_cid = get_virtual_active_cid(slug);
             std::string pinned_cid = get_virtual_pinned_cid(slug);
 
+            // Requisito 2: Determinar si el CID fijado está efectivamente transmitiendo
+            bool pinned_is_transmitting = false;
+            if (!pinned_cid.empty()) {
+                auto b = broadcasts_.find(pinned_cid);
+                if (b && (b->client_count() > 0 || (b->is_running() && b->has_valid_ts_data()) || (b->is_running() && active_cid == pinned_cid))) {
+                    pinned_is_transmitting = true;
+                }
+            }
+
             // v09.08.05: Si la caché para el canal está vacía, encolar comprobación asíncrona sin bloquear
             bool all_unknown = true;
             for (const auto& c : candidates) {
@@ -575,7 +584,7 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             if (!req_quality.empty() && req_quality != "auto") {
                 std::vector<ChannelCandidate> filtered;
                 for (const auto& c : candidates) {
-                    if (matches_quality(c.quality, req_quality)) {
+                    if (matches_quality(c.quality, req_quality) || (!pinned_cid.empty() && c.content_id == pinned_cid)) {
                         filtered.push_back(c);
                     }
                 }
@@ -606,8 +615,15 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     }
                 }
 
-                bool is_cand_active = (!active_cid.empty() && c.content_id == active_cid);
                 bool is_cand_pinned = (!pinned_cid.empty() && c.content_id == pinned_cid);
+                // Requisito 2: El flag is_active: true y el badge [EN EMISIÓN] DEBEN pertenecer
+                // única y exclusivamente al CID fijado si este está definido y transmitiendo.
+                bool is_cand_active = false;
+                if (!pinned_cid.empty()) {
+                    is_cand_active = (is_cand_pinned && pinned_is_transmitting);
+                } else {
+                    is_cand_active = (!active_cid.empty() && c.content_id == active_cid);
+                }
 
                 arr.push_back(Json::object{
                     {"name", c.name},
@@ -626,17 +642,44 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
                     {"score", c.score}
                 });
             }
-            std::string resolved_cid = candidates.empty() ? "" : candidates[0].content_id;
+
+            std::string resolved_cid;
+            if (!pinned_cid.empty()) {
+                resolved_cid = pinned_cid;
+            } else {
+                resolved_cid = candidates.empty() ? "" : candidates[0].content_id;
+            }
+
+            std::string reported_active_cid;
+            if (!pinned_cid.empty()) {
+                reported_active_cid = pinned_is_transmitting ? pinned_cid : "";
+            } else {
+                reported_active_cid = active_cid;
+            }
+
+            Json best_cand_json = nullptr;
+            if (!pinned_cid.empty()) {
+                for (const auto& obj : arr) {
+                    if (obj.contains("content_id") && obj["content_id"].as_string() == pinned_cid) {
+                        best_cand_json = obj;
+                        break;
+                    }
+                }
+            }
+            if (best_cand_json.is_null() && !arr.empty()) {
+                best_cand_json = arr[0];
+            }
+
             Json res = Json::object{
                 {"status", "success"},
                 {"slug", canonical_slug(slug)},
                 {"canonical_name", canonical_name(slug)},
                 {"content_id", resolved_cid},
                 {"resolved_content_id", resolved_cid},
-                {"active_content_id", active_cid},
+                {"active_content_id", reported_active_cid},
                 {"pinned_content_id", pinned_cid},
                 {"candidates_count", static_cast<double>(candidates.size())},
-                {"best_candidate", candidates.empty() ? Json(nullptr) : arr[0]},
+                {"best_candidate", best_cand_json},
                 {"candidates", Json(arr)}
             };
             connection.send_response_headers(200, status_reason(200), {
@@ -648,84 +691,96 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
             return;
         }
 
-        auto candidates = find_candidates_for_channel(slug);
-        StreamScorer::rank_candidates(candidates);
-
-        // v09.08.05: Si la caché está vacía, encolar comprobación asíncrona sin bloquear (<20ms)
-        bool all_unknown = true;
-        for (const auto& c : candidates) {
-            if (!c.is_disabled && (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS)) {
-                all_unknown = false;
-                break;
-            }
-        }
-        if (all_unknown && !candidates.empty()) {
-            if (favorites_worker_) {
-                favorites_worker_->request_channel_probe(slug, /*priority=*/true);
-            } else {
-                channel_verifier_.enqueue(candidates.front().content_id);
-            }
-        }
-
-        if (!req_quality.empty() && req_quality != "auto") {
-            std::vector<ChannelCandidate> filtered;
-            for (const auto& c : candidates) {
-                if (matches_quality(c.quality, req_quality)) {
-                    filtered.push_back(c);
-                }
-            }
-            if (!filtered.empty()) {
-                candidates = std::move(filtered);
-            }
-        }
-
-        std::optional<ChannelCandidate> best = std::nullopt;
+        // Requisito 1: Al inicio de la resolución de cualquier petición a /auto/<slug> o /auto/<slug>/stream.ts,
+        // comprobar PRIMERO si virtual_pinned_cid_[slug] tiene un valor asignado.
         std::string pinned_cid = get_virtual_pinned_cid(slug);
-        std::string active_cid = get_virtual_active_cid(slug);
+        std::string target_cid;
+        std::string display_title;
 
         if (!pinned_cid.empty()) {
+            // OMITIR completamente la llamada a StreamScorer y la resolución automática.
+            // Asignar directamente target_cid = virtual_pinned_cid_[slug].
+            target_cid = pinned_cid;
+            display_title = canonical_name(slug);
+            if (display_title.empty()) display_title = slug;
+            log_line("INFO", "[AUTO-PIN] Canal virtual '" + slug + "' tiene CID fijado: " + target_cid +
+                     ". Omitiendo StreamScorer y resolución automática.");
+        } else {
+            // Resolución automática normal con StreamScorer
+            auto candidates = find_candidates_for_channel(slug);
+            StreamScorer::rank_candidates(candidates);
+
+            // v09.08.05: Si la caché está vacía, encolar comprobación asíncrona sin bloquear (<20ms)
+            bool all_unknown = true;
             for (const auto& c : candidates) {
-                if (c.content_id == pinned_cid) {
-                    best = c;
+                if (!c.is_disabled && (c.is_active_stream || c.health == ChannelHealth::ONLINE || c.health == ChannelHealth::LOW_PEERS)) {
+                    all_unknown = false;
                     break;
                 }
             }
-        }
-        if (!best.has_value() && !active_cid.empty()) {
-            for (const auto& c : candidates) {
-                if (c.content_id == active_cid && !c.is_disabled) {
-                    best = c;
-                    break;
+            if (all_unknown && !candidates.empty()) {
+                if (favorites_worker_) {
+                    favorites_worker_->request_channel_probe(slug, /*priority=*/true);
+                } else {
+                    channel_verifier_.enqueue(candidates.front().content_id);
                 }
             }
-        }
-        if (!best.has_value()) {
-            for (const auto& c : candidates) {
-                if (!c.is_disabled) {
-                    best = c;
-                    break;
+
+            if (!req_quality.empty() && req_quality != "auto") {
+                std::vector<ChannelCandidate> filtered;
+                for (const auto& c : candidates) {
+                    if (matches_quality(c.quality, req_quality)) {
+                        filtered.push_back(c);
+                    }
+                }
+                if (!filtered.empty()) {
+                    candidates = std::move(filtered);
                 }
             }
+
+            std::optional<ChannelCandidate> best = std::nullopt;
+            std::string active_cid = get_virtual_active_cid(slug);
+
+            if (!active_cid.empty()) {
+                for (const auto& c : candidates) {
+                    if (c.content_id == active_cid && !c.is_disabled) {
+                        best = c;
+                        break;
+                    }
+                }
+            }
+            if (!best.has_value()) {
+                for (const auto& c : candidates) {
+                    if (!c.is_disabled) {
+                        best = c;
+                        break;
+                    }
+                }
+            }
+
+            if (!best.has_value()) {
+                best = resolve_best_candidate(slug);
+            }
+
+            if (!best.has_value()) {
+                send_error(connection, 404, "No candidates found for channel: " + slug);
+                return;
+            }
+
+            target_cid = best->content_id;
+            display_title = best->name.empty() ? canonical_name(slug) : best->name;
         }
 
-        if (!best.has_value()) {
-            best = resolve_best_candidate(slug);
-        }
-
-        if (!best.has_value()) {
-            send_error(connection, 404, "No candidates found for channel: " + slug);
-            return;
-        }
-
-        std::string display_title = best->name.empty() ? canonical_name(slug) : best->name;
+        // Actualizar active_cid para este canal virtual
+        set_virtual_active_cid(slug, target_cid);
 
         // Si se pide explícitamente redirección 307
         if (query_get(ctx.query, "redirect") == "true") {
-            std::string redirect_target = "http://" + raw_host + "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)", "") + ".ts";
+            std::string redirect_target = "http://" + raw_host + "/content_id/" + target_cid + "/" + url_encode(display_title + " (Auto)", "") + ".ts";
             connection.send_response_headers(307, "Temporary Redirect", {
                 {"Location", redirect_target},
-                {"X-Content-Id", best->content_id},
-                {"X-Resolved-Content-Id", best->content_id},
+                {"X-Content-Id", target_cid},
+                {"X-Resolved-Content-Id", target_cid},
                 {"Access-Control-Expose-Headers", "Location, X-Content-Id, X-Resolved-Content-Id"},
                 {"Access-Control-Allow-Origin", "*"},
                 {"Connection", "close"}
@@ -739,8 +794,8 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         ctx.req_quality = req_quality;
         ctx.channel_name = display_title;
         ctx.reqtype = "content_id";
-        ctx.parts = {"", "content_id", best->content_id, url_encode(display_title + " (Auto)") + ".ts"};
-        ctx.path = "/content_id/" + best->content_id + "/" + url_encode(display_title + " (Auto)") + ".ts";
+        ctx.parts = {"", "content_id", target_cid, url_encode(display_title + " (Auto)") + ".ts"};
+        ctx.path = "/content_id/" + target_cid + "/" + url_encode(display_title + " (Auto)") + ".ts";
         handle_core_stream(ctx);
         return;
     }
@@ -2388,6 +2443,13 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
 
             if (cand_failed) {
                 if (!ctx.auto_slug.empty()) {
+                    std::string pinned_cid = get_virtual_pinned_cid(ctx.auto_slug);
+                    if (!pinned_cid.empty()) {
+                        log_line("WARNING", "[FAILOVER-AUTO] Canal virtual '" + ctx.auto_slug +
+                                 "' tiene CID fijado manual (" + pinned_cid + "). Omitiendo conmutación automática.");
+                        break;
+                    }
+
                     // Si es un canal virtual /auto/<slug>, conmutar inmediatamente al siguiente candidato válido
                     log_line("WARNING", "[FAILOVER-AUTO] Candidato " + req_value +
                              (client->queue->is_closed() ? " cerrado por motor" : " sin datos tras 6s") +
@@ -2589,6 +2651,12 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
 
                         // Si la cola del motor fue cerrada inesperadamente durante la reproducción:
                         if (client->queue->is_closed()) {
+                            std::string pinned_cid = get_virtual_pinned_cid(ctx.auto_slug);
+                            if (!pinned_cid.empty()) {
+                                log_line("WARNING", "[FAILOVER-MIDSTREAM] Canal virtual '" + ctx.auto_slug +
+                                         "' tiene CID fijado manual (" + pinned_cid + "). Omitiendo conmutación automática.");
+                                break;
+                            }
                             log_line("WARNING", "[FAILOVER-MIDSTREAM] Cola cerrada en canal virtual '" + ctx.auto_slug +
                                                 "' (CID: " + infohash + "). Intentando conmutación en caliente a siguiente candidato...");
                             auto current_b_lock = client->current_broadcast.lock();
@@ -3751,7 +3819,11 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                 std::string pinned_cid = get_virtual_pinned_cid(target_slug);
                 std::string active_virtual_cid = get_virtual_active_cid(target_slug);
                 c.is_pinned = (!pinned_cid.empty() && cid == pinned_cid);
-                c.is_active_stream = (!active_virtual_cid.empty() && cid == active_virtual_cid);
+                if (!pinned_cid.empty()) {
+                    c.is_active_stream = (cid == pinned_cid && !active_virtual_cid.empty() && cid == active_virtual_cid);
+                } else {
+                    c.is_active_stream = (!active_virtual_cid.empty() && cid == active_virtual_cid);
+                }
 
                 // Chequear si ya está activo en BroadcastManager para métricas P2P
                 auto broadcast = broadcasts_.find(cid);
@@ -4361,6 +4433,19 @@ std::string Proxy::get_virtual_active_cid(const std::string& slug) {
     if (slug.empty()) return "";
     std::string norm = canonical_slug(slug);
     std::lock_guard<std::mutex> lock(virtual_state_mutex_);
+
+    // Si hay un CID fijado, el CID activo sólo puede pertenecer al fijado si está transmitiendo
+    auto it_pin = virtual_pinned_cid_.find(norm);
+    if (it_pin != virtual_pinned_cid_.end() && !it_pin->second.empty()) {
+        const std::string& pinned_cid = it_pin->second;
+        auto b = broadcasts_.find(pinned_cid);
+        if (b && (b->get_subscribers() > 0 || b->client_count() > 0 || b->is_running())) {
+            virtual_active_cid_[norm] = pinned_cid;
+            return pinned_cid;
+        }
+        return "";
+    }
+
     auto it = virtual_active_cid_.find(norm);
     if (it != virtual_active_cid_.end()) {
         auto b = broadcasts_.find(it->second);
@@ -4442,43 +4527,68 @@ bool Proxy::pin_candidate(const std::string& slug, const std::string& cid) {
     add_bunker_log("[PIN MANUAL] Fijado candidato manual " + cid.substr(0, std::min<std::size_t>(8, cid.size())) +
                    " para canal virtual " + norm);
 
-    // Si hay una sesión activa en /auto/ transmitiendo otro CID, migrar inmediatamente sus clientes al CID fijado
+    // Identificar broadcasts previos para este canal virtual que reproduzcan un CID distinto
+    std::set<std::string> old_cids_to_stop;
     if (!old_active.empty() && old_active != cid) {
-        auto old_b = broadcasts_.find(old_active);
-        if (old_b) {
-            auto clients = old_b->clients();
-            if (!clients.empty()) {
-                std::map<std::string, std::string> params = {
-                    {"file_indexes", "0"}, {"developer_id", "0"}, {"affiliate_id", "0"}, {"zone_id", "0"}, {"stream_id", "0"},
-                    {"stream_type", config_.stream_type_string()},
-                    {"content_id", cid},
-                    {"sessionID", std::to_string(unix_time()) + "_pinmig"}
-                };
-                auto target_b = broadcasts_.get_or_create(cid, params);
-                target_b->start_once();
+        old_cids_to_stop.insert(old_active);
+    }
 
-                // Esperar hasta 3s a que el nuevo stream tenga datos válidos
-                auto wait_start = std::chrono::steady_clock::now();
-                while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wait_start).count() < 3000) {
-                    if (target_b->has_valid_ts_data()) break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                }
-
-                for (const auto& client : clients) {
-                    if (!client) continue;
-                    std::string c_slug = client->auto_slug;
-                    if (c_slug.empty()) c_slug = canonical_slug(client->channel_name);
-                    if (c_slug == norm) {
-                        old_b->detach_client_for_migration(client);
-                        target_b->attach_migrated_client(client);
-                        add_bunker_log("[PIN MANUAL] Cliente migrado en caliente a CID forzado " + cid.substr(0, std::min<std::size_t>(8, cid.size())));
-                    }
-                }
+    std::vector<std::shared_ptr<StreamClient>> clients_to_migrate;
+    auto all_b = broadcasts_.all_broadcasts();
+    for (const auto& b : all_b) {
+        if (!b || b->infohash() == cid) continue;
+        auto b_clients = b->clients();
+        bool has_slug_client = false;
+        for (const auto& client : b_clients) {
+            if (!client) continue;
+            std::string c_slug = client->auto_slug;
+            if (c_slug.empty()) c_slug = canonical_slug(client->channel_name);
+            if (c_slug == norm) {
+                clients_to_migrate.push_back(client);
+                has_slug_client = true;
             }
-            // v09.11.03 — Cancelación activa e inmediata del broadcast anterior en AceStream
-            broadcasts_.force_stop_broadcast(old_active);
+        }
+        if (has_slug_client || b->infohash() == old_active) {
+            old_cids_to_stop.insert(b->infohash());
         }
     }
+
+    // Si hay clientes activos para este slug en un CID distinto, reconectar inmediatamente al nuevo CID fijado
+    if (!clients_to_migrate.empty()) {
+        std::map<std::string, std::string> params = {
+            {"file_indexes", "0"}, {"developer_id", "0"}, {"affiliate_id", "0"}, {"zone_id", "0"}, {"stream_id", "0"},
+            {"stream_type", config_.stream_type_string()},
+            {"content_id", cid},
+            {"sessionID", std::to_string(unix_time()) + "_pinmig"}
+        };
+        auto target_b = broadcasts_.get_or_create(cid, params);
+        target_b->start_once();
+
+        // Esperar hasta 3s a que el nuevo stream tenga datos válidos
+        auto wait_start = std::chrono::steady_clock::now();
+        while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wait_start).count() < 3000) {
+            if (target_b->has_valid_ts_data()) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+
+        for (const auto& client : clients_to_migrate) {
+            if (!client) continue;
+            for (const auto& b : all_b) {
+                if (b && b->infohash() != cid) {
+                    b->detach_client_for_migration(client);
+                }
+            }
+            target_b->attach_migrated_client(client);
+            add_bunker_log("[PIN MANUAL] Cliente migrado en caliente a CID forzado " + cid.substr(0, std::min<std::size_t>(8, cid.size())));
+        }
+    }
+
+    // Cancelación activa e inmediata de todos los broadcasts anteriores asociados a este slug
+    for (const auto& prev_cid : old_cids_to_stop) {
+        log_line("INFO", "[PIN MANUAL] Cancelando broadcast previo " + prev_cid + " para slug '" + norm + "'");
+        broadcasts_.force_stop_broadcast(prev_cid);
+    }
+
     return true;
 }
 

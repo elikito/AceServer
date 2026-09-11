@@ -638,6 +638,15 @@ std::vector<std::shared_ptr<StreamClient>> BroadcastManager::all_clients() const
     return out;
 }
 
+std::vector<std::shared_ptr<Broadcast>> BroadcastManager::all_broadcasts() const {
+    std::vector<std::shared_ptr<Broadcast>> out;
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& [_, broadcast] : broadcasts_) {
+        if (broadcast) out.push_back(broadcast);
+    }
+    return out;
+}
+
 void BroadcastManager::force_stop_broadcast(const std::string& infohash) {
     std::shared_ptr<Broadcast> removed;
     {

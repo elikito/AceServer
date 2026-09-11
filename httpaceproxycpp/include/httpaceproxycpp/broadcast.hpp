@@ -159,6 +159,7 @@ public:
     std::size_t broadcast_count() const;
     std::size_t client_count() const;
     std::vector<std::shared_ptr<StreamClient>> all_clients() const;
+    std::vector<std::shared_ptr<Broadcast>> all_broadcasts() const;
     void reap_inactive_sessions(std::int64_t max_idle_seconds = 20);
     void start_reaper();
     void stop_reaper();

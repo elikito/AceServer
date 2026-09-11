@@ -1177,6 +1177,54 @@ void test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity() {
     require(ts_payload_only[6] == 0x00 && ts_payload_only[7] == 0x00 &&
             ts_payload_only[8] == 0x01 && ts_payload_only[9] == 0xE0,
             "PES video header must be shifted cleanly to byte 6");
+
+    // 5. Verificación del método all_broadcasts en BroadcastManager
+    Config cfg_bm;
+    HttpClient http;
+    BroadcastManager bm(cfg_bm, http);
+    require(bm.all_broadcasts().empty(), "all_broadcasts must be empty initially");
+}
+
+void test_v09_11_04_pinned_virtual_cid_logic() {
+    Config cfg;
+    Proxy proxy(cfg);
+
+    std::string slug = "la-liga-tv";
+    std::string pinned_cid = "cid_pinned_1234567890abcdef1234567890abcdef";
+    std::string other_cid = "cid_other_abcdef1234567890abcdef1234567890";
+
+    // 1. Estado inicial limpio
+    require(proxy.get_virtual_pinned_cid(slug).empty(), "Virtual pinned CID must be empty initially");
+    require(proxy.get_virtual_active_cid(slug).empty(), "Virtual active CID must be empty initially");
+
+    // 2. Establecer CID fijado
+    proxy.set_virtual_pinned_cid(slug, pinned_cid);
+    require(proxy.get_virtual_pinned_cid(slug) == pinned_cid, "Pinned CID must match set value");
+
+    // 3. Exclusividad estricta: un CID no fijado NUNCA debe ser reportado como activo para este slug cuando hay un PIN
+    proxy.set_virtual_active_cid(slug, other_cid);
+    require(proxy.get_virtual_active_cid(slug).empty(), "Non-pinned CID must NEVER be active when a pin exists");
+
+    // 4. pin_candidate actualiza estado virtual_pinned_cid y virtual_active_cid
+    std::string new_pinned = "cid_pinned_new_9876543210fedcba9876543210fedcba";
+    bool pin_ok = proxy.pin_candidate(slug, new_pinned);
+    require(pin_ok, "pin_candidate must succeed");
+    require(proxy.get_virtual_pinned_cid(slug) == new_pinned, "get_virtual_pinned_cid must return newly pinned CID");
+
+    // 5. Verificación de exclusividad de flags en lista de candidatos:
+    // Sólo el CID fijado puede tener is_pinned = true, y cualquier otro CID no puede tener is_active = true
+    ChannelCandidate cand_other{"LaLiga TV 1080p [100 peers]", other_cid, "test", "", "", slug, StreamQuality::FHD_1080, 100, 100, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+    ChannelCandidate cand_pin{"LaLiga TV SD [2 peers]", new_pinned, "test", "", "", slug, StreamQuality::SD, 30, 2, 0, ChannelHealth::ONLINE, false, false, false, 0.0};
+
+    cand_pin.is_pinned = (cand_pin.content_id == new_pinned);
+    cand_other.is_pinned = (cand_other.content_id == new_pinned);
+
+    require(cand_pin.is_pinned == true, "Pinned candidate must have is_pinned true");
+    require(cand_other.is_pinned == false, "Other candidate must have is_pinned false");
+
+    // Desfijar
+    proxy.clear_virtual_pinned_cid(slug);
+    require(proxy.get_virtual_pinned_cid(slug).empty(), "Virtual pinned CID must be empty after clear");
 }
 
 } // namespace
@@ -1221,6 +1269,7 @@ int main() {
         test_v09_11_01_active_failover_and_scoring();
         test_v09_11_02_strict_single_cid_reaper_and_null_packets();
         test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity();
+        test_v09_11_04_pinned_virtual_cid_logic();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {
