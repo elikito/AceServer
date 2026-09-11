@@ -1233,6 +1233,17 @@ public:
             };
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", res.dump(2));
             return true;
+        } else if (action == "get_now" || action == "get_programs" || action == "get_epg") {
+            auto epg_cache_path = std::filesystem::path(config_.root_dir) / "http" / "epg_cache.json";
+            if (std::filesystem::exists(epg_cache_path)) {
+                try {
+                    auto content = read_file_binary(epg_cache_path.string());
+                    send_bytes(ctx.connection, 200, "application/json; charset=utf-8", content);
+                    return true;
+                } catch (...) {}
+            }
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", "{\"status\":\"empty\",\"guide\":{}}");
+            return true;
         } else if (action == "get_custom_logos") {
             auto logos = proxy_.get_custom_logos();
             Json::object obj;

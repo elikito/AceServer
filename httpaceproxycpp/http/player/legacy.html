@@ -7,16 +7,18 @@
     <title>HTTPAceProxy - Vista Legacy (iPad)</title>
     <link rel="shortcut icon" href="/stat/img/shesterenka.png" type="image/png">
     <style>
-        /* Estilos ultra básicos, compatibles con WebKit antiguo (iOS 12.5.8) */
+        /* Estilos compatibles con WebKit antiguo (iOS 12.5.8 / iPad Air 1 / Brave iOS 12) */
+        /* Evitar flexbox gap (no soportado en iOS 12) usando márgenes directos */
         body {
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #121214;
             color: #d1d1d6;
             margin: 0;
             padding: 0;
+            -webkit-text-size-adjust: 100%;
         }
 
-        /* Navbar Plano Legacy (Ultra compatible ES5 / iOS 12) */
+        /* Navbar Plano Legacy */
         .navbar {
             background-color: #1a1a1e;
             border-bottom: 1px solid #2d2d34;
@@ -60,6 +62,7 @@
             padding: 6px 10px;
             display: inline-block;
             border-radius: 4px;
+            margin-left: 4px;
         }
 
         .nav-links a:hover,
@@ -90,39 +93,24 @@
             .nav-links a {
                 padding: 6px 8px;
                 font-size: 12px;
+                margin: 2px;
             }
         }
 
         .container {
             padding: 15px;
-        }
-
-        .header-section {
-            margin-bottom: 15px;
-            border-bottom: 1px solid #2d2d34;
-            padding-bottom: 10px;
-        }
-
-        .header-section h2 {
-            font-size: 18px;
-            color: #ffffff;
-            margin: 0 0 5px 0;
-        }
-
-        .header-section p {
-            font-size: 12px;
-            color: #8e8e93;
-            margin: 0;
+            max-width: 1280px;
+            margin: 0 auto;
+            box-sizing: border-box;
         }
 
         /* Pestañas de Fuentes Legacy */
         .tabs-container-legacy {
             display: -webkit-flex;
             display: flex;
-            gap: 8px;
             overflow-x: auto;
             margin-bottom: 12px;
-            padding-bottom: 4px;
+            padding-bottom: 6px;
             -webkit-overflow-scrolling: touch;
         }
 
@@ -137,8 +125,13 @@
             white-space: nowrap;
             cursor: pointer;
             outline: none;
+            margin-right: 8px;
             -webkit-transition: all 0.2s ease;
             transition: all 0.2s ease;
+        }
+
+        .tab-btn-legacy:last-child {
+            margin-right: 0;
         }
 
         .tab-btn-legacy:hover {
@@ -161,7 +154,6 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 10px;
             margin-bottom: 12px;
         }
 
@@ -174,6 +166,7 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
+            margin-right: 10px;
         }
 
         .search-icon-legacy {
@@ -188,7 +181,7 @@
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
             color: #ffffff;
-            padding: 8px 12px 8px 32px;
+            padding: 9px 12px 9px 32px;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -204,8 +197,8 @@
         .live-clock-legacy {
             font-weight: bold;
             color: #4cd964;
-            font-size: 14px;
-            padding: 6px 12px;
+            font-size: 13px;
+            padding: 8px 12px;
             background: #1a1a1e;
             border: 1px solid #2d2d34;
             border-radius: 6px;
@@ -213,43 +206,6 @@
             -webkit-flex-shrink: 0;
             flex-shrink: 0;
             text-align: center;
-        }
-
-        /* Selector de Calidad 1080 / 720 */
-        .quality-toggle-legacy {
-            display: inline-block;
-        }
-
-        .quality-btn-legacy {
-            background-color: #25252b;
-            border: 1px solid #3a3a44;
-            color: #a8a8b2;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            outline: none;
-            margin-right: 4px;
-            -webkit-transition: all 0.15s ease;
-            transition: all 0.15s ease;
-        }
-
-        .quality-btn-legacy:hover {
-            color: #ffffff;
-            border-color: #555562;
-        }
-
-        .quality-btn-legacy.quality-1080.active {
-            background-color: #3b82f6;
-            border-color: #3b82f6;
-            color: #ffffff;
-        }
-
-        .quality-btn-legacy.quality-720.active {
-            background-color: #06b6d4;
-            border-color: #06b6d4;
-            color: #ffffff;
         }
 
         /* Controles de Paginación y Barra de Herramientas Legacy */
@@ -264,12 +220,11 @@
             justify-content: space-between;
             -webkit-flex-wrap: wrap;
             flex-wrap: wrap;
-            gap: 10px;
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
             padding: 8px 12px;
             border-radius: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
             font-size: 12px;
             color: #a8a8b2;
         }
@@ -280,14 +235,15 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 8px;
             -webkit-flex-wrap: wrap;
             flex-wrap: wrap;
+            margin-right: 8px;
         }
 
         .pagination-label-legacy {
             color: #8e8e93;
             font-weight: 500;
+            margin-right: 6px;
         }
 
         .items-per-page-legacy {
@@ -300,6 +256,7 @@
             font-weight: bold;
             outline: none;
             cursor: pointer;
+            margin-right: 8px;
         }
 
         .pagination-status-legacy {
@@ -316,7 +273,6 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 12px;
             -webkit-flex-wrap: wrap;
             flex-wrap: wrap;
         }
@@ -327,19 +283,20 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 4px;
+            margin-right: 12px;
         }
 
         .pagination-btn-legacy {
             background-color: #25252b;
             border: 1px solid #3a3a44;
             color: #ffffff;
-            padding: 5px 10px;
+            padding: 5px 9px;
             border-radius: 6px;
             font-size: 12px;
             font-weight: bold;
             cursor: pointer;
             outline: none;
+            margin-right: 3px;
             -webkit-transition: all 0.15s ease;
             transition: all 0.15s ease;
         }
@@ -357,7 +314,7 @@
         .page-indicator-legacy {
             font-weight: bold;
             color: #ffffff;
-            padding: 0 4px;
+            padding: 0 6px;
             font-size: 12px;
         }
 
@@ -368,7 +325,6 @@
             border: 1px solid #2d2d34;
             border-radius: 6px;
             padding: 2px;
-            gap: 2px;
         }
 
         .view-mode-btn-legacy {
@@ -385,10 +341,14 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 4px;
             outline: none;
+            margin: 0 1px;
             -webkit-transition: all 0.15s ease;
             transition: all 0.15s ease;
+        }
+
+        .view-mode-btn-legacy svg {
+            margin-right: 4px;
         }
 
         .view-mode-btn-legacy.active {
@@ -396,25 +356,64 @@
             color: #ffffff;
         }
 
-        /* Botones de Acción (Play / Copiar) con dimensiones idénticas */
+        /* Selector de Calidad 1080 / 720 */
+        .quality-toggle-legacy {
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        .quality-btn-legacy {
+            background-color: #232329;
+            border: 1px solid #353540;
+            color: #9d9da8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+            margin-right: 4px;
+            -webkit-transition: all 0.15s ease;
+            transition: all 0.15s ease;
+        }
+
+        .quality-btn-legacy:hover {
+            color: #ffffff;
+            border-color: #555562;
+        }
+
+        .quality-btn-legacy.quality-1080.active {
+            background-color: #2563eb;
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        .quality-btn-legacy.quality-720.active {
+            background-color: #0891b2;
+            border-color: #06b6d4;
+            color: #ffffff;
+        }
+
+        /* Botones de Acción (Play / Copiar) */
         .channel-actions-legacy {
             display: -webkit-flex;
             display: flex;
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 6px;
+            -webkit-flex-shrink: 0;
+            flex-shrink: 0;
         }
 
         .btn-action-legacy {
-            width: 36px;
-            height: 36px;
-            min-width: 36px;
-            min-height: 36px;
-            max-width: 36px;
-            max-height: 36px;
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            min-height: 38px;
+            max-width: 38px;
+            max-height: 38px;
             box-sizing: border-box;
-            border-radius: 6px;
+            border-radius: 8px;
             display: -webkit-inline-flex;
             display: inline-flex;
             -webkit-box-align: center;
@@ -424,7 +423,7 @@
             -webkit-justify-content: center;
             justify-content: center;
             padding: 0;
-            margin: 0;
+            margin-left: 6px;
             cursor: pointer;
             text-decoration: none;
             outline: none;
@@ -434,44 +433,49 @@
         }
 
         .btn-copy-legacy {
-            background-color: #25252b;
-            border: 1px solid #3a3a44;
-            color: #ffffff;
+            background-color: #222228;
+            border: 1px solid #383844;
+            color: #d1d1d6;
         }
 
         .btn-copy-legacy:hover {
-            background-color: #34343d;
-            border-color: #555562;
+            background-color: #2e2e38;
+            border-color: #555566;
+            color: #ffffff;
         }
 
         .btn-copy-legacy.copied {
-            background-color: #15803d;
+            background-color: #166534;
             border-color: #22c55e;
             color: #ffffff;
         }
 
         .btn-play-legacy {
-            background-color: #22c55e;
+            background: -webkit-linear-gradient(top, #22c55e, #16a34a);
+            background: linear-gradient(180deg, #22c55e, #16a34a);
             border: 1px solid #22c55e;
             color: #ffffff;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
         }
 
         .btn-play-legacy:hover {
-            background-color: #16a34a;
-            border-color: #16a34a;
+            background: #16a34a;
+            border-color: #15803d;
+            box-shadow: 0 2px 12px rgba(34, 197, 94, 0.45);
         }
 
         /* Categorías y Listas de Canales */
         .category-header {
-            background-color: #1a1a1e;
+            background-color: #18181c;
             border: 1px solid #2d2d34;
             padding: 8px 12px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
-            color: #ffffff;
+            color: #e4e4e7;
             margin-top: 15px;
             margin-bottom: 8px;
             border-radius: 6px;
+            letter-spacing: 0.3px;
         }
 
         .channel-list {
@@ -480,88 +484,12 @@
             margin: 0;
         }
 
-        .channel-logo {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        /* MODO CUADRÍCULA (GRID) */
-        .channel-list.view-grid {
-            display: -webkit-flex;
-            display: flex;
-            -webkit-flex-wrap: wrap;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .channel-list.view-grid .channel-item {
-            -webkit-flex: 1 1 240px;
-            flex: 1 1 240px;
-            min-width: 220px;
-            max-width: 340px;
-            box-sizing: border-box;
-            background-color: #1a1a1e;
-            border: 1px solid #2d2d34;
+        /* Contenedor de Logo Mejorado (Marco moderno con relieve suave) */
+        .channel-logo-container {
+            background-color: #151518;
+            border: 1px solid #2b2b34;
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 0;
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-orient: vertical;
-            -webkit-box-direction: normal;
-            -webkit-flex-direction: column;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 124px;
-            -webkit-transition: border-color 0.15s ease;
-            transition: border-color 0.15s ease;
-        }
-
-        .channel-list.view-grid .channel-item:hover {
-            border-color: #3f3f46;
-        }
-
-        .channel-list.view-grid .channel-grid-top {
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-align: center;
-            -webkit-align-items: center;
-            align-items: center;
-            -webkit-box-pack: justify;
-            -webkit-justify-content: space-between;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            gap: 8px;
-        }
-
-        .channel-list.view-grid .channel-name {
-            font-size: 14px;
-            font-weight: bold;
-            color: #ffffff;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            -webkit-flex: 1;
-            flex: 1;
-        }
-
-        .channel-list.view-grid .channel-grid-body {
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-align: center;
-            -webkit-align-items: center;
-            align-items: center;
-            -webkit-box-pack: justify;
-            -webkit-justify-content: space-between;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .channel-list.view-grid .channel-logo-container {
-            width: 56px;
-            height: 56px;
-            min-width: 56px;
+            box-sizing: border-box;
             display: -webkit-flex;
             display: flex;
             -webkit-box-align: center;
@@ -570,11 +498,123 @@
             -webkit-box-pack: center;
             -webkit-justify-content: center;
             justify-content: center;
-            background-color: #141418;
-            border: 1px solid #2d2d34;
-            border-radius: 8px;
             padding: 4px;
-            box-sizing: border-box;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            -webkit-flex-shrink: 0;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .channel-logo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* EPG Info Components (Compatible iOS 12) */
+        .channel-epg-box {
+            margin: 4px 0;
+            overflow: hidden;
+        }
+
+        .epg-header-line {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            font-size: 11px;
+            line-height: 1.3;
+            margin-bottom: 2px;
+        }
+
+        .epg-live-badge {
+            background-color: rgba(76, 217, 100, 0.15);
+            color: #4cd964;
+            border: 1px solid rgba(76, 217, 100, 0.3);
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-weight: bold;
+            font-size: 10px;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+            margin-right: 6px;
+            display: inline-block;
+        }
+
+        .epg-time-range {
+            color: #9d9da8;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+            white-space: nowrap;
+        }
+
+        .epg-prog-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .epg-bar-track {
+            width: 100%;
+            height: 3px;
+            background-color: #282832;
+            border-radius: 2px;
+            margin: 4px 0 3px 0;
+            overflow: hidden;
+        }
+
+        .epg-bar-fill {
+            height: 100%;
+            background-color: #4cd964;
+            border-radius: 2px;
+        }
+
+        .epg-next-line {
+            font-size: 11px;
+            color: #8e8e93;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        .epg-next-tag {
+            color: #a8a8b2;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        .epg-no-info {
+            font-size: 11px;
+            color: #636366;
+            font-style: italic;
+            margin-top: 3px;
+        }
+
+        .channel-title-row {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+        }
+
+        .channel-group-tag {
+            background-color: rgba(255, 255, 255, 0.06);
+            color: #8e8e93;
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 6px;
+            font-weight: 500;
+            white-space: nowrap;
         }
 
         /* MODO LISTA (ROW) */
@@ -594,7 +634,7 @@
             background-color: #1a1a1e;
             border: 1px solid #2d2d34;
             border-radius: 8px;
-            padding: 8px 14px;
+            padding: 10px 14px;
             margin-bottom: 8px;
             box-sizing: border-box;
             -webkit-transition: border-color 0.15s ease;
@@ -611,29 +651,17 @@
             -webkit-box-align: center;
             -webkit-align-items: center;
             align-items: center;
-            gap: 12px;
             -webkit-flex: 1;
             flex: 1;
             overflow: hidden;
+            margin-right: 12px;
         }
 
         .channel-list.view-list .channel-logo-container {
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-align: center;
-            -webkit-align-items: center;
-            align-items: center;
-            -webkit-box-pack: center;
-            -webkit-justify-content: center;
-            justify-content: center;
-            background-color: #141418;
-            border: 1px solid #2d2d34;
-            border-radius: 6px;
-            padding: 3px;
-            box-sizing: border-box;
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            margin-right: 12px;
         }
 
         .channel-list.view-list .channel-details {
@@ -651,13 +679,96 @@
             white-space: nowrap;
         }
 
-        .channel-list.view-list .quality-toggle-legacy {
-            margin-top: 3px;
+        /* MODO CUADRÍCULA (GRID) */
+        .channel-list.view-grid {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
+            margin: -6px;
+        }
+
+        .channel-list.view-grid .channel-item {
+            -webkit-flex: 1 1 290px;
+            flex: 1 1 290px;
+            min-width: 270px;
+            max-width: 450px;
+            box-sizing: border-box;
+            background-color: #1a1a1e;
+            border: 1px solid #2d2d34;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 6px;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-orient: vertical;
+            -webkit-box-direction: normal;
+            -webkit-flex-direction: column;
+            flex-direction: column;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            min-height: 140px;
+            -webkit-transition: border-color 0.15s ease;
+            transition: border-color 0.15s ease;
+        }
+
+        .channel-list.view-grid .channel-item:hover {
+            border-color: #3f3f46;
+        }
+
+        .channel-list.view-grid .channel-grid-top {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: justify;
+            -webkit-justify-content: space-between;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .channel-list.view-grid .channel-name-wrap {
+            overflow: hidden;
+            -webkit-flex: 1;
+            flex: 1;
+            margin-right: 8px;
+        }
+
+        .channel-list.view-grid .channel-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .channel-list.view-grid .channel-grid-body {
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+        }
+
+        .channel-list.view-grid .channel-logo-container {
+            width: 58px;
+            height: 58px;
+            min-width: 58px;
+            margin-right: 12px;
+        }
+
+        .channel-list.view-grid .channel-grid-info {
+            -webkit-flex: 1;
+            flex: 1;
+            overflow: hidden;
         }
 
         .loading-screen {
             text-align: center;
-            padding: 30px;
+            padding: 35px 20px;
             font-size: 13px;
             color: #8e8e93;
         }
@@ -665,7 +776,7 @@
         .footer-bar {
             background-color: #1a1a1e;
             border-top: 1px solid #2d2d34;
-            padding: 8px 15px;
+            padding: 10px 15px;
             font-size: 11px;
             color: #8e8e93;
             text-align: center;
@@ -690,11 +801,6 @@
 
     <!-- Container -->
     <div class="container">
-        <!-- Encabezado con estado -->
-        <div style="margin-bottom: 12px; display: -webkit-flex; display: flex; -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between; -webkit-box-align: baseline; -webkit-align-items: baseline; align-items: baseline;">
-            <h2 style="margin: 0; font-size: 18px; color: #ffffff;">Reproductor IPTV (Ligero)</h2>
-            <span id="loading-status" style="font-size: 12px; color: #8e8e93;">Cargando canales...</span>
-        </div>
 
         <!-- Listado de Fuentes (Pestañas / Pills) -->
         <div id="tabs-container-legacy" class="tabs-container-legacy"></div>
@@ -703,9 +809,11 @@
         <div class="search-bar-row-legacy">
             <div class="search-input-wrap-legacy">
                 <svg class="search-icon-legacy" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    <path
+                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                 </svg>
-                <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal o grupo..." onkeyup="filterChannelsLegacy()">
+                <input type="text" id="search-legacy" class="search-input-legacy" placeholder="Buscar canal, grupo o programa..."
+                    onkeyup="filterChannelsLegacy()">
             </div>
             <div id="live-clock-legacy" class="live-clock-legacy">--:--:--</div>
         </div>
@@ -714,7 +822,8 @@
         <div id="pagination-container-legacy" class="pagination-container-legacy">
             <div class="pagination-left-legacy">
                 <span class="pagination-label-legacy">Mostrar:</span>
-                <select id="items-per-page-legacy" class="items-per-page-legacy" onchange="changeItemsPerPageLegacy(this.value)">
+                <select id="items-per-page-legacy" class="items-per-page-legacy"
+                    onchange="changeItemsPerPageLegacy(this.value)">
                     <option value="12">12 por pág.</option>
                     <option value="24" selected>24 por pág.</option>
                     <option value="48">48 por pág.</option>
@@ -724,19 +833,30 @@
             </div>
             <div class="pagination-right-legacy">
                 <div class="pagination-nav-legacy">
-                    <button id="btn-first-legacy" class="pagination-btn-legacy" onclick="firstPageLegacy()" disabled title="Primera página">&laquo;&laquo;</button>
-                    <button id="btn-prev-legacy" class="pagination-btn-legacy" onclick="prevPageLegacy()" disabled title="Página anterior">&laquo; Ant</button>
+                    <button id="btn-first-legacy" class="pagination-btn-legacy" onclick="firstPageLegacy()" disabled
+                        title="Primera página">&laquo;&laquo;</button>
+                    <button id="btn-prev-legacy" class="pagination-btn-legacy" onclick="prevPageLegacy()" disabled
+                        title="Página anterior">&laquo; Ant</button>
                     <span id="page-indicator-legacy" class="page-indicator-legacy">Pág. 1/1</span>
-                    <button id="btn-next-legacy" class="pagination-btn-legacy" onclick="nextPageLegacy()" disabled title="Página siguiente">Sig &raquo;</button>
-                    <button id="btn-last-legacy" class="pagination-btn-legacy" onclick="lastPageLegacy()" disabled title="Última página">&raquo;&raquo;</button>
+                    <button id="btn-next-legacy" class="pagination-btn-legacy" onclick="nextPageLegacy()" disabled
+                        title="Página siguiente">Sig &raquo;</button>
+                    <button id="btn-last-legacy" class="pagination-btn-legacy" onclick="lastPageLegacy()" disabled
+                        title="Última página">&raquo;&raquo;</button>
                 </div>
                 <div class="view-mode-toggle-legacy">
-                    <button id="btn-view-grid" type="button" class="view-mode-btn-legacy active" onclick="setViewModeLegacy('grid')" title="Vista Cuadrícula">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
+                    <button id="btn-view-grid" type="button" class="view-mode-btn-legacy active"
+                        onclick="setViewModeLegacy('grid')" title="Vista Cuadrícula">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                            <path
+                                d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z" />
+                        </svg>
                         Cuadrícula
                     </button>
-                    <button id="btn-view-list" type="button" class="view-mode-btn-legacy" onclick="setViewModeLegacy('list')" title="Vista Lista">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                    <button id="btn-view-list" type="button" class="view-mode-btn-legacy"
+                        onclick="setViewModeLegacy('list')" title="Vista Lista">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                            <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
+                        </svg>
                         Lista
                     </button>
                 </div>
@@ -756,8 +876,8 @@
     </div>
 
     <script>
-        // JS ES5 Estricto: SIN funciones flecha, SIN template literals, SIN let/const si se prefiere compatibilidad total
-        // Se usa exclusivamente var y XMLHttpRequest clásica
+        // JS ES5 Estricto: Compatible con iOS 12.5.8 / iPad Air 1 / Brave iOS 12
+        // Exclusivamente var, XMLHttpRequest clásica y sin sintaxis moderna incompatible
 
         var allChannelsLegacy = [];
         var filteredChannelsLegacy = [];
@@ -766,6 +886,8 @@
         var itemsPerPageLegacy = 24;
         var activeSourcesListLegacy = [];
         var currentViewModeLegacy = 'grid';
+        var epgGuideLegacy = {};
+        var customLogosLegacy = {};
 
         window.onload = function () {
             if (localStorage.getItem('theme') === 'light') {
@@ -781,7 +903,7 @@
             var serverIpEl = document.getElementById('server-ip');
             if (serverIpEl) serverIpEl.innerHTML = hostIp;
 
-            // XHR clásico para compatibilidad con iOS 9 (sin fetch)
+            // XHR clásico para compatibilidad total con iOS 12 / iOS 9
             var statXhr = new XMLHttpRequest();
             statXhr.open('GET', '/stat/?action=get_status', true);
             statXhr.onreadystatechange = function () {
@@ -799,7 +921,16 @@
 
             updateLiveClockLegacy();
             setInterval(updateLiveClockLegacy, 1000);
+
+            // Cargar logos personalizados, guía EPG y canales
+            loadCustomLogosLegacy();
+            loadEpgLegacy();
             initSourcesLegacy();
+
+            // Refresco suave de EPG cada 60 segundos
+            setInterval(function () {
+                loadEpgLegacy();
+            }, 60000);
         };
 
         function updateStatusLegacy(msg) {
@@ -818,6 +949,41 @@
                 var s = ('0' + now.getSeconds()).slice(-2);
                 clockEl.innerHTML = '🕒 ' + h + ':' + m + ':' + s;
             }
+        }
+
+        function loadCustomLogosLegacy() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/epg?action=get_custom_logos', true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        if (res && res.logos) {
+                            customLogosLegacy = res.logos;
+                        }
+                    } catch (e) { }
+                }
+            };
+            xhr.send();
+        }
+
+        function loadEpgLegacy() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/epg?action=get_now&t=' + (new Date().getTime()), true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        if (res && res.guide) {
+                            epgGuideLegacy = res.guide;
+                            if (allChannelsLegacy && allChannelsLegacy.length > 0) {
+                                renderCurrentPageLegacy();
+                            }
+                        }
+                    } catch (e) { }
+                }
+            };
+            xhr.send();
         }
 
         function initSourcesLegacy() {
@@ -908,8 +1074,8 @@
                 btn.type = 'button';
                 btn.className = 'tab-btn-legacy' + (src.url === currentSourceLegacy ? ' active' : '');
                 btn.innerHTML = escapeHtmlLegacy(src.label);
-                (function(url) {
-                    btn.onclick = function() {
+                (function (url) {
+                    btn.onclick = function () {
                         switchTabLegacy(url);
                     };
                 })(src.url);
@@ -948,7 +1114,7 @@
             currentViewModeLegacy = (mode === 'list') ? 'list' : 'grid';
             try {
                 localStorage.setItem('legacy_view_mode', currentViewModeLegacy);
-            } catch(e) {}
+            } catch (e) { }
             updateViewModeButtonsLegacy();
             renderCurrentPageLegacy();
         }
@@ -967,16 +1133,22 @@
             }
         }
 
+        function toChannelSlugLegacy(name) {
+            if (!name) return '';
+            var s = name.toLowerCase();
+            s = s.replace(/^\s*\d+[\.\s_–-]+/, ' ');
+            s = s.replace(/[\(\[\{]\s*(?:mirror|replica|m|opt|alt)?\s*\d+\s*[\)\]\}]/g, ' ');
+            s = s.replace(/\b(1080p|1080i|1080|720p|720i|720|576p|576i|480p|4k|uhd|fhda?|720a?|hd|sd|hevc|h265|h264|back|backup|opt|alt|directo|live|envivo|castellano|spanish|spain|espana|acestream)\b/g, ' ');
+            s = s.replace(/[^a-z0-9]+/g, '-');
+            return s.replace(/^-+|-+$/g, '');
+        }
+
         function stripQualityFromChannelName(name) {
             if (!name) return '';
             var n = name;
-            // Quitar sufijos de procedencia (flechas)
             n = n.replace(/\s*(?:[-=]>|→|➔|➜|➡|⇒)\s*.*$/i, '');
-            // Quitar sufijos de réplica tipo (2), (3)
             n = n.replace(/\s*[\(\[]\s*\d+\s*[\)\]]/g, '');
-            // Quitar asteriscos tipo * o **
             n = n.replace(/\s*[*#]+\s*/g, ' ');
-            // Quitar tokens de calidad
             n = n.replace(/\b(1080p|1080i|1080|720p|720i|720|576p|576i|480p|4k|uhd|fhda?|720a?|1080a|hd|sd|hevc|h265|h264)\b/gi, '');
             return n.replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
         }
@@ -991,7 +1163,6 @@
                 var baseName = stripQualityFromChannelName(rawName);
                 if (!baseName) baseName = rawName || 'Canal';
 
-                // Detectar si el stream es 1080p o 720p
                 var is720 = false;
                 var is1080 = false;
                 var nameAndUrl = (rawName + ' ' + item.url).toLowerCase();
@@ -1016,10 +1187,14 @@
                     if (!existing.logo && item.logo) {
                         existing.logo = item.logo;
                     }
+                    if (!existing.tvgId && item.tvgId) existing.tvgId = item.tvgId;
+                    if (!existing.tvgName && item.tvgName) existing.tvgName = item.tvgName;
                 } else {
                     var chanObj = {
                         name: baseName,
                         fullName: rawName,
+                        tvgId: item.tvgId || '',
+                        tvgName: item.tvgName || '',
                         logo: item.logo || '',
                         group: item.group || 'Otros',
                         urls: {
@@ -1094,19 +1269,23 @@
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i].trim();
                 if (line.indexOf('#EXTINF:') === 0) {
-                    currentItem = { logo: '', group: 'Otros', name: 'Canal', url: '' };
+                    currentItem = { logo: '', group: 'Otros', name: 'Canal', url: '', tvgId: '', tvgName: '' };
+
+                    // Parse tvg-id
+                    var tvgIdMatch = line.match(/tvg-id="([^"]*)"/i);
+                    if (tvgIdMatch) currentItem.tvgId = tvgIdMatch[1];
+
+                    // Parse tvg-name
+                    var tvgNameMatch = line.match(/tvg-name="([^"]*)"/i);
+                    if (tvgNameMatch) currentItem.tvgName = tvgNameMatch[1];
 
                     // Parse logo
-                    var logoMatch = line.match(/tvg-logo="([^"]*)"/);
-                    if (logoMatch) {
-                        currentItem.logo = logoMatch[1];
-                    }
+                    var logoMatch = line.match(/tvg-logo="([^"]*)"/i);
+                    if (logoMatch) currentItem.logo = logoMatch[1];
 
                     // Parse group
-                    var groupMatch = line.match(/group-title="([^"]*)"/);
-                    if (groupMatch) {
-                        currentItem.group = groupMatch[1];
-                    }
+                    var groupMatch = line.match(/group-title="([^"]*)"/i);
+                    if (groupMatch) currentItem.group = groupMatch[1];
 
                     // Parse name
                     var commaIdx = line.lastIndexOf(',');
@@ -1139,14 +1318,58 @@
             return channels;
         }
 
+        function findEpgForChannelLegacy(channel) {
+            if (!epgGuideLegacy || typeof epgGuideLegacy !== 'object') return null;
+            var keys = [];
+            if (channel.tvgId) keys.push(channel.tvgId.toLowerCase());
+            if (channel.tvgName) keys.push(channel.tvgName.toLowerCase());
+
+            if (channel.name) {
+                keys.push(channel.name.toLowerCase());
+                var slug = toChannelSlugLegacy(channel.name);
+                if (slug) {
+                    keys.push(slug);
+                    var cleanSlug = slug.replace(/-(?:hd|fhd|sd|1080p|720p)$/i, '');
+                    if (cleanSlug && cleanSlug !== slug) keys.push(cleanSlug);
+                }
+            }
+            if (channel.fullName) {
+                keys.push(channel.fullName.toLowerCase());
+                var fullSlug = toChannelSlugLegacy(channel.fullName);
+                if (fullSlug) {
+                    keys.push(fullSlug);
+                    var cleanFull = fullSlug.replace(/-(?:hd|fhd|sd|1080p|720p)$/i, '');
+                    if (cleanFull && cleanFull !== fullSlug) keys.push(cleanFull);
+                }
+            }
+
+            for (var k = 0; k < keys.length; k++) {
+                var key = keys[k];
+                if (epgGuideLegacy[key]) {
+                    return epgGuideLegacy[key];
+                }
+            }
+            return null;
+        }
+
         function filterChannelsLegacy() {
             var searchEl = document.getElementById('search-legacy');
             var query = searchEl ? searchEl.value.toLowerCase().trim() : '';
             var filtered = [];
             for (var i = 0; i < allChannelsLegacy.length; i++) {
                 var chan = allChannelsLegacy[i];
-                if (!query || chan.name.toLowerCase().indexOf(query) !== -1 || (chan.fullName && chan.fullName.toLowerCase().indexOf(query) !== -1) || chan.group.toLowerCase().indexOf(query) !== -1) {
+                var matchesName = !query || chan.name.toLowerCase().indexOf(query) !== -1 ||
+                    (chan.fullName && chan.fullName.toLowerCase().indexOf(query) !== -1) ||
+                    chan.group.toLowerCase().indexOf(query) !== -1;
+
+                if (matchesName) {
                     filtered.push(chan);
+                } else {
+                    // También buscar en el programa EPG actual
+                    var epg = findEpgForChannelLegacy(chan);
+                    if (epg && epg.current && epg.current.title && epg.current.title.toLowerCase().indexOf(query) !== -1) {
+                        filtered.push(chan);
+                    }
                 }
             }
             filteredChannelsLegacy = filtered;
@@ -1282,12 +1505,12 @@
                 var successful = document.execCommand('copy');
                 if (successful && btn) {
                     var originalSvg = btn.innerHTML;
-                    btn.classList.add('copied');
-                    btn.innerHTML = '<span style="font-size:16px; font-weight:bold;">✓</span>';
+                    btn.className = 'btn-action-legacy btn-copy-legacy copied';
+                    btn.innerHTML = '<span style="font-size:16px; font-weight:bold; color:#22c55e;">✓</span>';
                     setTimeout(function () {
-                        btn.classList.remove('copied');
+                        btn.className = 'btn-action-legacy btn-copy-legacy';
                         btn.innerHTML = originalSvg;
-                    }, 2000);
+                    }, 1800);
                 }
             } catch (err) {
                 console.error('Legacy copy failed', err);
@@ -1326,7 +1549,6 @@
                 return;
             }
 
-            // Agrupar por categorías
             var grouped = {};
             var groups = [];
             for (var i = 0; i < channels.length; i++) {
@@ -1342,6 +1564,26 @@
             groups.sort();
 
             var isGrid = (currentViewModeLegacy === 'grid');
+            var nowSec = Math.floor(new Date().getTime() / 1000);
+
+            // Icono SVG TV moderno de alta fidelidad para fallback
+            var fallbackSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+                '<rect width="64" height="64" rx="12" fill="#18181c"/>' +
+                '<rect x="10" y="14" width="44" height="34" rx="6" fill="#24242c" stroke="#383844" stroke-width="1.5"/>' +
+                '<path d="M26 8 L32 14 L38 8" stroke="#4cd964" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' +
+                '<polygon points="28,24 38,31 28,38" fill="#4cd964"/>' +
+                '<circle cx="32" cy="54" r="2" fill="#555562"/>' +
+                '</svg>';
+            var fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
+
+            // Iconos vectoriales limpios
+            var copyIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
+                '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
+                '</svg>';
+            var playIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">' +
+                '<polygon points="6,4 20,12 6,20"/>' +
+                '</svg>';
 
             for (var g = 0; g < groups.length; g++) {
                 var groupName = groups[g];
@@ -1360,11 +1602,10 @@
                     var item = document.createElement('li');
                     item.className = 'channel-item';
 
-                    var fallbackSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232d2d34"/><text x="50" y="55" font-family="sans-serif" font-size="24" fill="%23a8a8b2" text-anchor="middle" font-weight="bold">TV</text></svg>';
-                    var fallbackLogo = "data:image/svg+xml;utf8," + encodeURIComponent(fallbackSvg);
-                    var logoUrl = channel.logo || fallbackLogo;
-                    var copyIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
-                    var playIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                    // Comprobar logo: primero el de M3U, luego personalizado de EPG, luego fallback
+                    var chSlug = toChannelSlugLegacy(channel.name);
+                    var customLogo = customLogosLegacy[chSlug] || customLogosLegacy[channel.name] || '';
+                    var logoUrl = channel.logo || customLogo || fallbackLogo;
 
                     var q = channel.selectedQuality || '1080';
                     var selectedUrl = channel.urls[q] || channel.urls['1080'] || channel.urls['720'] || '';
@@ -1374,8 +1615,8 @@
                     var is1080Active = (q === '1080') ? ' active' : '';
                     var is720Active = (q === '720') ? ' active' : '';
 
-                    var playBtn = '<a id="btn-play-' + listIdx + '" href="' + vlcUrl + '" class="btn-action-legacy btn-play-legacy" target="_blank" title="Abrir en VLC">' + playIcon + '</a>';
-                    var copyBtn = '<button type="button" id="btn-copy-' + listIdx + '" class="btn-action-legacy btn-copy-legacy" onclick="copyChannelUrlLegacy(' + listIdx + ', this)" title="Copiar enlace del canal">' + copyIcon + '</button>';
+                    var playBtn = '<a id="btn-play-' + listIdx + '" href="' + vlcUrl + '" class="btn-action-legacy btn-play-legacy" target="_blank" title="Abrir en VLC (iOS)">' + playIcon + '</a>';
+                    var copyBtn = '<button type="button" id="btn-copy-' + listIdx + '" class="btn-action-legacy btn-copy-legacy" onclick="copyChannelUrlLegacy(' + listIdx + ', this)" title="Copiar enlace directo">' + copyIcon + '</button>';
                     var actionsHtml = '<div class="channel-actions-legacy">' + copyBtn + playBtn + '</div>';
 
                     var qualitiesHtml = '<div class="quality-toggle-legacy">' +
@@ -1383,17 +1624,51 @@
                         '<button type="button" id="btn-q720-' + listIdx + '" class="quality-btn-legacy quality-720' + is720Active + '" onclick="toggleChannelQualityLegacy(' + listIdx + ', \'720\')">720</button>' +
                         '</div>';
 
+                    // Construir bloque EPG
+                    var epgData = findEpgForChannelLegacy(channel);
+                    var epgHtml = '';
+                    if (epgData && epgData.current) {
+                        var curr = epgData.current;
+                        var pct = 0;
+                        if (curr.stop > curr.start) {
+                            pct = Math.min(100, Math.max(0, Math.round(((nowSec - curr.start) / (curr.stop - curr.start)) * 100)));
+                        }
+                        var nextInfo = '';
+                        if (epgData.next) {
+                            nextInfo = '<div class="epg-next-line"><span class="epg-next-tag">Sig:</span> [' + escapeHtmlLegacy(epgData.next.start_str) + '] ' + escapeHtmlLegacy(epgData.next.title) + '</div>';
+                        }
+
+                        epgHtml = '<div class="channel-epg-box">' +
+                            '<div class="epg-header-line">' +
+                            '<span class="epg-live-badge">● EN VIVO</span>' +
+                            '<span class="epg-time-range">' + escapeHtmlLegacy(curr.start_str) + ' - ' + escapeHtmlLegacy(curr.stop_str) + '</span>' +
+                            '</div>' +
+                            '<div class="epg-prog-title" title="' + escapeHtmlLegacy(curr.title) + '">' + escapeHtmlLegacy(curr.title) + '</div>' +
+                            '<div class="epg-bar-track"><div class="epg-bar-fill" style="width: ' + pct + '%;"></div></div>' +
+                            nextInfo +
+                            '</div>';
+                    } else {
+                        epgHtml = '<div class="channel-epg-box">' +
+                            '<div class="epg-no-info">Sin información de programación</div>' +
+                            '</div>';
+                    }
+
                     if (isGrid) {
                         item.innerHTML =
                             '<div class="channel-grid-top">' +
+                            '<div class="channel-name-wrap">' +
                             '<div class="channel-name" title="' + escapeHtmlLegacy(channel.name) + '">' + escapeHtmlLegacy(channel.name) + '</div>' +
+                            '</div>' +
                             actionsHtml +
                             '</div>' +
                             '<div class="channel-grid-body">' +
                             '<div class="channel-logo-container">' +
                             '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
                             '</div>' +
+                            '<div class="channel-grid-info">' +
+                            epgHtml +
                             qualitiesHtml +
+                            '</div>' +
                             '</div>';
                     } else {
                         item.innerHTML =
@@ -1402,7 +1677,11 @@
                             '<img class="channel-logo" src="' + logoUrl + '" onerror="this.src=\'' + fallbackLogo + '\'" />' +
                             '</div>' +
                             '<div class="channel-details">' +
-                            '<div class="channel-name" title="' + escapeHtmlLegacy(channel.name) + '">' + escapeHtmlLegacy(channel.name) + '</div>' +
+                            '<div class="channel-title-row">' +
+                            '<span class="channel-name" title="' + escapeHtmlLegacy(channel.name) + '">' + escapeHtmlLegacy(channel.name) + '</span>' +
+                            (channel.group ? '<span class="channel-group-tag">' + escapeHtmlLegacy(channel.group) + '</span>' : '') +
+                            '</div>' +
+                            epgHtml +
                             qualitiesHtml +
                             '</div>' +
                             '</div>' +

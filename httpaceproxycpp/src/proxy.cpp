@@ -2638,11 +2638,11 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                         break;
                     }
 
-                    // En rutas virtuales /auto/<slug>: enviar paquetes nulos MPEG-TS (188 bytes) cada 250ms durante sequía de buffer
+                    // En rutas virtuales /auto/<slug>: enviar paquetes nulos MPEG-TS (188 bytes) cada 1000ms durante sequía de buffer
                     if (!ctx.auto_slug.empty()) {
                         auto now_tp = std::chrono::steady_clock::now();
                         auto drought_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now_tp - last_null_packet_tp).count();
-                        if (drought_ms >= 250) {
+                        if (drought_ms >= 1000) {
                             std::vector<char> null_pkt(188, static_cast<char>(0xFF));
                             null_pkt[0] = static_cast<char>(0x47);
                             null_pkt[1] = static_cast<char>(0x1F);
@@ -2661,7 +2661,9 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                             }
                             if (!ok) break;
                             last_null_packet_tp = now_tp;
-                            pending_discontinuity = true;
+                            // Nota: NO activar pending_discontinuity en sequías transitorias normales de P2P
+                            // para evitar que reproductores como VLC reseteen su reloj PCR/PTS y congelen la reproducción.
+                            // pending_discontinuity solo se debe activar en conmutaciones reales a otro CID (midstream failover).
                         }
 
                         // Si la cola del motor fue cerrada inesperadamente durante la reproducción:
