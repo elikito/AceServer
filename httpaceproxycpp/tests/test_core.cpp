@@ -1222,17 +1222,66 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
     require(cand_pin.is_pinned == true, "Pinned candidate must have is_pinned true");
     require(cand_other.is_pinned == false, "Other candidate must have is_pinned false");
 
-    // Desfijar
+    // 6. Desfijar
     proxy.clear_virtual_pinned_cid(slug);
     require(proxy.get_virtual_pinned_cid(slug).empty(), "Virtual pinned CID must be empty after clear");
-
-    // 6. Verificación canónica de versión v09.11.04
-    require(std::string(kAppVersion) == "09.11.04", "App version must be exactly 09.11.04");
 
     // 7. Verificación de ampliación del ThreadPool HTTP (escala hasta MAX_WORKERS = 64)
     ThreadPool pool;
     require(pool.worker_count() >= 32, "ThreadPool worker count must scale up for streaming");
     require(pool.worker_count() <= 64, "ThreadPool worker count must be capped at 64");
+}
+
+void test_v09_11_05_zero_copy_fanout_and_version() {
+    // 1. Verificación canónica de versión v09.11.05
+    require(std::string(kAppVersion) == "09.11.05", "App version must be exactly 09.11.05");
+
+    // 2. Verificación de ChunkQueue con Zero-Copy Fan-Out (ChunkPtr compartido)
+    std::vector<char> raw_data = {'T', 'E', 'S', 'T', '1', '2', '3'};
+    auto shared_chunk = std::make_shared<const std::vector<char>>(std::move(raw_data));
+
+    ChunkQueue q1(10, 1024 * 1024);
+    ChunkQueue q2(10, 1024 * 1024);
+
+    require(q1.push(shared_chunk) == PushResult::Ok, "Push to q1 must succeed");
+    require(q2.push(shared_chunk) == PushResult::Ok, "Push to q2 must succeed");
+
+    require(q1.size() == 1, "q1 size must be 1");
+    require(q2.size() == 1, "q2 size must be 1");
+    require(q1.total_bytes() == 7, "q1 total_bytes must be 7");
+    require(q2.total_bytes() == 7, "q2 total_bytes must be 7");
+
+    ChunkPtr out1;
+    ChunkPtr out2;
+    bool ok1 = q1.pop(out1);
+    bool ok2 = q2.pop_timeout(out2, std::chrono::milliseconds(50));
+
+    require(ok1 && ok2, "Pop must succeed on both queues");
+    require(out1 != nullptr && out2 != nullptr, "Popped ChunkPtr must not be null");
+
+    // Comprobación de identidad de punteros de memoria (cero copias entre clientes)
+    require(out1.get() == out2.get(), "Zero-copy fan-out: out1 and out2 must point to the EXACT same heap allocation");
+    require(out1->data() == out2->data(), "Zero-copy fan-out: data pointers must be identical");
+    require(out1->size() == 7, "Chunk size must be 7");
+    require(std::string(out1->data(), out1->size()) == "TEST123", "Data content must match");
+
+    require(q1.size() == 0, "q1 size must be 0 after pop");
+    require(q2.size() == 0, "q2 size must be 0 after pop");
+    require(q1.total_bytes() == 0, "q1 total_bytes must be 0 after pop");
+    require(q2.total_bytes() == 0, "q2 total_bytes must be 0 after pop");
+
+    // 3. Compatibilidad cruzada de sobrecargas legacy
+    ChunkQueue q3(10, 1024);
+    std::vector<char> legacy_chunk = {'A', 'B', 'C'};
+    require(q3.push(legacy_chunk) == PushResult::Ok, "Legacy vector push must succeed");
+    ChunkPtr popped_ptr;
+    require(q3.pop(popped_ptr), "Pop ChunkPtr from legacy push must succeed");
+    require(std::string(popped_ptr->data(), popped_ptr->size()) == "ABC", "Content must match legacy push");
+
+    require(q3.push(popped_ptr) == PushResult::Ok, "ChunkPtr push must succeed");
+    std::vector<char> legacy_out;
+    require(q3.pop(legacy_out), "Pop std::vector<char> from ChunkPtr push must succeed");
+    require(std::string(legacy_out.data(), legacy_out.size()) == "ABC", "Content must match vector pop");
 }
 
 } // namespace
@@ -1278,6 +1327,7 @@ int main() {
         test_v09_11_02_strict_single_cid_reaper_and_null_packets();
         test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity();
         test_v09_11_04_pinned_virtual_cid_logic();
+        test_v09_11_05_zero_copy_fanout_and_version();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

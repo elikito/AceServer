@@ -12,10 +12,11 @@ ChunkQueue::ChunkQueue(std::size_t max_chunks, std::size_t max_bytes)
     : max_chunks_(std::max<std::size_t>(2, max_chunks)),
       max_bytes_(std::max<std::size_t>(1024 * 1024, max_bytes)) {}
 
-PushResult ChunkQueue::push(std::vector<char> chunk, std::chrono::milliseconds wait) {
+PushResult ChunkQueue::push(ChunkPtr chunk, std::chrono::milliseconds wait) {
+    if (!chunk || chunk->empty()) return PushResult::Ok;
     std::unique_lock<std::mutex> lock(mutex_);
     if (closed_) return PushResult::Closed;
-    std::size_t new_len = chunk.size();
+    std::size_t new_len = chunk->size();
     if ((chunks_.size() >= max_chunks_ || total_bytes_ + new_len > max_bytes_) && wait.count() > 0) {
         cv_space_.wait_for(lock, wait, [&] {
             return closed_ || (chunks_.size() < max_chunks_ && total_bytes_ + new_len <= max_bytes_);
@@ -24,7 +25,7 @@ PushResult ChunkQueue::push(std::vector<char> chunk, std::chrono::milliseconds w
     }
     PushResult result = PushResult::Ok;
     while (!chunks_.empty() && (chunks_.size() >= max_chunks_ || total_bytes_ + new_len > max_bytes_)) {
-        total_bytes_ -= chunks_.front().size();
+        total_bytes_ -= chunks_.front()->size();
         chunks_.pop_front();
         result = PushResult::DroppedOldest;
     }
@@ -34,27 +35,46 @@ PushResult ChunkQueue::push(std::vector<char> chunk, std::chrono::milliseconds w
     return result;
 }
 
-bool ChunkQueue::pop(std::vector<char>& chunk) {
+PushResult ChunkQueue::push(std::vector<char> chunk, std::chrono::milliseconds wait) {
+    if (chunk.empty()) return PushResult::Ok;
+    return push(std::make_shared<const std::vector<char>>(std::move(chunk)), wait);
+}
+
+bool ChunkQueue::pop(ChunkPtr& chunk) {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_data_.wait(lock, [&] { return closed_ || !chunks_.empty(); });
     if (chunks_.empty()) return false;
     chunk = std::move(chunks_.front());
-    total_bytes_ -= chunk.size();
+    total_bytes_ -= chunk->size();
     chunks_.pop_front();
     cv_space_.notify_one();
     return true;
 }
 
-bool ChunkQueue::pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout) {
+bool ChunkQueue::pop(std::vector<char>& chunk) {
+    ChunkPtr ptr;
+    if (!pop(ptr) || !ptr) return false;
+    chunk.assign(ptr->begin(), ptr->end());
+    return true;
+}
+
+bool ChunkQueue::pop_timeout(ChunkPtr& chunk, std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (!cv_data_.wait_for(lock, timeout, [&] { return closed_ || !chunks_.empty(); })) {
         return false;
     }
     if (chunks_.empty()) return false;
     chunk = std::move(chunks_.front());
-    total_bytes_ -= chunk.size();
+    total_bytes_ -= chunk->size();
     chunks_.pop_front();
     cv_space_.notify_one();
+    return true;
+}
+
+bool ChunkQueue::pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout) {
+    ChunkPtr ptr;
+    if (!pop_timeout(ptr, timeout) || !ptr) return false;
+    chunk.assign(ptr->begin(), ptr->end());
     return true;
 }
 
@@ -489,8 +509,10 @@ void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
     auto write_timeout = std::max(1, config_.client_write_timeout);
     auto wait = std::chrono::milliseconds(write_timeout * 1000 / 4);
     auto now = unix_time();
+    // v09.11.05: Fan-Out Zero-Copy usando ChunkPtr compartido inmutable para todos los clientes
+    auto shared_chunk = std::make_shared<const std::vector<char>>(std::move(chunk_to_push));
     for (auto& client : clients()) {
-        auto result = client->queue->push(chunk_to_push, wait);
+        auto result = client->queue->push(shared_chunk, wait);
         if (result == PushResult::Closed) continue;
         if (result == PushResult::DroppedOldest) {
             client->dropped_chunks.fetch_add(1, std::memory_order_relaxed);

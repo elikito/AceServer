@@ -4,6 +4,28 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.11.05] - 2026-09-11
+
+### ⚡ Fan-Out Zero-Copy con ChunkPtr Compartido y Optimización de Memoria para Streaming Concurrente
+
+#### 1. Arquitectura Zero-Copy Fan-Out (`broadcast.hpp`, `broadcast.cpp`, `proxy.cpp`)
+- **Punteros Inmutables Compartidos (`ChunkPtr`)**:
+  - Se introdujo `ChunkPtr` (`std::shared_ptr<const std::vector<char>>`) como unidad fundamental de transmisión en `ChunkQueue` y `Broadcast::broadcast_chunk`.
+  - Cuando se recibe un bloque de vídeo del motor AceStream (típicamente 128 KB - 256 KB), se envuelve en un único `std::shared_ptr` inmutable en el heap.
+  - Al distribuir dicho bloque a múltiples clientes concurrentes suscritos al mismo canal o CID (ej. salón, dormitorio, móviles), `Broadcast::broadcast_chunk` reparte el puntero inteligente en lugar de clonar el búfer completo en el heap.
+  - Elimina de raíz la contención de memoria, la fragmentación del heap y la presión sobre el allocator/garbage collector de C++ en procesadores Intel Alder Lake-N (N100/N150).
+- **Consumo Directo en `Proxy::handle_core_stream`**:
+  - El bucle de transmisión HTTP de cada cliente extrae `ChunkPtr` y transmite directamente a través de `send_all(chunk->data(), chunk->size())`.
+  - En caso de inyección de paquetes de discontinuidad MPEG-TS tras una reconexión o sequía de búfer, se realiza una copia local aislada y temporal únicamente para ese cliente, preservando la inmutabilidad del bloque compartido para el resto de clientes concurrentes.
+- **Retrocompatibilidad Total en `ChunkQueue`**:
+  - Se mantienen sobrecargas `push(std::vector<char>)` y `pop(std::vector<char>&)` transparentes para componentes auxiliares y pruebas unitarias.
+
+#### 2. Sincronización Canónica de Versión a `09.11.05`
+- Sistema de compilación: `httpaceproxycpp/CMakeLists.txt` (`VERSION 9.11.5`, `HTTPACEPROXYCPP_VERSION "09.11.05"`).
+- Cabecera canónica: `httpaceproxycpp/include/httpaceproxycpp/version.hpp` (`kAppVersion = "09.11.05"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_11_05_zero_copy_fanout_and_version`).
+- Componentes Web: `http/js/navbar.js` y `http/js/footer.js` (`09.11.05`).
+
 ## [09.11.04] - 2026-09-11
 
 ### 🛡️ Release de Estabilidad y Concurrencia: Ampliación de ThreadPool a 64 Workers, Sockets TCP_NODELAY y Blindaje Anti-Colisión en Failover

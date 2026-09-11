@@ -24,16 +24,23 @@ enum class PushResult {
     Closed,
 };
 
+// v09.11.05 — ChunkPtr inmutable con conteo de referencias para Fan-Out Zero-Copy
+using ChunkPtr = std::shared_ptr<const std::vector<char>>;
+
 class ChunkQueue {
 public:
     explicit ChunkQueue(std::size_t max_chunks = 512, std::size_t max_bytes = 8 * 1024 * 1024);
-    PushResult push(std::vector<char> chunk, std::chrono::milliseconds wait);
+    PushResult push(ChunkPtr chunk, std::chrono::milliseconds wait = std::chrono::milliseconds(0));
+    PushResult push(std::vector<char> chunk, std::chrono::milliseconds wait = std::chrono::milliseconds(0));
+    bool pop(ChunkPtr& chunk);
     bool pop(std::vector<char>& chunk);
+    bool pop_timeout(ChunkPtr& chunk, std::chrono::milliseconds timeout);
     bool pop_timeout(std::vector<char>& chunk, std::chrono::milliseconds timeout);
     void close();
     bool is_closed() const;
     std::size_t size() const;
     std::size_t bytes() const;
+    std::size_t total_bytes() const { return bytes(); }
 
 private:
     std::size_t max_chunks_;
@@ -42,7 +49,7 @@ private:
     mutable std::mutex mutex_;
     std::condition_variable cv_data_;
     std::condition_variable cv_space_;
-    std::deque<std::vector<char>> chunks_;
+    std::deque<ChunkPtr> chunks_;
     bool closed_ = false;
 };
 

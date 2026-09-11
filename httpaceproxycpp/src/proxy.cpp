@@ -2417,7 +2417,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
 
         // 1. ESPERAR EL PRIMER CHUNK REAL DE DATOS (FAILOVER ACTIVO v09.11.01)
         // Ventana de entrega de 6s por candidato en rutas virtuales /auto/<slug>
-        std::vector<char> first_chunk;
+        ChunkPtr first_chunk;
         bool initial_ok = false;
         std::unordered_set<std::string> attempted_cids;
         attempted_cids.insert(req_value);
@@ -2426,7 +2426,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         constexpr double kFirstChunkTimeoutSec = 6.0;
 
         while (ctx.connection.is_connected()) {
-            if (client->queue->pop_timeout(first_chunk, std::chrono::milliseconds(100)) && !first_chunk.empty()) {
+            if (client->queue->pop_timeout(first_chunk, std::chrono::milliseconds(100)) && first_chunk && !first_chunk->empty()) {
                 initial_ok = true;
                 break;
             }
@@ -2514,7 +2514,7 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             }
         }
 
-        if (!initial_ok || first_chunk.empty()) {
+        if (!initial_ok || !first_chunk || first_chunk->empty()) {
             broadcast->remove_client(client);
             broadcasts_.remove_if_empty(infohash);
             if (!ctx.auto_slug.empty()) {
@@ -2543,33 +2543,39 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         }
         ctx.connection.send_response_headers(200, status_reason(200), headers);
 
-        // 3. ENVIAR EL PRIMER CHUNK PRECARGADO
+        // 3. ENVIAR EL PRIMER CHUNK PRECARGADO (Zero-Copy)
         bool ok = true;
         if (chunked) {
             std::ostringstream prefix;
-            prefix << std::hex << first_chunk.size() << "\r\n";
+            prefix << std::hex << first_chunk->size() << "\r\n";
             ok = ctx.connection.send_text(prefix.str())
-              && ctx.connection.send_all(first_chunk.data(), first_chunk.size())
+              && ctx.connection.send_all(first_chunk->data(), first_chunk->size())
               && ctx.connection.send_text("\r\n");
         } else {
-            ok = ctx.connection.send_all(first_chunk.data(), first_chunk.size());
+            ok = ctx.connection.send_all(first_chunk->data(), first_chunk->size());
         }
         client->last_activity.store(unix_time(), std::memory_order_relaxed);
 
         // 4. BUCLE TRANSPARENTE DE STREAMING (CON TS NULL PACKETS KEEP-ALIVE EN RUTAS VIRTUALES)
         if (ok) {
-            std::vector<char> chunk;
+            // v09.11.05 — ChunkPtr Zero-Copy sin clonación en Heap
+            ChunkPtr chunk;
             auto last_null_packet_tp = std::chrono::steady_clock::now();
             uint8_t null_packet_cc = 0;
             bool pending_discontinuity = false;
             int known_video_pid = -1;
 
             while (true) {
-                if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50))) {
-                    if (pending_discontinuity && !chunk.empty()) {
+                if (client->queue->pop_timeout(chunk, std::chrono::milliseconds(50)) && chunk) {
+                    const char* send_buf = chunk->data();
+                    std::size_t send_sz = chunk->size();
+                    std::vector<char> modified_buf;
+
+                    if (pending_discontinuity && !chunk->empty()) {
                         // Localizar el primer paquete TS de vídeo y activar el flag de adaptación discontinuity_indicator
-                        for (std::size_t offset = 0; offset + 188 <= chunk.size(); offset += 188) {
-                            unsigned char* pkt = reinterpret_cast<unsigned char*>(chunk.data() + offset);
+                        modified_buf = *chunk;
+                        for (std::size_t offset = 0; offset + 188 <= modified_buf.size(); offset += 188) {
+                            unsigned char* pkt = reinterpret_cast<unsigned char*>(modified_buf.data() + offset);
                             if (pkt[0] != 0x47) continue;
 
                             int pid = ((pkt[1] & 0x1F) << 8) | pkt[2];
@@ -2606,6 +2612,8 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                                     log_line("INFO", "[TS DISCONTINUITY] Inyectado discontinuity_indicator en PID " +
                                              std::to_string(pid) + " tras sequía de buffer");
                                     pending_discontinuity = false;
+                                    send_buf = modified_buf.data();
+                                    send_sz = modified_buf.size();
                                     break;
                                 }
                             }
@@ -2614,12 +2622,12 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
 
                     if (chunked) {
                         std::ostringstream prefix;
-                        prefix << std::hex << chunk.size() << "\r\n";
+                        prefix << std::hex << send_sz << "\r\n";
                         ok = ctx.connection.send_text(prefix.str())
-                          && ctx.connection.send_all(chunk.data(), chunk.size())
+                          && ctx.connection.send_all(send_buf, send_sz)
                           && ctx.connection.send_text("\r\n");
                     } else {
-                        ok = ctx.connection.send_all(chunk.data(), chunk.size());
+                        ok = ctx.connection.send_all(send_buf, send_sz);
                     }
                     if (!ok) break; // Fallo de socket (EPIPE / ECONNRESET)
                     client->last_activity.store(unix_time(), std::memory_order_relaxed);
