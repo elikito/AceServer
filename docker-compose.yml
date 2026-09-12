@@ -52,7 +52,7 @@ services:
       - "8622-8630:8622-8630/udp"
     environment:
       - TZ=Europe/Madrid
-      - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --live-cache-type memory --live-mem-cache-size 524288000
+      - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --live-cache-type memory --live-mem-cache-size 524288000 --max-upload-rate 1000
     command:
       - python
       - main.py
@@ -68,6 +68,8 @@ services:
       - "500"
       - --max-peers
       - "100"
+      - --max-upload-rate
+      - "1000"
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
