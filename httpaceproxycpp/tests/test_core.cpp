@@ -1233,8 +1233,8 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
 }
 
 void test_v09_11_05_zero_copy_fanout_and_version() {
-    // 1. Verificación canónica de versión v09.12.01
-    require(std::string(kAppVersion) == "09.12.01", "App version must be exactly 09.12.01");
+    // 1. Verificación canónica de versión v09.12.02
+    require(std::string(kAppVersion) == "09.12.02", "App version must be exactly 09.12.02");
 
     // 2. Verificación de ChunkQueue con Zero-Copy Fan-Out (ChunkPtr compartido)
     std::vector<char> raw_data = {'T', 'E', 'S', 'T', '1', '2', '3'};

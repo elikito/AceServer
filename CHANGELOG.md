@@ -4,6 +4,23 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.12.02] - 2026-09-12
+
+### 🛡️ Mitigación de Bufferbloat y Estabilización de Streams AceStream (Tope de Subida)
+
+#### 1. Límite de Subida en Motor AceStream (`docker-compose.yml`)
+- **Control de Tasa de Subida (`--max-upload-rate 1000`)**:
+  - Incorporación del argumento `--max-upload-rate 1000` (~1 MB/s) en la directiva de arranque de `aceserve-modern` tanto en la variable de entorno `ACESTREAM_OPTS` como en el array de comandos CLI `command`.
+  - Diagnóstico en producción (N100): AceStream operaba sin límite de upload (`speed_up: 4976` vs `speed_down: 3342`), saturando la cola de subida del router (bufferbloat) y demorando los paquetes ACK de confirmación de descarga.
+  - Al demorarse los ACK, se producían caídas consecutivas de piezas (`missing piece after hole`), vaciado de búfer a cero (`outbuflen=0`) y microcortes/congelación de los streams.
+  - El límite previene la congestión de subida manteniendo el búfer estable y asegurando la recepción ininterrumpida de piezas.
+
+#### 2. Sincronización Canónica de Versión a `09.12.02`
+- Sistema de compilación: `httpaceproxycpp/CMakeLists.txt` (`VERSION 9.12.2`, `HTTPACEPROXYCPP_VERSION "09.12.02"`).
+- Cabecera canónica: `httpaceproxycpp/include/httpaceproxycpp/version.hpp` (`kAppVersion = "09.12.02"`).
+- Pruebas C++: `httpaceproxycpp/tests/test_core.cpp` (`test_v09_11_05_zero_copy_fanout_and_version`).
+- Componentes Web: `http/js/navbar.js`, `http/js/footer.js` y `http/plugins_state.json.default` (`09.12.02`).
+
 ## [09.12.01] - 2026-09-12
 
 ### 📱 Optimización de Reproducción Móvil con URL Virtual Directa y Retoque EPG/UX Legacy
