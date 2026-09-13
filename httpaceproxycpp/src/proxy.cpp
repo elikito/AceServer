@@ -2716,7 +2716,9 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
                                 set_virtual_active_cid(ctx.auto_slug, next_cid);
 
                                 broadcast = broadcasts_.get_or_create(next_cid, params);
-                                client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)), 8 * 1024 * 1024);
+                                std::size_t max_bytes = static_cast<std::size_t>(std::max(2, config_.stream_buffer_size_mb)) * 1024 * 1024;
+                                std::size_t max_chunks = std::max<std::size_t>(static_cast<std::size_t>(config_.client_queue_size), max_bytes / (32 * 1024));
+                                client->queue = std::make_shared<ChunkQueue>(max_chunks, max_bytes);
                                 client->content_id = next_cid;
                                 client->current_broadcast = broadcast;
                                 broadcast->attach_migrated_client(client);
@@ -3334,20 +3336,24 @@ Json Proxy::get_network_diagnostics() {
     // Detección WireGuard activo (verificar /app/config/gluetun_status/ip, o interfaz local wg0/tun0)
     std::string vpn_egress_ip;
     try {
-        auto gluetun_ip_file = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "ip";
-        if (std::filesystem::exists(gluetun_ip_file)) {
-            std::ifstream f(gluetun_ip_file);
-            std::string line;
-            if (std::getline(f, line)) {
-                line = trim(line);
-                if (!line.empty() && line.size() <= 45) {
-                    vpn_wireguard = true;
-                    vpn_egress_ip = line;
+        auto direct_flag = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "direct_mode";
+        bool is_direct = std::filesystem::exists(direct_flag);
+        if (!is_direct) {
+            auto gluetun_ip_file = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "ip";
+            if (std::filesystem::exists(gluetun_ip_file)) {
+                std::ifstream f(gluetun_ip_file);
+                std::string line;
+                if (std::getline(f, line)) {
+                    line = trim(line);
+                    if (!line.empty() && line.size() <= 45) {
+                        vpn_wireguard = true;
+                        vpn_egress_ip = line;
+                    }
                 }
             }
-        }
-        if (!vpn_wireguard && (std::filesystem::exists("/sys/class/net/wg0") || std::filesystem::exists("/sys/class/net/tun0"))) {
-            vpn_wireguard = true;
+            if (!vpn_wireguard && (std::filesystem::exists("/sys/class/net/wg0") || std::filesystem::exists("/sys/class/net/tun0"))) {
+                vpn_wireguard = true;
+            }
         }
     } catch (...) {}
 
@@ -3428,7 +3434,7 @@ Json Proxy::get_network_diagnostics() {
     // 3. Detección adicional vía warp-cli status si está disponible
     if (!warp_connected) {
         try {
-            FILE* fp = ::popen("warp-cli status 2>/dev/null", "r");
+            FILE* fp = ::popen("warp-cli --accept-tos status 2>/dev/null", "r");
             if (fp) {
                 char buf[256];
                 std::string status_output;

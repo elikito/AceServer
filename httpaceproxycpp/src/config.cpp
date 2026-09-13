@@ -1,8 +1,10 @@
 #include "httpaceproxycpp/config.hpp"
+#include "httpaceproxycpp/json.hpp"
 #include "httpaceproxycpp/util.hpp"
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <sstream>
 
 namespace httpace {
@@ -93,6 +95,7 @@ Config load_config(int argc, char** argv) {
     cfg.client_queue_size = getenv_int("CLIENT_QUEUE_SIZE", cfg.client_queue_size);
     cfg.client_write_timeout = getenv_int("CLIENT_WRITE_TIMEOUT", cfg.client_write_timeout);
     cfg.curl_stream_buffer = getenv_int("CURL_STREAM_BUFFER", cfg.curl_stream_buffer);
+    cfg.stream_buffer_size_mb = getenv_int("STREAM_BUFFER_SIZE_MB", cfg.stream_buffer_size_mb);
     cfg.linger_timeout = getenv_int("LINGER_TIMEOUT", cfg.linger_timeout);
     cfg.config_dir = getenv_string("CONFIG_DIR", cfg.config_dir);
 
@@ -104,6 +107,26 @@ Config load_config(int argc, char** argv) {
     } else {
         cfg.root_dir = std::filesystem::current_path().string();
     }
+
+    // Cargar buffer persistente si existe
+    try {
+        auto buf_file = cfg.get_config_dir() / "stream_buffer.json";
+        if (!std::filesystem::exists(buf_file)) {
+            buf_file = std::filesystem::path(cfg.root_dir) / "config" / "stream_buffer.json";
+        }
+        if (std::filesystem::exists(buf_file)) {
+            std::ifstream in(buf_file);
+            std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            auto parsed = Json::parse(content);
+            if (parsed.is_object() && parsed.contains("buffer_mb")) {
+                int mb = static_cast<int>(parsed["buffer_mb"].as_number(cfg.stream_buffer_size_mb));
+                if (mb >= 2 && mb <= 128) {
+                    cfg.stream_buffer_size_mb = mb;
+                }
+            }
+        }
+    } catch (...) {}
+
     return cfg;
 }
 

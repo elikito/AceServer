@@ -936,23 +936,129 @@ public:
             }
 
             if (action == "warp_connect") {
-                ::system("warp-cli mode proxy && warp-cli proxy port 4001 && warp-cli connect >/dev/null 2>&1");
+                ::system("warp-cli --accept-tos mode proxy && warp-cli --accept-tos proxy port 4002 && warp-cli --accept-tos connect >/dev/null 2>&1");
             } else if (action == "warp_disconnect") {
-                auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
+                auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
                 (void)ret;
             } else if (action == "warp_toggle") {
                 auto diag = proxy_.get_network_diagnostics();
                 bool is_conn = diag.contains("warp_connected") ? diag["warp_connected"].as_bool(false) : (diag.contains("warp") && diag["warp"].is_object() && (diag["warp"]["status"].as_string() == "active" || diag["warp"]["status"].as_string() == "proxy"));
                 if (is_conn) {
-                    auto ret = ::system("warp-cli disconnect >/dev/null 2>&1");
+                    auto ret = ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
                     (void)ret;
                 } else {
-                    ::system("warp-cli mode proxy && warp-cli proxy port 4001 && warp-cli connect >/dev/null 2>&1");
+                    ::system("warp-cli --accept-tos mode proxy && warp-cli --accept-tos proxy port 4002 && warp-cli --accept-tos connect >/dev/null 2>&1");
                 }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             auto data = proxy_.get_network_diagnostics();
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
+            return true;
+
+        // -----------------------------------------------------------------------
+        // v09.12.06 — Interruptor Dinámico de Red y Configuración de Buffer
+        // -----------------------------------------------------------------------
+        } else if (action == "set_protection_mode") {
+            // GET /statplugin?action=set_protection_mode&mode=<vpn|warp|direct>[&profile=<conf>]
+            auto mode = lower(query_get(ctx.query, "mode", "vpn"));
+            auto profile = query_get(ctx.query, "profile");
+            Json::object res;
+            auto direct_flag = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "direct_mode";
+            std::filesystem::create_directories(direct_flag.parent_path());
+
+            if (mode == "vpn") {
+                ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
+                if (std::filesystem::exists(direct_flag)) {
+                    std::filesystem::remove(direct_flag);
+                }
+                if (!profile.empty()) {
+                    auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                    auto target_file = vpn_dir / profile;
+                    auto active_link = vpn_dir / "active.conf";
+                    if (std::filesystem::is_regular_file(target_file)) {
+                        if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
+                            std::filesystem::remove(active_link);
+                        }
+                        std::filesystem::create_symlink(profile, active_link);
+                    }
+                }
+                ::system("docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
+                ::system("docker exec gluetun ip rule add not from all fwmark 0xca6c lookup 51820 pref 101 2>/dev/null || true");
+                ::system("docker start gluetun >/dev/null 2>&1 &");
+                ::system("docker start aceserve-modern >/dev/null 2>&1 &");
+                res["status"] = "ok";
+                res["mode"] = "vpn";
+                res["message"] = "Modo WireGuard VPN activado";
+
+            } else if (mode == "warp") {
+                ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null && docker exec gluetun iptables -F OUTPUT 2>/dev/null && docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
+                std::ofstream out(direct_flag);
+                out << "warp\n";
+                out.close();
+                ::system("warp-cli --accept-tos mode proxy && warp-cli --accept-tos proxy port 4002 && warp-cli --accept-tos connect >/dev/null 2>&1");
+                res["status"] = "ok";
+                res["mode"] = "warp";
+                res["message"] = "Modo Cloudflare WARP activado";
+
+            } else if (mode == "direct") {
+                ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
+                ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null && docker exec gluetun iptables -F OUTPUT 2>/dev/null && docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
+                std::ofstream out(direct_flag);
+                out << "direct\n";
+                out.close();
+                res["status"] = "ok";
+                res["mode"] = "direct";
+                res["message"] = "Modo Directo activado (Sin VPN)";
+
+            } else {
+                res["status"] = "error";
+                res["message"] = "Modo desconocido: " + mode;
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+            auto diag = proxy_.get_network_diagnostics();
+            if (diag.is_object()) {
+                for (const auto& [k, v] : diag.as_object()) {
+                    res[k] = v;
+                }
+            }
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            return true;
+
+        } else if (action == "get_buffer_config") {
+            // GET /statplugin?action=get_buffer_config
+            Json::object res;
+            res["status"] = "ok";
+            res["buffer_mb"] = static_cast<double>(config_.stream_buffer_size_mb);
+            res["options"] = Json::array{4.0, 8.0, 16.0, 32.0, 64.0};
+            std::size_t max_bytes = static_cast<std::size_t>(std::max(2, config_.stream_buffer_size_mb)) * 1024 * 1024;
+            std::size_t max_chunks = std::max<std::size_t>(static_cast<std::size_t>(config_.client_queue_size), max_bytes / (32 * 1024));
+            res["max_bytes"] = static_cast<double>(max_bytes);
+            res["max_chunks"] = static_cast<double>(max_chunks);
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            return true;
+
+        } else if (action == "set_buffer_config") {
+            // GET /statplugin?action=set_buffer_config&buffer_mb=16
+            int mb = 8;
+            try { mb = std::stoi(query_get(ctx.query, "buffer_mb", "8")); } catch (...) {}
+            if (mb < 2 || mb > 128) mb = 8;
+            config_.stream_buffer_size_mb = mb;
+
+            try {
+                auto buf_file = config_.get_config_dir() / "stream_buffer.json";
+                std::filesystem::create_directories(buf_file.parent_path());
+                std::ofstream out(buf_file);
+                out << "{\n  \"buffer_mb\": " << mb << "\n}\n";
+            } catch (...) {}
+
+            Json::object res;
+            res["status"] = "ok";
+            res["buffer_mb"] = static_cast<double>(mb);
+            res["message"] = "Buffer de streaming actualizado a " + std::to_string(mb) + " MB";
+            send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
             return true;
 
         // -----------------------------------------------------------------------
@@ -1098,6 +1204,12 @@ public:
                 }
                 // Crear nuevo symlink relativo
                 std::filesystem::create_symlink(profile, active_link);
+                auto direct_flag = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "direct_mode";
+                if (std::filesystem::exists(direct_flag)) {
+                    std::filesystem::remove(direct_flag);
+                }
+                ::system("docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
+                ::system("docker exec gluetun ip rule add not from all fwmark 0xca6c lookup 51820 pref 101 2>/dev/null || true");
                 res["status"] = "ok";
                 res["active"] = profile;
                 res["message"] = "Perfil VPN cambiado a " + profile;

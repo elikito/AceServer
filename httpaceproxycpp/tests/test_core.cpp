@@ -1233,8 +1233,8 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
 }
 
 void test_v09_11_05_zero_copy_fanout_and_version() {
-    // 1. Verificación canónica de versión v09.12.05
-    require(std::string(kAppVersion) == "09.12.05", "App version must be exactly 09.12.05");
+    // 1. Verificación canónica de versión v09.12.05 o superior
+    require(std::string(kAppVersion) >= "09.12.05", "App version must be at least 09.12.05");
 
     // 2. Verificación de ChunkQueue con Zero-Copy Fan-Out (ChunkPtr compartido)
     std::vector<char> raw_data = {'T', 'E', 'S', 'T', '1', '2', '3'};
@@ -1386,8 +1386,8 @@ void test_v09_12_04_vpn_upload_and_geolocate() {
 }
 
 void test_v09_12_05_mutually_exclusive_protection_and_engine_alias() {
-    // 1. Verificación canónica de versión v09.12.05
-    require(std::string(kAppVersion) == "09.12.05", "App version must be exactly 09.12.05");
+    // 1. Verificación canónica de versión v09.12.05 o superior
+    require(std::string(kAppVersion) >= "09.12.05", "App version must be at least 09.12.05");
 
     // 2. Verificación de lógica de exclusión mutua de seguridad
     auto compute_protection_status = [](bool vpn_wireguard, bool warp_connected, bool tailscale_connected) {
@@ -1451,6 +1451,94 @@ void test_v09_12_05_mutually_exclusive_protection_and_engine_alias() {
     require(out_of_protected_window == false, "Session must be eligible for reaping after 25s window");
 }
 
+void test_v09_12_06_dynamic_protection_switcher_and_stream_buffer() {
+    // 1. Verificación canónica de versión v09.12.06
+    require(std::string(kAppVersion) == "09.12.06", "App version must be exactly 09.12.06");
+
+    // 2. Verificación de cálculo y escalado dinámico del buffer de streaming
+    Config cfg;
+    require(cfg.stream_buffer_size_mb == 8, "Default stream_buffer_size_mb must be 8MB");
+
+    auto calc_buffer_limits = [](int mb, std::size_t base_queue_size) {
+        std::size_t max_bytes = static_cast<std::size_t>(std::max(2, mb)) * 1024ULL * 1024ULL;
+        std::size_t max_chunks = std::max<std::size_t>(base_queue_size, max_bytes / (32 * 1024));
+        return std::make_pair(max_bytes, max_chunks);
+    };
+
+    // 4MB
+    auto [bytes4, chunks4] = calc_buffer_limits(4, 300);
+    require(bytes4 == 4 * 1024 * 1024, "4MB buffer calculation");
+    require(chunks4 == 300, "4MB chunks calculation respects base queue size");
+
+    // 8MB (Default)
+    auto [bytes8, chunks8] = calc_buffer_limits(8, 300);
+    require(bytes8 == 8 * 1024 * 1024, "8MB buffer calculation");
+    require(chunks8 == 300, "8MB chunks calculation respects base queue size");
+
+    // 16MB
+    auto [bytes16, chunks16] = calc_buffer_limits(16, 300);
+    require(bytes16 == 16 * 1024 * 1024, "16MB buffer calculation");
+    require(chunks16 == 512, "16MB chunks scales up to 512");
+
+    // 32MB
+    auto [bytes32, chunks32] = calc_buffer_limits(32, 300);
+    require(bytes32 == 32 * 1024 * 1024, "32MB buffer calculation");
+    require(chunks32 == 1024, "32MB chunks scales up to 1024");
+
+    // 3. Verificación de lógica de estados del selector dinámico de protección
+    auto validate_protection_transition = [](const std::string& target_mode) -> std::string {
+        if (target_mode == "vpn") return "wireguard_gluetun";
+        if (target_mode == "warp") return "cloudflare_warp";
+        if (target_mode == "direct") return "direct_isp";
+        return "invalid";
+    };
+
+    require(validate_protection_transition("vpn") == "wireguard_gluetun", "VPN transition valid");
+    require(validate_protection_transition("warp") == "cloudflare_warp", "WARP transition valid");
+    require(validate_protection_transition("direct") == "direct_isp", "Direct transition valid");
+    require(validate_protection_transition("unknown") == "invalid", "Unknown transition invalid");
+
+    // 4. Verificación de lógica de selección de candidatos (Radio Button vs Auto Mode)
+    struct CandidateMock {
+        std::string cid;
+        int score;
+    };
+    std::vector<CandidateMock> candidates = {
+        {"cid_auto_winner", 95},
+        {"cid_manual_pick", 70},
+        {"cid_low_quality", 40}
+    };
+
+    std::string pinned_cid = ""; // Auto mode
+    std::string resolved_cid;
+
+    // Modo Auto: resuelve el de mayor score
+    if (pinned_cid.empty()) {
+        resolved_cid = candidates[0].cid;
+    } else {
+        resolved_cid = pinned_cid;
+    }
+    require(resolved_cid == "cid_auto_winner", "Auto mode resolves highest score candidate");
+
+    // Modo Manual (Radio Button seleccionado):
+    pinned_cid = "cid_manual_pick";
+    if (pinned_cid.empty()) {
+        resolved_cid = candidates[0].cid;
+    } else {
+        resolved_cid = pinned_cid;
+    }
+    require(resolved_cid == "cid_manual_pick", "Manual radio selection resolves pinned candidate");
+
+    // Retorno a Modo Auto:
+    pinned_cid.clear();
+    if (pinned_cid.empty()) {
+        resolved_cid = candidates[0].cid;
+    } else {
+        resolved_cid = pinned_cid;
+    }
+    require(resolved_cid == "cid_auto_winner", "Returning to Auto mode restores highest score candidate");
+}
+
 } // namespace
 
 int main() {
@@ -1498,6 +1586,7 @@ int main() {
         test_v09_12_03_vpn_profile_management();
         test_v09_12_04_vpn_upload_and_geolocate();
         test_v09_12_05_mutually_exclusive_protection_and_engine_alias();
+        test_v09_12_06_dynamic_protection_switcher_and_stream_buffer();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

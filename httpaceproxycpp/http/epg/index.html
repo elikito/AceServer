@@ -2873,6 +2873,9 @@
                 `;
             }
 
+            const hasPinned = Boolean(data.pinned_content_id);
+            const pinnedCid = data.pinned_content_id || '';
+
             let candHtml = `
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
                     <div style="font-size:13px; font-weight:700; color:var(--brand-color);">
@@ -2886,6 +2889,23 @@
                     </div>
                 </div>
                 ${winnerHtml}
+                <div class="channel-mode-toolbar" style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:8px 12px; border-radius:8px; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Modo:</span>
+                        <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:${!hasPinned ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${!hasPinned ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.1)'}; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; color:${!hasPinned ? '#10b981' : 'var(--text-main)'}; transition:all 0.2s ease;">
+                            <input type="radio" name="channel_mode_${escapeJs(slug)}" value="auto" ${!hasPinned ? 'checked' : ''} onchange="setChannelMode('${escapeJs(slug)}', 'auto', this, event)" style="accent-color:#10b981; cursor:pointer; width:15px; height:15px;">
+                            <span>⚡ Modo Auto (Salud P2P)</span>
+                        </label>
+                        <span style="font-size:11px; color:var(--text-muted);">
+                            ${hasPinned ? `📌 Fijación manual activa (CID: <code style="color:#f59e0b;">${pinnedCid.substring(0,8)}...</code>)` : '🤖 Resolución dinámica automática por puntuación y peers'}
+                        </span>
+                    </div>
+                    ${hasPinned ? `
+                        <button class="action-btn-sm" onclick="setChannelMode('${escapeJs(slug)}', 'auto', this, event)" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:4px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;" title="Restablecer selección automática basada en salud de red">
+                            ↺ Restablecer a Auto
+                        </button>
+                    ` : ''}
+                </div>
                 <div class="candidates-table-wrap">
                     <table class="candidates-table">
                         <thead>
@@ -2896,7 +2916,7 @@
                                 <th>Peers</th>
                                 <th>0-100</th>
                                 <th>Origen</th>
-                                <th>Fijar</th>
+                                <th>Selección</th>
                                 <th>Habilitado</th>
                             </tr>
                         </thead>
@@ -2919,14 +2939,10 @@
                     statusBadgeHtml = `<span class="badge-selected-stream">[SELECCIONADO]</span>`;
                 }
 
-                const pinBtnHtml = isPinned ? `
-                    <button class="action-btn-sm" onclick="unpinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:#f59e0b; color:#fff; font-weight:700; border:none; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Desfijar este candidato (restablecer selección automática)">
-                        📌 Fijado
-                    </button>
-                ` : `
-                    <button class="action-btn-sm" onclick="pinCandidate('${escapeJs(slug)}', '${c.content_id}', this, event)" style="background:rgba(255,255,255,0.06); color:var(--text-main); font-weight:600; border:1px solid rgba(255,255,255,0.15); padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px;" title="Fijar y forzar emisión inmediata con este candidato">
-                        📌 Fijar
-                    </button>
+                const radioSelectHtml = `
+                    <label style="display:inline-flex; align-items:center; justify-content:center; cursor:pointer; margin:0; padding:4px;" title="${isPinned ? 'Canal fijado manualmente como fuente prioritaria' : 'Seleccionar este canal para fijarlo manualmente'}">
+                        <input type="radio" name="channel_mode_${escapeJs(slug)}" value="${c.content_id}" ${isPinned ? 'checked' : ''} onchange="setChannelMode('${escapeJs(slug)}', '${c.content_id}', this, event)" style="accent-color:var(--brand-color, #ff9800); width:16px; height:16px; cursor:pointer;">
+                    </label>
                 `;
 
                 candHtml += `
@@ -2950,7 +2966,7 @@
                         <td style="font-family:monospace; color:var(--brand-color); font-weight:700;">${Math.round(c.score || 0)}</td>
                         <td><span class="channel-badge">${c.plugin || 'Lista'}</span></td>
                         <td style="text-align:center;">
-                            ${pinBtnHtml}
+                            ${radioSelectHtml}
                         </td>
                         <td style="text-align:center;">
                             <label class="switch-toggle" title="${isDis ? 'Fuente excluida de la selección' : 'Fuente habilitada para la selección'}">
@@ -3115,15 +3131,26 @@
             }
         }
 
-        async function pinCandidate(slug, cid, btn, e) {
+        async function setChannelMode(slug, modeOrCid, inputEl, e) {
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
             try {
-                if (btn) btn.disabled = true;
-                const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=pin&cid=${encodeURIComponent(cid)}`);
+                if (inputEl) inputEl.disabled = true;
+                let url = '';
+                const isAuto = (modeOrCid === 'auto');
+                if (isAuto) {
+                    url = `/auto/${encodeURIComponent(slug)}?action=unpin`;
+                } else {
+                    url = `/auto/${encodeURIComponent(slug)}?action=pin&cid=${encodeURIComponent(modeOrCid)}`;
+                }
+                const res = await fetch(url);
                 const data = await res.json();
                 if (data.status === 'success' || data.status === 'ok') {
-                    showToast('✓ Candidato fijado como prioritario para emisión', 'success');
-                    const card = btn ? btn.closest('.channel-epg-card') : null;
+                    if (isAuto) {
+                        showToast('✓ Modo Auto activado. Selección automática por salud y peers.', 'info');
+                    } else {
+                        showToast('✓ Canal fijado manualmente como fuente prioritaria.', 'success');
+                    }
+                    const card = inputEl ? inputEl.closest('.channel-epg-card') : null;
                     if (card) {
                         const drawer = card.querySelector('.candidates-drawer');
                         if (drawer) {
@@ -3133,36 +3160,21 @@
                         }
                     }
                 } else {
-                    showToast('Error al fijar candidato: ' + (data.error || 'desconocido'), 'error');
+                    showToast('Error: ' + (data.error || 'desconocido'), 'error');
+                    if (inputEl) inputEl.disabled = false;
                 }
             } catch (err) {
-                showToast('Error al fijar candidato: ' + err.message, 'error');
+                showToast('Error de red: ' + err.message, 'error');
+                if (inputEl) inputEl.disabled = false;
             }
         }
 
+        async function pinCandidate(slug, cid, btn, e) {
+            return setChannelMode(slug, cid, btn, e);
+        }
+
         async function unpinCandidate(slug, cid, btn, e) {
-            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-            try {
-                if (btn) btn.disabled = true;
-                const res = await fetch(`/auto/${encodeURIComponent(slug)}?action=unpin`);
-                const data = await res.json();
-                if (data.status === 'success' || data.status === 'ok') {
-                    showToast('✓ Fijado eliminado. Se restablece la selección automática.', 'info');
-                    const card = btn ? btn.closest('.channel-epg-card') : null;
-                    if (card) {
-                        const drawer = card.querySelector('.candidates-drawer');
-                        if (drawer) {
-                            const listRes = await fetch(`/auto/${encodeURIComponent(slug)}?action=list`);
-                            const listData = await listRes.json();
-                            drawer.innerHTML = renderCandidatesDrawerHtml(slug, card.dataset.channelName || slug, listData);
-                        }
-                    }
-                } else {
-                    showToast('Error al desfijar candidato: ' + err.message, 'error');
-                }
-            } catch (err) {
-                showToast('Error al desfijar candidato: ' + err.message, 'error');
-            }
+            return setChannelMode(slug, 'auto', btn, e);
         }
 
         async function toggleCandidateCID(cid, checkboxEl, e) {

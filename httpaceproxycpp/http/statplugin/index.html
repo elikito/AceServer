@@ -484,6 +484,171 @@
         }
 
         /* ------------------------------------------------------------------ */
+        /* DYNAMIC PROTECTION SWITCHER & BUFFER CARD (v09.12.06)              */
+        /* ------------------------------------------------------------------ */
+        .protection-switcher-container {
+            margin-top: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .switcher-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .protection-mode-toggle-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 10px;
+        }
+
+        .prot-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .prot-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: var(--text);
+            transform: translateY(-1px);
+        }
+
+        .prot-toggle-btn .prot-icon {
+            font-size: 16px;
+            margin-right: 8px;
+        }
+
+        .prot-toggle-btn .prot-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        .prot-toggle-btn .prot-tag {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .prot-toggle-btn.active.mode-vpn {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: #10b981;
+            color: #10b981;
+            box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+        }
+        .prot-toggle-btn.active.mode-vpn .prot-tag {
+            background: #10b981;
+            color: #ffffff;
+        }
+
+        .prot-toggle-btn.active.mode-warp {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: #3b82f6;
+            color: #3b82f6;
+            box-shadow: 0 0 14px rgba(59, 130, 246, 0.25);
+        }
+        .prot-toggle-btn.active.mode-warp .prot-tag {
+            background: #3b82f6;
+            color: #ffffff;
+        }
+
+        .prot-toggle-btn.active.mode-direct {
+            background: rgba(234, 179, 8, 0.12);
+            border-color: #eab308;
+            color: #eab308;
+            box-shadow: 0 0 14px rgba(234, 179, 8, 0.25);
+        }
+        .prot-toggle-btn.active.mode-direct .prot-tag {
+            background: #eab308;
+            color: #1a1a1e;
+        }
+
+        .buffer-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            margin-bottom: 24px;
+        }
+
+        .buffer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .buffer-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .buffer-desc {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 14px;
+            line-height: 1.5;
+        }
+
+        .buffer-preset-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .buffer-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .buffer-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text);
+        }
+
+        .buffer-btn.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: #10b981;
+            color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+            font-weight: 700;
+        }
+
+        /* ------------------------------------------------------------------ */
         /* TOOLBAR                                                              */
         /* ------------------------------------------------------------------ */
         .toolbar {
@@ -1837,7 +2002,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Diagnóstico de Canales</h2>
-                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.05</span></p>
+                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.06</span></p>
             </div>
         </div>
 
@@ -1852,14 +2017,6 @@
                     <span>Estado de Protección de Red</span>
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <button type="button" id="btn-toggle-warp" class="btn btn-ghost btn-sm" onclick="toggleWarpState()"
-                        title="Conectar / Desconectar Cloudflare WARP">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"
-                            style="vertical-align:middle; margin-right:3px;">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                        Conectar WARP
-                    </button>
                     <button type="button" class="btn btn-ghost btn-sm" onclick="loadNetworkDiagnostics(true)"
                         title="Recomprobar diagnóstico de red">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"
@@ -1872,13 +2029,35 @@
                 </div>
             </div>
 
-            <!-- Mutually Exclusive Protection Mode Banner (v09.12.05) -->
+            <!-- Dynamic Protection Mode Banner (v09.12.06) -->
             <div class="protection-mode-banner mode-vpn" id="protection-mode-banner">
                 <div class="protection-mode-title">
                     <span id="pm-icon" style="font-size:16px;">🛡️</span>
                     <span id="pm-text">Detectando capa de seguridad activa...</span>
                 </div>
                 <span class="protection-mode-badge" id="pm-badge">Comprobando</span>
+            </div>
+
+            <!-- Interactive Protection Mode Switcher (v09.12.06) -->
+            <div class="protection-switcher-container" id="protection-switcher-container">
+                <span class="switcher-label">Seleccionar Modo de Protección:</span>
+                <div class="protection-mode-toggle-group">
+                    <button type="button" class="prot-toggle-btn" id="prot-btn-vpn" onclick="switchProtectionMode('vpn')">
+                        <span class="prot-icon">🛡️</span>
+                        <span class="prot-title">WireGuard VPN</span>
+                        <span class="prot-tag" id="prot-tag-vpn">Activo</span>
+                    </button>
+                    <button type="button" class="prot-toggle-btn" id="prot-btn-warp" onclick="switchProtectionMode('warp')">
+                        <span class="prot-icon">⚡</span>
+                        <span class="prot-title">Cloudflare WARP</span>
+                        <span class="prot-tag" id="prot-tag-warp">Conectar</span>
+                    </button>
+                    <button type="button" class="prot-toggle-btn" id="prot-btn-direct" onclick="switchProtectionMode('direct')">
+                        <span class="prot-icon">🌐</span>
+                        <span class="prot-title">Modo Directo</span>
+                        <span class="prot-tag" id="prot-tag-direct">ISP Local</span>
+                    </button>
+                </div>
             </div>
 
             <div class="net-grid">
@@ -1945,6 +2124,32 @@
                     title="Subir archivo de configuración .conf de WireGuard">
                     📁 Subir .conf
                 </button>
+            </div>
+        </div>
+
+        <!-- Streaming Buffer & Anti-Stutter Control (v09.12.06) -->
+        <div class="buffer-card" id="buffer-config-card">
+            <div class="buffer-header">
+                <div class="buffer-title">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="color:var(--brand);">
+                        <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/>
+                    </svg>
+                    <span>Buffer de Streaming HTTP / Anti-Microcortes</span>
+                </div>
+                <div style="font-size:12.5px; color:var(--muted);">
+                    Tamaño activo: <strong id="current-buffer-display" style="color:var(--brand); font-weight:700;">8 MB</strong>
+                </div>
+            </div>
+            <div class="buffer-body">
+                <p class="buffer-desc">
+                    Ajusta la memoria de pre-almacenamiento en el proxy C++ (<code>httpaceproxy</code>). Un buffer mayor (16 MB o 32 MB) absorbe fluctuaciones y cortes de red P2P en VLC, Kodi y reproductores web.
+                </p>
+                <div class="buffer-preset-group" id="buffer-preset-group">
+                    <button type="button" class="buffer-btn" data-mb="4" onclick="applyBufferConfig(4)">4 MB (Bajo Consumo)</button>
+                    <button type="button" class="buffer-btn" data-mb="8" onclick="applyBufferConfig(8)">8 MB (Estándar)</button>
+                    <button type="button" class="buffer-btn" data-mb="16" onclick="applyBufferConfig(16)">16 MB (Recomendado)</button>
+                    <button type="button" class="buffer-btn" data-mb="32" onclick="applyBufferConfig(32)">32 MB (Ultra Estable)</button>
+                </div>
             </div>
         </div>
 
@@ -2079,7 +2284,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.12.05</span>
+            <span class="val version-badge app-version">09.12.06</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -2110,6 +2315,7 @@
             loadEnginesStatus();
             loadNetworkDiagnostics(false);
             loadVpnProfiles();
+            loadBufferConfig();
         });
 
         // =========================================================================
@@ -2353,6 +2559,22 @@
                     if (vpnPanel) vpnPanel.classList.remove('secondary');
                 }
 
+                // Actualizar interruptor de modo interactivo (v09.12.06)
+                const protBtnVpn = document.getElementById('prot-btn-vpn');
+                const protBtnWarp = document.getElementById('prot-btn-warp');
+                const protBtnDirect = document.getElementById('prot-btn-direct');
+                const tagVpn = document.getElementById('prot-tag-vpn');
+                const tagWarp = document.getElementById('prot-tag-warp');
+                const tagDirect = document.getElementById('prot-tag-direct');
+
+                if (protBtnVpn) protBtnVpn.classList.toggle('active', isVpnActive);
+                if (protBtnWarp) protBtnWarp.classList.toggle('active', isWarpActive);
+                if (protBtnDirect) protBtnDirect.classList.toggle('active', !isVpnActive && !isWarpActive);
+
+                if (tagVpn) tagVpn.textContent = isVpnActive ? 'Activo' : 'Activar';
+                if (tagWarp) tagWarp.textContent = isWarpActive ? 'Activo' : 'Conectar';
+                if (tagDirect) tagDirect.textContent = (!isVpnActive && !isWarpActive) ? 'Activo' : 'Bypass';
+
                 if (tsBadge && tsText) {
                     const tsConn = data.tailscale ? data.tailscale.connected : false;
                     if (tsConn) {
@@ -2411,13 +2633,85 @@
             try {
                 const res = await fetch('/statplugin?action=warp_toggle');
                 if (res.ok) {
-                    if (typeof showToast === 'function') showToast('\u2713 Comando WARP ejecutado', 'success');
+                    if (typeof showToast === 'function') showToast('✓ Comando WARP ejecutado', 'success');
                 }
             } catch (e) {
-                if (typeof showToast === 'function') showToast('\u26a0 Error enviando comando WARP: ' + e.message, 'error');
+                if (typeof showToast === 'function') showToast('⚠ Error enviando comando WARP: ' + e.message, 'error');
             }
             if (btn) btn.disabled = false;
             loadNetworkDiagnostics(false);
+        }
+
+        async function switchProtectionMode(mode) {
+            const vpnSelect = document.getElementById('vpn-profile-select');
+            let url = '/statplugin?action=set_protection_mode&mode=' + encodeURIComponent(mode);
+            if (mode === 'vpn' && vpnSelect && vpnSelect.value) {
+                url += '&profile=' + encodeURIComponent(vpnSelect.value);
+            }
+            if (typeof showToast === 'function') {
+                const labels = { vpn: 'WireGuard VPN', warp: 'Cloudflare WARP', direct: 'Modo Directo' };
+                showToast('Cambiando a ' + (labels[mode] || mode) + '...', 'info');
+            }
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    if (typeof showToast === 'function') {
+                        showToast('✓ ' + (data.message || 'Modo cambiado con éxito'), 'success');
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('⚠ Error: ' + (data.message || 'desconocido'), 'error');
+                    }
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') {
+                    showToast('⚠ Error cambiando modo: ' + e.message, 'error');
+                }
+            }
+            await loadNetworkDiagnostics(false);
+            if (mode === 'vpn') await loadVpnProfiles();
+        }
+
+        async function loadBufferConfig() {
+            try {
+                const res = await fetch('/statplugin?action=get_buffer_config');
+                if (!res.ok) return;
+                const data = await res.json();
+                const mb = data.buffer_mb || 8;
+                const disp = document.getElementById('current-buffer-display');
+                if (disp) disp.textContent = mb + ' MB';
+                const btns = document.querySelectorAll('.buffer-btn');
+                btns.forEach(b => {
+                    b.classList.toggle('active', parseInt(b.dataset.mb, 10) === mb);
+                });
+            } catch (e) {
+                console.warn('Error cargando buffer config:', e);
+            }
+        }
+
+        async function applyBufferConfig(mb) {
+            if (typeof showToast === 'function') {
+                showToast('Ajustando buffer de streaming a ' + mb + ' MB...', 'info');
+            }
+            try {
+                const res = await fetch('/statplugin?action=set_buffer_config&buffer_mb=' + mb);
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    if (typeof showToast === 'function') {
+                        showToast('✓ Buffer actualizado a ' + mb + ' MB', 'success');
+                    }
+                    await loadBufferConfig();
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('⚠ Error: ' + (data.message || 'desconocido'), 'error');
+                    }
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') {
+                    showToast('⚠ Error aplicando buffer: ' + e.message, 'error');
+                }
+            }
         }
 
         // =========================================================================

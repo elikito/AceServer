@@ -190,7 +190,9 @@ std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip
     client->epg_icon = epg_icon.empty() ? client->channel_icon : epg_icon;
     client->connection_time = unix_time();
     client->last_activity = client->connection_time;
-    client->queue = std::make_shared<ChunkQueue>(static_cast<std::size_t>(std::max(2, config_.client_queue_size)), 8 * 1024 * 1024);
+    std::size_t max_bytes = static_cast<std::size_t>(std::max(2, config_.stream_buffer_size_mb)) * 1024 * 1024;
+    std::size_t max_chunks = std::max<std::size_t>(static_cast<std::size_t>(config_.client_queue_size), max_bytes / (32 * 1024));
+    client->queue = std::make_shared<ChunkQueue>(max_chunks, max_bytes);
     client->ace = ace_;
     client->current_broadcast = shared_from_this();
     subscribers_.fetch_add(1, std::memory_order_relaxed);
@@ -461,10 +463,12 @@ void Broadcast::stream_loop() {
 
 void Broadcast::stream_http_url(const std::string& url) {
     long connect_timeout = std::max(30L, static_cast<long>(config_.video_timeout));
+    std::size_t stream_buf_bytes = static_cast<std::size_t>(std::max(2, config_.stream_buffer_size_mb)) * 1024 * 1024;
+    int curl_buf = static_cast<int>(std::max<std::size_t>(1048576, std::min<std::size_t>(4 * 1024 * 1024, stream_buf_bytes / 4)));
     http_client_.stream(url, [&](const char* data, std::size_t size) {
         broadcast_chunk(data, size);
         return running_.load();
-    }, running_, connect_timeout, config_.video_timeout, std::max(1, config_.curl_stream_buffer));
+    }, running_, connect_timeout, config_.video_timeout, curl_buf);
 }
 
 void Broadcast::stream_hls_url(const std::string& url) {
