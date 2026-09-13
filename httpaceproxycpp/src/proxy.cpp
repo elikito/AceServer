@@ -3280,6 +3280,76 @@ Json Proxy::get_network_diagnostics() {
     std::string loc = "ES";
     bool tailscale_connected = false;
     bool safe_route = false;
+    // v09.12.04 — WireGuard / gluetun
+    bool vpn_wireguard = false;
+    std::string vpn_profile;
+
+    // Función auxiliar: convierte código ISO 3166-1 alpha-2 en emoji de bandera
+    // (cada letra se convierte a su Regional Indicator Symbol Letter en Unicode)
+    auto country_flag_emoji = [](const std::string& iso) -> std::string {
+        if (iso.size() != 2) return "🏴"; // bandera negra por defecto
+        // U+1F1E6 = Regional Indicator A
+        char32_t base = 0x1F1E6;
+        char32_t c1 = base + (std::toupper((unsigned char)iso[0]) - 'A');
+        char32_t c2 = base + (std::toupper((unsigned char)iso[1]) - 'A');
+        // Encodificar ambos code points en UTF-8
+        auto to_utf8 = [](char32_t cp) -> std::string {
+            std::string s;
+            if (cp <= 0x7F) { s += (char)cp; }
+            else if (cp <= 0x7FF) { s += (char)(0xC0|(cp>>6)); s += (char)(0x80|(cp&0x3F)); }
+            else if (cp <= 0xFFFF) { s += (char)(0xE0|(cp>>12)); s += (char)(0x80|((cp>>6)&0x3F)); s += (char)(0x80|(cp&0x3F)); }
+            else { s += (char)(0xF0|(cp>>18)); s += (char)(0x80|((cp>>12)&0x3F)); s += (char)(0x80|((cp>>6)&0x3F)); s += (char)(0x80|(cp&0x3F)); }
+            return s;
+        };
+        return to_utf8(c1) + to_utf8(c2);
+    };
+
+    // Mapa ISO 3166-1 alpha-2 -> Nombre del país (principales)
+    auto country_name_from_iso = [](const std::string& iso) -> std::string {
+        static const std::map<std::string, std::string> names = {
+            {"ES","España"},{"FR","Francia"},{"NL","Países Bajos"},{"DE","Alemania"},
+            {"GB","Reino Unido"},{"US","Estados Unidos"},{"IT","Italia"},{"CH","Suiza"},
+            {"SE","Suecia"},{"NO","Noruega"},{"DK","Dinamarca"},{"FI","Finlandia"},
+            {"PT","Portugal"},{"PL","Polonia"},{"CZ","Rep. Checa"},{"AT","Austria"},
+            {"BE","Bélgica"},{"JP","Japón"},{"KR","Corea del Sur"},{"CA","Canadá"},
+            {"AU","Australia"},{"BR","Brasil"},{"MX","México"},{"SG","Singapur"},
+            {"HK","Hong Kong"},{"RO","Rumanía"},{"UA","Ucrania"},{"RU","Rusia"},
+            {"TR","Turquía"},{"IN","India"},{"ZA","Sudáfrica"},
+        };
+        auto it = names.find(iso);
+        return it != names.end() ? it->second : iso;
+    };
+
+    // Deteción de perfil VPN activo (symlink active.conf)
+    try {
+        auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+        auto active_link = vpn_dir / "active.conf";
+        if (std::filesystem::is_symlink(active_link)) {
+            vpn_profile = std::filesystem::read_symlink(active_link).filename().string();
+        } else if (std::filesystem::is_regular_file(active_link)) {
+            vpn_profile = "active.conf";
+        }
+    } catch (...) {}
+
+    // Detección WireGuard activo (verificar /app/config/gluetun_status/ip, o interfaz local wg0/tun0)
+    std::string vpn_egress_ip;
+    try {
+        auto gluetun_ip_file = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "ip";
+        if (std::filesystem::exists(gluetun_ip_file)) {
+            std::ifstream f(gluetun_ip_file);
+            std::string line;
+            if (std::getline(f, line)) {
+                line = trim(line);
+                if (!line.empty() && line.size() <= 45) {
+                    vpn_wireguard = true;
+                    vpn_egress_ip = line;
+                }
+            }
+        }
+        if (!vpn_wireguard && (std::filesystem::exists("/sys/class/net/wg0") || std::filesystem::exists("/sys/class/net/tun0"))) {
+            vpn_wireguard = true;
+        }
+    } catch (...) {}
 
     // 1. Detección de Estado Real a través del listener SOCKS5 local (127.0.0.1:4001 o 172.17.0.1:4001)
     for (const auto& socks_url : {"socks5h://127.0.0.1:4001", "socks5h://172.17.0.1:4001", "socks5h://host.docker.internal:4001"}) {
@@ -3393,11 +3463,28 @@ Json Proxy::get_network_diagnostics() {
     } catch (...) {}
 
     // 5. Determinar Proveedor (ISP) y Ruta Segura
-    if (egress_ip == "127.0.0.1" || egress_ip == "localhost" || starts_with(egress_ip, "172.") || starts_with(egress_ip, "10.") || starts_with(egress_ip, "192.168.")) {
+    if (vpn_wireguard) {
+        safe_route = true;
+        if (!vpn_profile.empty()) {
+            isp_name = "ProtonVPN WireGuard (" + vpn_profile + ")";
+            traffic_route = "WireGuard VPN Tunnel (" + vpn_profile + ")";
+            if (vpn_profile.size() >= 2 && std::isalpha((unsigned char)vpn_profile[0]) && std::isalpha((unsigned char)vpn_profile[1])) {
+                std::string code = vpn_profile.substr(0, 2);
+                std::transform(code.begin(), code.end(), code.begin(), ::toupper);
+                loc = code;
+            }
+        } else {
+            isp_name = "ProtonVPN WireGuard";
+            traffic_route = "WireGuard VPN Tunnel";
+        }
+        if (!vpn_egress_ip.empty()) {
+            egress_ip = vpn_egress_ip;
+        }
+    } else if (egress_ip == "127.0.0.1" || egress_ip == "localhost" || starts_with(egress_ip, "172.") || starts_with(egress_ip, "10.") || starts_with(egress_ip, "192.168.")) {
         egress_ip = "Desconocida";
     }
 
-    if (!warp_connected) {
+    if (!vpn_wireguard && !warp_connected) {
         warp_status = (warp_status == "connecting") ? "connecting" : "disconnected";
         if (tailscale_connected) {
             isp_name = "Tailscale Encrypted Mesh";
@@ -3427,7 +3514,13 @@ Json Proxy::get_network_diagnostics() {
         {"tailscale", Json::object{
             {"connected", tailscale_connected}
         }},
-        {"safe_route", safe_route}
+        {"safe_route", safe_route},
+        // v09.12.04 — WireGuard y geolocalización
+        {"vpn_wireguard", vpn_wireguard},
+        {"vpn_profile", vpn_profile},
+        {"country_flag", country_flag_emoji(loc)},
+        {"country_name", country_name_from_iso(loc)},
+        {"country_code", loc}
     };
 }
 

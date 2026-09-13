@@ -2333,7 +2333,10 @@
 
             // 6. Server & Engine status & CPU/RAM Chart update
             try {
-                const res = await fetch('/stat?action=get_status');
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 4000);
+                const res = await fetch('/stat?action=get_status', { signal: ctrl.signal });
+                clearTimeout(tid);
                 const data = await res.json();
                 if (data) {
                     const engineEl = document.getElementById('stat-engine-active');
@@ -2771,12 +2774,20 @@
                                 populateAudioTrackSelect(data.audioTracks);
                             }
                         });
+                        let hlsNetworkRetries = 0;
                         hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
                             console.warn('Evento error Hls:', data);
                             if (data.fatal) {
                                 switch (data.type) {
                                     case Hls.ErrorTypes.NETWORK_ERROR:
-                                        hlsPlayer.startLoad();
+                                        if (hlsNetworkRetries < 3) {
+                                            hlsNetworkRetries++;
+                                            console.warn(`HLS Error de Red transitorio: reintento ${hlsNetworkRetries}/3`);
+                                            setTimeout(() => { if (hlsPlayer) hlsPlayer.startLoad(); }, 1500);
+                                        } else {
+                                            videoElement.src = streamUrl;
+                                            videoElement.play().catch(() => { });
+                                        }
                                         break;
                                     case Hls.ErrorTypes.MEDIA_ERROR:
                                         hlsPlayer.recoverMediaError();
@@ -2799,17 +2810,22 @@
                 });
             };
 
-            playbackWatchdogTimer = setTimeout(() => {
-                if (!streamHasStartedPlaying) {
-                    if (currentStreamStats.totalBytes > 0 || currentStreamStats.speedKBps > 0) {
-                        updatePlayerStatus('Almacenando búfer...', 'loading');
-                    } else if (!hasTriedFallback) {
-                        trySoftwareFallback('Watchdog: intentando demuxer por software');
-                    } else {
-                        showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+            const resetPlaybackWatchdog = (timeoutMs = 30000) => {
+                if (playbackWatchdogTimer) clearTimeout(playbackWatchdogTimer);
+                playbackWatchdogTimer = setTimeout(() => {
+                    if (!streamHasStartedPlaying) {
+                        if (currentStreamStats.totalBytes > 0 || currentStreamStats.speedKBps > 0) {
+                            updatePlayerStatus('Almacenando búfer...', 'loading');
+                            resetPlaybackWatchdog(15000); // Conceder 15s más mientras sigan llegando datos
+                        } else if (!hasTriedFallback) {
+                            trySoftwareFallback('Watchdog: intentando demuxer por software');
+                        } else {
+                            showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+                        }
                     }
-                }
-            }, 15000);
+                }, timeoutMs);
+            };
+            resetPlaybackWatchdog(30000);
 
             if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
                 trySoftwareFallback('Flujo HLS nativo');
@@ -2860,6 +2876,9 @@
                         }
                         if (stat.loaderSpeed) {
                             currentStreamStats.totalBytes += (stat.loaderSpeed * dt * 1024);
+                        }
+                        if (!streamHasStartedPlaying && (stat.speed > 0 || stat.loaderSpeed > 0)) {
+                            resetPlaybackWatchdog(20000);
                         }
                         lastStatTime = now;
                     });

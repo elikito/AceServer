@@ -1,5 +1,5 @@
 #pragma once
 
 namespace httpace {
-inline constexpr const char* kAppVersion = "09.12.03";
+inline constexpr const char* kAppVersion = "09.12.04";
 }

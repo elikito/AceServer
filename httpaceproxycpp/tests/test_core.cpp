@@ -1233,8 +1233,8 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
 }
 
 void test_v09_11_05_zero_copy_fanout_and_version() {
-    // 1. Verificación canónica de versión v09.12.02
-    require(std::string(kAppVersion) == "09.12.03", "App version must be exactly 09.12.03");
+    // 1. Verificación canónica de versión v09.12.04
+    require(std::string(kAppVersion) == "09.12.04", "App version must be exactly 09.12.04");
 
     // 2. Verificación de ChunkQueue con Zero-Copy Fan-Out (ChunkPtr compartido)
     std::vector<char> raw_data = {'T', 'E', 'S', 'T', '1', '2', '3'};
@@ -1285,8 +1285,8 @@ void test_v09_11_05_zero_copy_fanout_and_version() {
 }
 
 void test_v09_12_03_vpn_profile_management() {
-    // 1. Verificación canónica de versión v09.12.03
-    require(std::string(kAppVersion) == "09.12.03", "App version must be exactly 09.12.03 for VPN management");
+    // 1. Verificación canónica de versión v09.12.03+
+    require(std::string(kAppVersion) >= "09.12.03", "App version must be >= 09.12.03 for VPN management");
 
     // 2. Verificación de estructura de directorio de perfiles VPN
     //    (comprobación lógica sin acceso real a FS en entorno de test unitario)
@@ -1323,6 +1323,66 @@ void test_v09_12_03_vpn_profile_management() {
     require(resp["active"].as_string() == "FR-223.conf", "Active profile must be FR-223.conf by default");
     require(resp["profiles"].is_array(), "Profiles field must be an array");
     require(resp["profiles"].as_array().size() == 2, "Must have exactly 2 profiles (FR-223, NL-403)");
+}
+
+void test_v09_12_04_vpn_upload_and_geolocate() {
+    // 1. Verificación canónica de versión v09.12.04
+    require(std::string(kAppVersion) == "09.12.04", "App version must be exactly 09.12.04");
+
+    // 2. Verificación de lógica de validación para subida de perfiles WireGuard
+    auto validate_upload_filename = [](std::string name) -> std::pair<bool, std::string> {
+        if (name.size() < 5 || name.substr(name.size() - 5) != ".conf") {
+            name += ".conf";
+        }
+        bool valid = !name.empty() && name.size() <= 64
+                  && name.find('/') == std::string::npos
+                  && name.find('\\') == std::string::npos
+                  && name.find("..") == std::string::npos
+                  && name != "active.conf";
+        return {valid, name};
+    };
+
+    auto [ok1, fixed1] = validate_upload_filename("ES-MAD-01");
+    require(ok1 && fixed1 == "ES-MAD-01.conf", "Auto-append .conf extension");
+
+    auto [ok2, fixed2] = validate_upload_filename("US-NYC-05.conf");
+    require(ok2 && fixed2 == "US-NYC-05.conf", "Valid full filename");
+
+    auto [ok3, fixed3] = validate_upload_filename("../bad/path.conf");
+    require(!ok3, "Path traversal rejected");
+
+    auto [ok4, fixed4] = validate_upload_filename("active.conf");
+    require(!ok4, "active.conf is reserved and rejected");
+
+    // 3. Verificación de validación de sintaxis de archivo WireGuard
+    auto is_valid_wg_body = [](const std::string& body) -> bool {
+        if (body.empty()) return false;
+        return (body.find("[Interface]") != std::string::npos ||
+                body.find("[Peer]") != std::string::npos ||
+                body.find("PrivateKey") != std::string::npos);
+    };
+    std::string good_wg = "[Interface]\nPrivateKey = aaaa\nAddress = 10.2.0.2/32\n[Peer]\nPublicKey = bbbb\n";
+    std::string bad_wg = "<html><body>Not a WireGuard config</body></html>";
+    require(is_valid_wg_body(good_wg), "Valid WireGuard config accepted");
+    require(!is_valid_wg_body(bad_wg), "Invalid payload rejected");
+    require(!is_valid_wg_body(""), "Empty payload rejected");
+
+    // 4. Verificación de serialización de campos de red v09.12.04
+    Json::object diag;
+    diag["status"] = "ok";
+    diag["egress_ip"] = "149.102.245.156";
+    diag["country_code"] = "FR";
+    diag["country_name"] = "Francia";
+    diag["country_flag"] = "🇫🇷";
+    diag["vpn_wireguard"] = true;
+    diag["vpn_profile"] = "FR-223.conf";
+
+    Json diag_json(diag);
+    require(diag_json["vpn_wireguard"].as_bool() == true, "vpn_wireguard flag is boolean true");
+    require(diag_json["vpn_profile"].as_string() == "FR-223.conf", "vpn_profile matches");
+    require(diag_json["country_code"].as_string() == "FR", "country_code matches");
+    require(diag_json["country_name"].as_string() == "Francia", "country_name matches");
+    require(!diag_json["country_flag"].as_string().empty(), "country_flag is not empty");
 }
 
 } // namespace
@@ -1370,6 +1430,7 @@ int main() {
         test_v09_11_04_pinned_virtual_cid_logic();
         test_v09_11_05_zero_copy_fanout_and_version();
         test_v09_12_03_vpn_profile_management();
+        test_v09_12_04_vpn_upload_and_geolocate();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

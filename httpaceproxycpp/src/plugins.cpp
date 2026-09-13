@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <regex>
 #include <sstream>
 #include <thread>
@@ -1109,6 +1110,73 @@ public:
                 } else {
                     res["gluetun_restart"] = "skipped_no_socket";
                 }
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                res["status"] = "error";
+                res["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(res).dump(2));
+            }
+            return true;
+
+        } else if (action == "vpn_upload_profile") {
+            // POST /statplugin?action=vpn_upload_profile&name=ES-MAD-01.conf
+            // Recibe el contenido de configuración de WireGuard en el body de la petición HTTP
+            auto profile_name = query_get(ctx.query, "name");
+            if (profile_name.empty()) profile_name = query_get(ctx.query, "filename");
+            Json::object res;
+
+            // Asegurar extensión .conf
+            if (profile_name.size() < 5 || profile_name.substr(profile_name.size() - 5) != ".conf") {
+                profile_name += ".conf";
+            }
+
+            // Validación de seguridad (sin path traversal, nombre seguro)
+            bool valid = !profile_name.empty() && profile_name.size() <= 64
+                      && profile_name.find('/') == std::string::npos
+                      && profile_name.find('\\') == std::string::npos
+                      && profile_name.find("..") == std::string::npos
+                      && profile_name != "active.conf";
+            if (!valid) {
+                res["status"] = "error";
+                res["message"] = "Nombre de archivo inválido: " + profile_name;
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+
+            const auto& body = ctx.request.body;
+            if (body.empty()) {
+                res["status"] = "error";
+                res["message"] = "El archivo enviado está vacío";
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+
+            // Validar que contenga sintaxis mínima de WireGuard ([Interface] o [Peer] o PrivateKey)
+            if (body.find("[Interface]") == std::string::npos && body.find("[Peer]") == std::string::npos && body.find("PrivateKey") == std::string::npos) {
+                res["status"] = "error";
+                res["message"] = "El archivo no contiene una configuración válida de WireGuard ([Interface] / [Peer] ausentes)";
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                std::filesystem::create_directories(vpn_dir);
+                auto target_path = vpn_dir / profile_name;
+                std::ofstream out(target_path, std::ios::binary | std::ios::trunc);
+                if (!out) {
+                    res["status"] = "error";
+                    res["message"] = "Error al abrir para escritura: " + target_path.string();
+                    send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(res).dump(2));
+                    return true;
+                }
+                out.write(body.data(), body.size());
+                out.close();
+
+                res["status"] = "ok";
+                res["filename"] = profile_name;
+                res["size"] = static_cast<double>(body.size());
+                res["message"] = "Perfil " + profile_name + " subido y almacenado correctamente";
                 send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
             } catch (const std::exception& e) {
                 res["status"] = "error";

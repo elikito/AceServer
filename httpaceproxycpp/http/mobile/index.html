@@ -1705,6 +1705,11 @@
                     });
                     mpegtsPlayer.attachMediaElement(video);
                     mpegtsPlayer.load();
+                    mpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+                        console.warn('Error en mobile mpegts:', errorType, errorDetail, errorInfo);
+                        video.src = streamUrl;
+                        video.play().catch(() => { });
+                    });
                     mpegtsPlayer.play().catch(() => { });
                 } catch (e) {
                     video.src = streamUrl;

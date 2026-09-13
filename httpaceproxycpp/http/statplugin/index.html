@@ -368,6 +368,28 @@
             border: 1px solid var(--border2);
         }
 
+        .vpn-upload-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            color: var(--text);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: background .2s, border-color .2s, color .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .vpn-upload-btn:hover {
+            background: var(--surface3);
+            border-color: var(--brand);
+            color: var(--brand);
+        }
+
         .btn-sm {
             padding: 4px 10px;
             font-size: 12px;
@@ -1727,7 +1749,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Diagnóstico de Canales</h2>
-                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.03</span></p>
+                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.04</span></p>
             </div>
         </div>
 
@@ -1790,9 +1812,23 @@
                         <span id="net-isp-val" class="net-isp">—</span>
                     </div>
                 </div>
+                <div class="net-item">
+                    <span class="net-label">País de Salida (Egress)</span>
+                    <div class="net-val-group">
+                        <span id="net-country-val" class="net-ip" style="font-size:13.5px;">🏳️ Detectando...</span>
+                        <span id="net-country-code" class="net-isp" style="color:var(--muted);">—</span>
+                    </div>
+                </div>
+                <div class="net-item">
+                    <span class="net-label">Motor AceStream P2P</span>
+                    <div id="net-aceserve-badge" class="net-badge safe">
+                        <span class="dot"></span>
+                        <span id="net-aceserve-text">vía gluetun</span>
+                    </div>
+                </div>
             </div>
 
-            <!-- VPN Profile Selector (v09.12.03) -->
+            <!-- VPN Profile Selector & Uploader (v09.12.04) -->
             <div class="vpn-panel" id="vpn-panel">
                 <span class="vpn-panel-label">🔐 Perfil WireGuard:</span>
                 <select id="vpn-profile-select" class="vpn-select" title="Seleccionar perfil VPN WireGuard">
@@ -1805,6 +1841,11 @@
                 <button id="vpn-apply-btn" class="vpn-apply-btn" onclick="applyVpnProfile()"
                     title="Aplicar el perfil seleccionado y reiniciar gluetun">
                     ⚡ Aplicar
+                </button>
+                <input type="file" id="vpn-upload-input" accept=".conf" style="display:none;" onchange="handleVpnFileUpload(event)">
+                <button type="button" id="vpn-upload-btn" class="vpn-upload-btn" onclick="document.getElementById('vpn-upload-input').click()"
+                    title="Subir archivo de configuración .conf de WireGuard">
+                    📁 Subir .conf
                 </button>
             </div>
         </div>
@@ -1940,7 +1981,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.12.03</span>
+            <span class="val version-badge app-version">09.12.04</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -2171,6 +2212,30 @@
                 if (ipVal) ipVal.textContent = data.egress_ip || data.ip || '127.0.0.1';
                 if (ispVal) ispVal.textContent = data.isp_name || data.isp || 'ISP Directo (Sin Túnel)';
 
+                // v09.12.04 — Geolocalización / País y Enrutamiento AceStream
+                const countryVal = document.getElementById('net-country-val');
+                const countryCode = document.getElementById('net-country-code');
+                if (countryVal) {
+                    const flag = data.country_flag || '🏳️';
+                    const name = data.country_name || data.country_code || 'Desconocido';
+                    countryVal.textContent = `${flag} ${name}`;
+                }
+                if (countryCode) {
+                    countryCode.textContent = data.country_code ? `Código ISO: ${data.country_code}` : '';
+                }
+
+                const aceserveBadge = document.getElementById('net-aceserve-badge');
+                const aceserveText = document.getElementById('net-aceserve-text');
+                if (aceserveBadge && aceserveText) {
+                    if (data.vpn_wireguard) {
+                        aceserveBadge.className = 'net-badge safe';
+                        aceserveText.textContent = '🛡️ Protegido (WireGuard)';
+                    } else {
+                        aceserveBadge.className = 'net-badge safe';
+                        aceserveText.textContent = '✓ Red gluetun';
+                    }
+                }
+
                 if (isManualClick && typeof showToast === 'function') {
                     showToast('✓ Diagnóstico de red actualizado correctamente', 'success');
                 }
@@ -2284,6 +2349,47 @@
                 if (typeof showToast === 'function') showToast('\u26a0 Error aplicando perfil: ' + e.message, 'error');
             }
             if (btn) btn.disabled = false;
+        }
+
+        // =========================================================================
+        // VPN PROFILE UPLOADER (v09.12.04)
+        // =========================================================================
+        async function handleVpnFileUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.conf')) {
+                if (typeof showToast === 'function') showToast('⚠ El archivo debe tener extensión .conf', 'error');
+                event.target.value = '';
+                return;
+            }
+            if (file.size > 64 * 1024) {
+                if (typeof showToast === 'function') showToast('⚠ El archivo excede el tamaño máximo (64KB)', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            try {
+                if (typeof showToast === 'function') showToast('Subiendo perfil ' + file.name + '...', 'info');
+                const text = await file.text();
+                const res = await fetch('/statplugin?action=vpn_upload_profile&name=' + encodeURIComponent(file.name), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                    body: text
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    if (typeof showToast === 'function') showToast('✓ Perfil ' + (data.filename || file.name) + ' subido correctamente', 'success');
+                    await loadVpnProfiles();
+                    const select = document.getElementById('vpn-profile-select');
+                    if (select && data.filename) select.value = data.filename;
+                } else {
+                    if (typeof showToast === 'function') showToast('⚠ Error al subir: ' + (data.message || 'Error desconocido'), 'error');
+                }
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('⚠ Error al leer/subir archivo: ' + err.message, 'error');
+            } finally {
+                event.target.value = '';
+            }
         }
 
 

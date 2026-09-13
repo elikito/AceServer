@@ -3,6 +3,40 @@ networks:
     driver: bridge
 
 services:
+  # ── gluetun: VPN gateway (WireGuard ProtonVPN Plus) ─────────────────────────
+  # aceserve-modern comparte el namespace de red de gluetun.
+  # Todos los puertos del motor AceStream se exponen aquí.
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      - aceproxy-net
+    environment:
+      - TZ=Europe/Madrid
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_PORT_FORWARDING=off
+      - HTTP_CONTROL_SERVER_AUTH=none
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
+    volumes:
+      - ./config/vpn_profiles/active.conf:/gluetun/wireguard/wg0.conf:ro
+      - ./config/gluetun_status:/tmp/gluetun
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    # Puertos de aceserve-modern expuestos a través del namespace de gluetun
+    ports:
+      - "6878:6878/tcp"
+      - "6878:6878/udp"
+      - "8621:8621/tcp"
+      - "8621:8621/udp"
+      - "62062:62062/tcp"
+      - "8622-8630:8622-8630/udp"
+
   httpaceproxy:
     build:
       context: .
@@ -13,7 +47,7 @@ services:
       - "8888:8888"
     environment:
       - TZ=Europe/Madrid
-      - ACESTREAM_HOST=aceserve-modern
+      - ACESTREAM_HOST=gluetun
       - ACESTREAM_API_PORT=62062
       - ACESTREAM_HTTP_PORT=6878
       - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
@@ -32,45 +66,16 @@ services:
       - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
 
-  gluetun:
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    networks:
-      - aceproxy-net
-    environment:
-      - TZ=Europe/Madrid
-      - VPN_SERVICE_PROVIDER=custom
-      - VPN_TYPE=wireguard
-      - VPN_PORT_FORWARDING=on
-      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
-    volumes:
-      - ./config/vpn_profiles/active.conf:/gluetun/wireguard/wg0.conf:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-
+  # ── aceserve-modern: motor AceStream P2P ────────────────────────────────────
+  # Usa el namespace de red de gluetun → todo el tráfico P2P va por WireGuard.
+  # NO tiene sección "ports:" ni "networks:" propias.
   aceserve-modern:
     image: jopsis/aceserve:latest
     container_name: aceserve-modern
     restart: unless-stopped
-    networks:
-      - aceproxy-net
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "6878:6878/tcp"
-      - "6878:6878/udp"
-      - "8621:8621/tcp"
-      - "8621:8621/udp"
-      - "62062:62062/tcp"
-      - "8622-8630:8622-8630/udp"
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
     environment:
       - TZ=Europe/Madrid
       - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --max-peers 100 --live-cache-type memory --live-mem-cache-size 524288000 --max-upload-rate 1000
