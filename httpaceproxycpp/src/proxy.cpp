@@ -3362,6 +3362,7 @@ Json Proxy::get_network_diagnostics() {
 
     // Detección WireGuard activo (verificar /app/config/gluetun_status/ip, o interfaz local wg0/tun0)
     std::string vpn_egress_ip;
+    bool vpn_connecting = false;
     try {
         auto direct_flag = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "direct_mode";
         bool is_direct = std::filesystem::exists(direct_flag);
@@ -3380,6 +3381,9 @@ Json Proxy::get_network_diagnostics() {
             }
             if (!vpn_wireguard && (std::filesystem::exists("/sys/class/net/wg0") || std::filesystem::exists("/sys/class/net/tun0"))) {
                 vpn_wireguard = true;
+            }
+            if (!vpn_wireguard && !vpn_profile.empty()) {
+                vpn_connecting = true;
             }
         }
     } catch (...) {}
@@ -3513,11 +3517,26 @@ Json Proxy::get_network_diagnostics() {
         if (!vpn_egress_ip.empty()) {
             egress_ip = vpn_egress_ip;
         }
+    } else if (vpn_connecting) {
+        safe_route = true;
+        if (!vpn_profile.empty()) {
+            isp_name = "ProtonVPN WireGuard (" + vpn_profile + " - Conectando...)";
+            traffic_route = "Conectando WireGuard VPN (" + vpn_profile + ")...";
+            if (vpn_profile.size() >= 2 && std::isalpha((unsigned char)vpn_profile[0]) && std::isalpha((unsigned char)vpn_profile[1])) {
+                std::string code = vpn_profile.substr(0, 2);
+                std::transform(code.begin(), code.end(), code.begin(), ::toupper);
+                loc = code;
+            }
+        } else {
+            isp_name = "ProtonVPN WireGuard (Conectando...)";
+            traffic_route = "Conectando WireGuard VPN...";
+        }
+        egress_ip = "Conectando...";
     } else if (egress_ip == "127.0.0.1" || egress_ip == "localhost" || starts_with(egress_ip, "172.") || starts_with(egress_ip, "10.") || starts_with(egress_ip, "192.168.")) {
         egress_ip = "Desconocida";
     }
 
-    if (!vpn_wireguard && !warp_connected) {
+    if (!vpn_wireguard && !vpn_connecting && !warp_connected) {
         warp_status = (warp_status == "connecting") ? "connecting" : "disconnected";
         if (tailscale_connected) {
             isp_name = "Tailscale Encrypted Mesh";
@@ -3535,7 +3554,7 @@ Json Proxy::get_network_diagnostics() {
     bool warp_excluded = false;
     bool vpn_secondary = false;
 
-    if (vpn_wireguard) {
+    if (vpn_wireguard || vpn_connecting) {
         protection_mode = "vpn";
         warp_excluded = true;
     } else if (warp_connected) {
@@ -3565,6 +3584,7 @@ Json Proxy::get_network_diagnostics() {
         {"safe_route", safe_route},
         // v09.12.04 / v09.12.05 — WireGuard y geolocalización con exclusión mutua
         {"vpn_wireguard", vpn_wireguard},
+        {"vpn_connecting", vpn_connecting},
         {"vpn_profile", vpn_profile},
         {"country_flag", country_flag_emoji(loc)},
         {"country_name", country_name_from_iso(loc)},

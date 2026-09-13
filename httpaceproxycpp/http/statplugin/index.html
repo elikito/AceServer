@@ -2527,16 +2527,19 @@
                 const vpnPanel = document.getElementById('vpn-panel');
 
                 // v09.12.05 — Lógica de Exclusión Mutua Visual (WireGuard vs WARP)
-                const isVpnActive = !!data.vpn_wireguard;
+                const isVpnConnecting = !!data.vpn_connecting;
+                const isVpnActive = !!data.vpn_wireguard || isVpnConnecting;
                 const isWarpActive = !isVpnActive && (data.warp_connected || (data.warp && (data.warp.status === 'active' || data.warp.status === 'proxy')));
 
                 if (isVpnActive) {
                     // Modo VPN WireGuard Activo (Prioridad Total)
                     if (pmBanner) {
                         pmBanner.className = 'protection-mode-banner mode-vpn';
-                        if (pmIcon) pmIcon.textContent = '🛡️';
-                        if (pmText) pmText.textContent = `Capa Activa: WireGuard VPN (${data.vpn_profile || 'ProtonVPN'}) — Tráfico P2P blindado`;
-                        if (pmBadge) pmBadge.textContent = 'Prioridad Primaria';
+                        if (pmIcon) pmIcon.textContent = isVpnConnecting ? '🔄' : '🛡️';
+                        if (pmText) pmText.textContent = isVpnConnecting ?
+                            `Capa Activa: WireGuard VPN (${data.vpn_profile || 'ProtonVPN'}) — Estableciendo túnel seguro...` :
+                            `Capa Activa: WireGuard VPN (${data.vpn_profile || 'ProtonVPN'}) — Tráfico P2P blindado`;
+                        if (pmBadge) pmBadge.textContent = isVpnConnecting ? 'Conectando...' : 'Prioridad Primaria';
                     }
                     if (warpItem) warpItem.classList.add('excluded');
                     if (warpBadge && warpText) {
@@ -2601,14 +2604,22 @@
                 const tagWarp = document.getElementById('prot-tag-warp');
                 const tagDirect = document.getElementById('prot-tag-direct');
 
-                const currentMode = data.protection_mode || (data.vpn_wireguard ? 'vpn' : (data.warp_connected ? 'warp' : 'direct'));
-                const isVpn = (currentMode === 'vpn');
-                const isWarp = (currentMode === 'warp');
+                const currentMode = data.protection_mode || (isVpnActive ? 'vpn' : (data.warp_connected ? 'warp' : 'direct'));
+                const isVpn = (currentMode === 'vpn') || isVpnActive;
+                const isWarp = (currentMode === 'warp') && !isVpn;
                 const isDirect = (currentMode === 'direct') || (!isVpn && !isWarp);
 
                 if (protBtnVpn) {
                     protBtnVpn.classList.toggle('active', isVpn);
-                    if (tagVpn) tagVpn.innerHTML = isVpn ? '<span class="prot-status-dot"></span>● ACTIVO' : 'ACTIVAR';
+                    if (tagVpn) {
+                        if (isVpnConnecting) {
+                            tagVpn.innerHTML = '<span class="prot-status-dot"></span>● CONECTANDO...';
+                        } else if (isVpn) {
+                            tagVpn.innerHTML = '<span class="prot-status-dot"></span>● ACTIVO';
+                        } else {
+                            tagVpn.textContent = 'ACTIVAR';
+                        }
+                    }
                 }
                 if (protBtnWarp) {
                     protBtnWarp.classList.toggle('active', isWarp);
@@ -2697,7 +2708,7 @@
             // Actualización visual inmediata y optimista (v09.12.07)
             if (protBtnVpn) {
                 protBtnVpn.classList.toggle('active', mode === 'vpn');
-                if (tagVpn) tagVpn.innerHTML = (mode === 'vpn') ? '<span class="prot-status-dot"></span>● ACTIVO' : 'ACTIVAR';
+                if (tagVpn) tagVpn.innerHTML = (mode === 'vpn') ? '<span class="prot-status-dot"></span>● CONECTANDO...' : 'ACTIVAR';
             }
             if (protBtnWarp) {
                 protBtnWarp.classList.toggle('active', mode === 'warp');
@@ -2735,7 +2746,16 @@
                 }
             }
             await loadNetworkDiagnostics(false);
-            if (mode === 'vpn') await loadVpnProfiles();
+            if (mode === 'vpn') {
+                await loadVpnProfiles();
+                // Polling progresivo durante arranque del túnel WireGuard en gluetun
+                [2000, 5000, 8000, 12000].forEach(delay => {
+                    setTimeout(() => {
+                        loadNetworkDiagnostics(false);
+                        loadVpnProfiles();
+                    }, delay);
+                });
+            }
         }
 
         async function loadBufferConfig() {
@@ -2852,10 +2872,19 @@
                 if (data.status === 'ok') {
                     if (typeof showToast === 'function') {
                         const restartMsg = data.gluetun_restart === 'requested'
-                            ? ' — Reiniciando gluetun...' : ' — Reinicia gluetun manualmente.';
-                        showToast('\u2713 Perfil VPN cambiado a ' + data.active.replace(/\.conf$/i, '') + restartMsg, 'success');
+                            ? ' — Reiniciando túnel VPN gluetun...' : ' — Perfil activo.';
+                        showToast('✓ Perfil VPN cambiado a ' + data.active.replace(/\.conf$/i, '') + restartMsg, 'success');
                     }
                     await loadVpnProfiles();
+                    await loadNetworkDiagnostics(false);
+                    if (data.gluetun_restart === 'requested') {
+                        [2000, 5000, 8000, 12000].forEach(delay => {
+                            setTimeout(() => {
+                                loadNetworkDiagnostics(false);
+                                loadVpnProfiles();
+                            }, delay);
+                        });
+                    }
                 } else {
                     if (typeof showToast === 'function') showToast('\u26a0 Error: ' + (data.message || 'desconocido'), 'error');
                 }
@@ -3507,11 +3536,15 @@
         }
 
         // =========================================================================
-        // AUTO REFRESH every 5 min
+        // AUTO REFRESH every 5 min (plugins) & every 30s (network diagnostics)
         // =========================================================================
         setInterval(() => {
             if (!bulkRunning) loadPlugins();
         }, 5 * 60 * 1000);
+
+        setInterval(() => {
+            loadNetworkDiagnostics(false);
+        }, 30 * 1000);
     </script>
 </body>
 

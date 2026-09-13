@@ -977,22 +977,28 @@ public:
                     auto target_file = vpn_dir / profile;
                     auto active_link = vpn_dir / "active.conf";
                     if (std::filesystem::is_regular_file(target_file)) {
-                        if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
-                            std::filesystem::remove(active_link);
+                        std::string current_target;
+                        if (std::filesystem::is_symlink(active_link)) {
+                            try { current_target = std::filesystem::read_symlink(active_link).filename().string(); } catch (...) {}
                         }
-                        std::filesystem::create_symlink(profile, active_link);
-                        profile_changed = true;
+                        if (current_target != profile) {
+                            if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
+                                std::filesystem::remove(active_link);
+                            }
+                            std::filesystem::create_symlink(profile, active_link);
+                            profile_changed = true;
+                        }
                     }
                 }
                 if (profile_changed) {
-                    ::system("docker restart gluetun && sleep 2 && docker restart aceserve-modern >/dev/null 2>&1 &");
+                    ::system("docker restart gluetun && sleep 6 && docker restart aceserve-modern >/dev/null 2>&1 &");
                 } else {
                     ::system("docker exec gluetun sh -c 'while ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null; do :; done' || true");
                     ::system("docker exec gluetun ip rule add not from all fwmark 0xca6c lookup 51820 pref 101 2>/dev/null || true");
                     ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null || true");
                     ::system("docker exec gluetun iptables -A INPUT -p udp -m multiport --dports 8621,8622,8623,8624,8625,8626,8627,8628,8629,8630 -j ACCEPT 2>/dev/null || true");
                     ::system("docker exec gluetun iptables -A INPUT -p tcp -m multiport --dports 6878,8621,62062 -j ACCEPT 2>/dev/null || true");
-                    ::system("docker exec gluetun nc -z 127.0.0.1 62062 >/dev/null 2>&1 || (docker start gluetun >/dev/null 2>&1; sleep 1; docker restart aceserve-modern >/dev/null 2>&1 &)");
+                    ::system("docker exec gluetun nc -z 127.0.0.1 62062 >/dev/null 2>&1 || (docker start gluetun >/dev/null 2>&1; sleep 5; docker restart aceserve-modern >/dev/null 2>&1 &)");
                 }
                 res["status"] = "ok";
                 res["mode"] = "vpn";
@@ -1217,12 +1223,17 @@ public:
                     return true;
                 }
                 auto active_link = vpn_dir / "active.conf";
-                // Eliminar symlink/archivo anterior si existe
-                if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
-                    std::filesystem::remove(active_link);
+                std::string current_target;
+                if (std::filesystem::is_symlink(active_link)) {
+                    try { current_target = std::filesystem::read_symlink(active_link).filename().string(); } catch (...) {}
                 }
-                // Crear nuevo symlink relativo
-                std::filesystem::create_symlink(profile, active_link);
+                bool needs_restart = (current_target != profile);
+                if (needs_restart) {
+                    if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
+                        std::filesystem::remove(active_link);
+                    }
+                    std::filesystem::create_symlink(profile, active_link);
+                }
                 auto direct_flag = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "direct_mode";
                 if (std::filesystem::exists(direct_flag)) {
                     std::filesystem::remove(direct_flag);
@@ -1232,14 +1243,14 @@ public:
                 res["status"] = "ok";
                 res["active"] = profile;
                 res["message"] = "Perfil VPN cambiado a " + profile;
-                // Intentar reiniciar gluetun vía docker si socket disponible
+                // Intentar reiniciar gluetun vía docker si socket disponible y perfil cambió
                 bool docker_available = std::filesystem::exists("/var/run/docker.sock");
-                if (docker_available) {
-                    int ret = ::system("docker restart gluetun && sleep 2 && docker restart aceserve-modern >/dev/null 2>&1 &");
+                if (docker_available && needs_restart) {
+                    int ret = ::system("docker restart gluetun && sleep 6 && docker restart aceserve-modern >/dev/null 2>&1 &");
                     (void)ret;
                     res["gluetun_restart"] = "requested";
                 } else {
-                    res["gluetun_restart"] = "skipped_no_socket";
+                    res["gluetun_restart"] = needs_restart ? "skipped_no_socket" : "not_needed";
                 }
                 send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
             } catch (const std::exception& e) {
