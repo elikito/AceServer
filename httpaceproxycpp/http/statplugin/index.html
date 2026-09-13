@@ -2800,8 +2800,35 @@
         }
 
         // =========================================================================
-        // VPN PROFILE MANAGEMENT (v09.12.03)
+        // VPN PROFILE MANAGEMENT (v09.12.08 — Nomenclatura NODO-PAIS-SERVIDOR)
         // =========================================================================
+
+        // Mapa de nombres de país a emoji bandera
+        const COUNTRY_FLAGS = {
+            'Netherlands': '🇳🇱', 'Switzerland': '🇨🇭', 'France': '🇫🇷',
+            'Germany': '🇩🇪', 'Spain': '🇪🇸', 'Sweden': '🇸🇪',
+            'Norway': '🇳🇴', 'Denmark': '🇩🇰', 'Finland': '🇫🇮',
+            'USA': '🇺🇸', 'UK': '🇬🇧', 'Italy': '🇮🇹',
+            'Poland': '🇵🇱', 'Austria': '🇦🇹', 'Belgium': '🇧🇪',
+            'Japan': '🇯🇵', 'Singapore': '🇸🇬', 'Canada': '🇨🇦',
+            'Romania': '🇷🇴', 'Portugal': '🇵🇹', 'Czech': '🇨🇿',
+        };
+
+        // Formatea el nombre del perfil para mostrar: "N150-Switzerland-CH-922.conf" → "🇨🇭 CH-922"
+        function vpnProfileDisplayName(filename) {
+            const base = filename.replace(/\.conf$/i, '');
+            // Formato: NODO-Pais-SERVIDOR (ej: N150-Switzerland-CH-922)
+            const parts = base.split('-');
+            if (parts.length >= 3 && /^N\d+$/.test(parts[0])) {
+                // parts[0] = NODO, parts[1] = País, rest = servidor
+                const country = parts[1];
+                const server = parts.slice(2).join('-');
+                const flag = COUNTRY_FLAGS[country] || '🌐';
+                return `${flag} ${server} (${country})`;
+            }
+            return base; // fallback: nombre completo sin .conf
+        }
+
         async function loadVpnProfiles() {
             const select = document.getElementById('vpn-profile-select');
             const badge = document.getElementById('vpn-status-badge');
@@ -2815,7 +2842,7 @@
                 const profiles = data.profiles || [];
                 const active = data.active || '';
 
-                // Populate dropdown
+                // Populate dropdown con nombres amigables
                 select.innerHTML = '';
                 if (profiles.length === 0) {
                     const opt = document.createElement('option');
@@ -2827,20 +2854,20 @@
                     profiles.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p;
-                        // Friendly display name: remove .conf, show server location
-                        const label = p.replace(/\.conf$/i, '');
-                        opt.textContent = label + (p === active ? ' \u2714 (activo)' : '');
+                        const label = vpnProfileDisplayName(p);
+                        opt.textContent = label + (p === active ? ' ✔ (activo)' : '');
                         opt.selected = (p === active);
                         select.appendChild(opt);
                     });
                 }
 
-                // Update badge
+                // Update badge con nombre corto
+                const activeShort = active ? vpnProfileDisplayName(active) : '';
                 if (active && badge && dot && statusText) {
                     badge.className = 'vpn-status-badge active';
                     dot.style.background = '#22c55e';
                     dot.style.boxShadow = '0 0 6px #22c55e';
-                    statusText.textContent = active.replace(/\.conf$/i, '');
+                    statusText.textContent = activeShort;
                 } else if (badge && statusText) {
                     badge.className = 'vpn-status-badge inactive';
                     dot.style.background = 'var(--muted)';

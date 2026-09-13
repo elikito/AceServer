@@ -162,9 +162,8 @@ audit_screenshots/
 httpaceproxycpp/http/epg_cache.json
 
 # WireGuard VPN profiles — NUNCA subir al repo (contienen PrivateKey)
+# Nomenclatura: NODO-PAIS-SERVIDOR.conf (ej: N150-Switzerland-CH-922.conf)
 assets/*.conf
-assets/wg-*.conf
-assets/FR-*.conf
-assets/NL-*.conf
+assets/N*.conf
 config/vpn_profiles/*.conf
 config/vpn_profiles/active.conf
