@@ -160,3 +160,11 @@ custom_lists.json
 scratch/
 audit_screenshots/
 httpaceproxycpp/http/epg_cache.json
+
+# WireGuard VPN profiles — NUNCA subir al repo (contienen PrivateKey)
+assets/*.conf
+assets/wg-*.conf
+assets/FR-*.conf
+assets/NL-*.conf
+config/vpn_profiles/*.conf
+config/vpn_profiles/active.conf
