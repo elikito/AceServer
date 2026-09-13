@@ -4,6 +4,25 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.12.07] - 2026-09-13
+
+### 🛡️ Estabilización Integral de Red, Selector Activo Verde Esmeralda y Streaming Móvil Anti-Colapso
+
+#### 1. Corrección Visual de Botones Activos en Panel de Control (`statplugin/index.html`)
+- **Verde Brillante / Esmeralda Obligatorio para Capa Activa**: El botón que representa el modo de red realmente activo (WireGuard VPN, Cloudflare WARP o Modo Directo) se pinta en verde esmeralda brillante (`#10b981`) con borde iluminado, fondo con brillo glassmorphic e indicador de estado parpadeante (`.prot-status-dot` con animación `@keyframes emerald-blink`).
+- **Inactivos en Gris Oscuro**: Los botones inactivos permanecen atenuados en tono gris oscuro (`#64748b`), eliminando ambigüedades visuales.
+- **Prohibición de Estado Triple Gris**: Precargado el estado activo en el marcado HTML y blindada la lógica JavaScript en `loadNetworkDiagnostics` y `switchProtectionMode` para asegurar que siempre haya exactamente un botón activo iluminado.
+
+#### 2. Unificación Total de Red en Docker Compose (`docker-compose.yml`)
+- **Mapeo Idéntico de Subredes Salientes**: Unificación estricta de `FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8,127.0.0.0/8,172.18.0.0/16` en el contenedor `gluetun` para garantizar resolución idéntica de peers en ambos nodos N150 y N100 sin bloqueos de sockets UDP.
+
+#### 3. Estabilización de Flujo y Reproductor Móvil/Moderno (`mobile/index.html`, `broadcast.cpp`, `proxy.cpp`)
+- **Desconexión y Destrucción Limpia en Frontend Móvil**: En `startPlaybackUrl`, desvinculación completa de instancias previas de `mpegtsPlayer` (`pause()`, `unload()`, `detachMediaElement()`, `destroy()`) y reinicio de `video.removeAttribute('src')` y `video.load()`, forzando el cierre inmediato de la conexión HTTP subyacente y evitando el colapso por peticiones concurrentes simultáneas al cambiar de canal.
+- **Ajuste Fino de Búfer MSE**: Parámetros `enableWorker: true`, `stashInitialSize: 384KB`, `liveBufferLatencyMaxLatency: 14.0s`, `liveBufferLatencyMinRemain: 2.0s` y limpieza automática del búfer retroactivo (`autoCleanupSourceBuffer: true`) para erradicar el desfase progresivo y microcortes.
+- **Gestión No Bloqueante de Chunks en C++ (`broadcast.cpp`)**: Eliminada la espera secuencial de hasta 7.5s en `Broadcast::broadcast_chunk` a un modelo no bloqueante (`wait = 0ms`), garantizando que un cliente lento o móvil no detenga el hilo de ingesta `stream_loop` de AceStream.
+- **Pre-inyección Inmediata de PAT/PMT (`broadcast.cpp`)**: Re-inyección inmediata de las tablas PAT/PMT en `Broadcast::add_client` si ya están cacheadas, permitiendo decodificación MSE instantánea sin retardos.
+- **Soporte CORS Preflight (`proxy.cpp`)**: Manejo inmediato de peticiones preflight `OPTIONS` (HTTP 204) e inclusión de cabeceras CORS en respuestas 200 de streaming.
+
 ## [09.12.02] - 2026-09-12
 
 ### 🛡️ Mitigación de Bufferbloat y Estabilización de Streams AceStream (Tope de Subida)

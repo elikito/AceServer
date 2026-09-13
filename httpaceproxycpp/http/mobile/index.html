@@ -1676,14 +1676,30 @@
             const engBadge = document.getElementById('player-engine-badge');
             if (engBadge) engBadge.textContent = engineLabel || 'Auto Engine';
 
-            // Parar instancias previas
+            // Parar y desvincular instancias previas limpiamente para abortar conexiones HTTP previas
             if (mpegtsPlayer) {
-                try { mpegtsPlayer.destroy(); } catch (e) { }
+                try {
+                    mpegtsPlayer.pause();
+                    mpegtsPlayer.unload();
+                    mpegtsPlayer.detachMediaElement();
+                    mpegtsPlayer.destroy();
+                } catch (e) { }
                 mpegtsPlayer = null;
             }
             if (hlsPlayer) {
-                try { hlsPlayer.destroy(); } catch (e) { }
+                try {
+                    hlsPlayer.stopLoad();
+                    hlsPlayer.detachMedia();
+                    hlsPlayer.destroy();
+                } catch (e) { }
                 hlsPlayer = null;
+            }
+            if (video) {
+                try {
+                    video.pause();
+                    video.removeAttribute('src');
+                    video.load();
+                } catch (e) { }
             }
 
             if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
@@ -1693,22 +1709,35 @@
                 hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => { }));
             } else if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
                 try {
+                    // v09.12.07: Configuración de buffer ultra-estable contra jitter y desfase sin saturar MSE
                     mpegtsPlayer = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
                         url: streamUrl
                     }, {
+                        enableWorker: true,
                         enableStashBuffer: true,
-                        stashInitialSize: 256 * 1024,
+                        stashInitialSize: 384 * 1024,
                         liveBufferLatencyChasing: false,
-                        autoCleanupSourceBuffer: true
+                        liveBufferLatencyMaxLatency: 14.0,
+                        liveBufferLatencyMinRemain: 2.0,
+                        autoCleanupSourceBuffer: true,
+                        autoCleanupMaxBackwardDuration: 25,
+                        autoCleanupMinBackwardDuration: 10,
+                        lazyLoadMaxDuration: 3 * 60,
+                        deferLoadAfterError: false
                     });
                     mpegtsPlayer.attachMediaElement(video);
                     mpegtsPlayer.load();
                     mpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
                         console.warn('Error en mobile mpegts:', errorType, errorDetail, errorInfo);
-                        video.src = streamUrl;
-                        video.play().catch(() => { });
+                        if (errorType === mpegts.ErrorTypes.NETWORK_ERROR) {
+                            setTimeout(() => {
+                                if (mpegtsPlayer) {
+                                    try { mpegtsPlayer.load(); mpegtsPlayer.play().catch(() => {}); } catch(e){}
+                                }
+                            }, 1000);
+                        }
                     });
                     mpegtsPlayer.play().catch(() => { });
                 } catch (e) {

@@ -24,7 +24,7 @@ services:
       - VPN_TYPE=wireguard
       - VPN_PORT_FORWARDING=off
       - HTTP_CONTROL_SERVER_AUTH=none
-      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8,127.0.0.0/8
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8,127.0.0.0/8,172.18.0.0/16
       - FIREWALL_VPN_INPUT_PORTS=6878,8621,8622,8623,8624,8625,8626,8627,8628,8629,8630,62062
     volumes:
       - ./config/vpn_profiles/active.conf:/gluetun/wireguard/wg0.conf:ro

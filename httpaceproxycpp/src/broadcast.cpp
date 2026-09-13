@@ -201,6 +201,13 @@ std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip
         std::lock_guard<std::mutex> lock(mutex_);
         clients_.push_back(client);
     }
+    // v09.12.07: Reinyección limpia de PAT/PMT si el broadcast ya tiene datos cacheados
+    {
+        std::lock_guard<std::mutex> lock(pat_pmt_mutex_);
+        if (!latest_pat_pmt_.empty()) {
+            client->queue->push(latest_pat_pmt_, std::chrono::milliseconds(0));
+        }
+    }
     return client;
 }
 
@@ -537,7 +544,9 @@ void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
     }
 
     auto write_timeout = std::max(1, config_.client_write_timeout);
-    auto wait = std::chrono::milliseconds(write_timeout * 1000 / 4);
+    // v09.12.07: Push no bloqueante (0ms) en la cola de cada cliente para evitar que un cliente
+    // lento o navegador móvil congele el hilo stream_loop de ingesta de AceStream
+    auto wait = std::chrono::milliseconds(0);
     auto now = unix_time();
     // v09.11.05: Fan-Out Zero-Copy usando ChunkPtr compartido inmutable para todos los clientes
     auto shared_chunk = std::make_shared<const std::vector<char>>(std::move(chunk_to_push));

@@ -2270,6 +2270,19 @@ void Proxy::handle_static(const HttpRequest&, ClientConnection& connection, cons
 }
 
 void Proxy::handle_core_stream(RequestContext& ctx) {
+    // v09.12.07: Soporte CORS preflight OPTIONS para reproductores web y móviles
+    if (ctx.request.method == "OPTIONS") {
+        std::map<std::string, std::string> cors_headers = {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, HEAD, OPTIONS"},
+            {"Access-Control-Allow-Headers", "Range, Content-Type, Accept, Origin, User-Agent"},
+            {"Access-Control-Max-Age", "86400"},
+            {"Connection", "close"}
+        };
+        ctx.connection.send_response_headers(204, "No Content", cors_headers);
+        return;
+    }
+
     if (ctx.parts.size() < 3) {
         send_error(ctx.connection, 400, "Bad Request");
         return;
@@ -2535,6 +2548,9 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
         std::map<std::string, std::string> headers = {
             {"Content-Type", mime_type_for_path(ctx.path)},
             {"Accept-Ranges", "none"},
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, HEAD, OPTIONS"},
+            {"Access-Control-Expose-Headers", "Content-Length, Content-Range"},
             {"Connection", chunked ? "keep-alive" : "close"}
         };
         if (chunked) {
