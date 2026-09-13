@@ -971,6 +971,7 @@ public:
                 if (std::filesystem::exists(direct_flag)) {
                     std::filesystem::remove(direct_flag);
                 }
+                bool profile_changed = false;
                 if (!profile.empty()) {
                     auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
                     auto target_file = vpn_dir / profile;
@@ -980,32 +981,50 @@ public:
                             std::filesystem::remove(active_link);
                         }
                         std::filesystem::create_symlink(profile, active_link);
+                        profile_changed = true;
                     }
                 }
-                ::system("docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
-                ::system("docker exec gluetun ip rule add not from all fwmark 0xca6c lookup 51820 pref 101 2>/dev/null || true");
-                ::system("docker start gluetun >/dev/null 2>&1 &");
-                ::system("docker start aceserve-modern >/dev/null 2>&1 &");
+                if (profile_changed) {
+                    ::system("docker restart gluetun && sleep 2 && docker restart aceserve-modern >/dev/null 2>&1 &");
+                } else {
+                    ::system("docker exec gluetun sh -c 'while ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null; do :; done' || true");
+                    ::system("docker exec gluetun ip rule add not from all fwmark 0xca6c lookup 51820 pref 101 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -A INPUT -p udp -m multiport --dports 8621,8622,8623,8624,8625,8626,8627,8628,8629,8630 -j ACCEPT 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -A INPUT -p tcp -m multiport --dports 6878,8621,62062 -j ACCEPT 2>/dev/null || true");
+                    ::system("docker exec gluetun nc -z 127.0.0.1 62062 >/dev/null 2>&1 || (docker start gluetun >/dev/null 2>&1; sleep 1; docker restart aceserve-modern >/dev/null 2>&1 &)");
+                }
                 res["status"] = "ok";
                 res["mode"] = "vpn";
                 res["message"] = "Modo WireGuard VPN activado";
 
             } else if (mode == "warp") {
-                ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null && docker exec gluetun iptables -F OUTPUT 2>/dev/null && docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -P INPUT ACCEPT 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -P FORWARD ACCEPT 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -F 2>/dev/null || true");
+                ::system("docker exec gluetun sh -c 'while ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null; do :; done' || true");
                 std::ofstream out(direct_flag);
                 out << "warp\n";
                 out.close();
                 ::system("warp-cli --accept-tos mode proxy && warp-cli --accept-tos proxy port 4002 && warp-cli --accept-tos connect >/dev/null 2>&1");
+                ::system("docker exec gluetun nc -z 127.0.0.1 62062 >/dev/null 2>&1 || docker restart aceserve-modern >/dev/null 2>&1 &");
                 res["status"] = "ok";
                 res["mode"] = "warp";
                 res["message"] = "Modo Cloudflare WARP activado";
 
             } else if (mode == "direct") {
                 ::system("warp-cli --accept-tos disconnect >/dev/null 2>&1");
-                ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null && docker exec gluetun iptables -F OUTPUT 2>/dev/null && docker exec gluetun ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -P INPUT ACCEPT 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -P FORWARD ACCEPT 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -F 2>/dev/null || true");
+                ::system("docker exec gluetun iptables -X 2>/dev/null || true");
+                ::system("docker exec gluetun sh -c 'while ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null; do :; done' || true");
                 std::ofstream out(direct_flag);
                 out << "direct\n";
                 out.close();
+                ::system("docker exec gluetun nc -z 127.0.0.1 62062 >/dev/null 2>&1 || docker restart aceserve-modern >/dev/null 2>&1 &");
                 res["status"] = "ok";
                 res["mode"] = "direct";
                 res["message"] = "Modo Directo activado (Sin VPN)";
@@ -1216,7 +1235,7 @@ public:
                 // Intentar reiniciar gluetun vía docker si socket disponible
                 bool docker_available = std::filesystem::exists("/var/run/docker.sock");
                 if (docker_available) {
-                    int ret = ::system("docker restart gluetun >/dev/null 2>&1 &");
+                    int ret = ::system("docker restart gluetun && sleep 2 && docker restart aceserve-modern >/dev/null 2>&1 &");
                     (void)ret;
                     res["gluetun_restart"] = "requested";
                 } else {

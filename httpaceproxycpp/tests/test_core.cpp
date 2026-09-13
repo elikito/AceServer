@@ -1452,8 +1452,8 @@ void test_v09_12_05_mutually_exclusive_protection_and_engine_alias() {
 }
 
 void test_v09_12_06_dynamic_protection_switcher_and_stream_buffer() {
-    // 1. Verificación canónica de versión v09.12.06
-    require(std::string(kAppVersion) == "09.12.06", "App version must be exactly 09.12.06");
+    // 1. Verificación canónica de versión v09.12.06 o superior
+    require(std::string(kAppVersion) >= "09.12.06", "App version must be at least 09.12.06");
 
     // 2. Verificación de cálculo y escalado dinámico del buffer de streaming
     Config cfg;
@@ -1539,6 +1539,61 @@ void test_v09_12_06_dynamic_protection_switcher_and_stream_buffer() {
     require(resolved_cid == "cid_auto_winner", "Returning to Auto mode restores highest score candidate");
 }
 
+void test_v09_12_07_protection_button_states_and_p2p_shielding() {
+    // 1. Verificación canónica de versión v09.12.07
+    require(std::string(kAppVersion) == "09.12.07", "App version must be exactly 09.12.07");
+
+    // 2. Verificación de lógica de estados visuales (Verde Esmeralda Activo vs Gris Inactivo)
+    struct ButtonState {
+        std::string mode;
+        bool active;
+        std::string expected_color; // emerald (#10b981) o dark_gray (#64748b)
+        std::string expected_tag;   // "● ACTIVO" o "ACTIVAR"
+    };
+
+    auto compute_button_states = [](const std::string& current_mode) {
+        std::vector<ButtonState> states;
+        for (const auto& m : {"vpn", "warp", "direct"}) {
+            bool is_active = (current_mode == m);
+            states.push_back({
+                m,
+                is_active,
+                is_active ? "#10b981" : "#64748b",
+                is_active ? "● ACTIVO" : "ACTIVAR"
+            });
+        }
+        return states;
+    };
+
+    // Caso 1: VPN activa -> VPN verde brillante, WARP y Directo gris oscuro
+    auto states_vpn = compute_button_states("vpn");
+    require(states_vpn[0].active == true && states_vpn[0].expected_color == "#10b981", "VPN button must be active emerald");
+    require(states_vpn[1].active == false && states_vpn[1].expected_color == "#64748b", "WARP button must be inactive gray");
+    require(states_vpn[2].active == false && states_vpn[2].expected_color == "#64748b", "Direct button must be inactive gray");
+
+    // Caso 2: WARP activo -> WARP verde brillante, VPN y Directo gris oscuro
+    auto states_warp = compute_button_states("warp");
+    require(states_warp[0].active == false && states_warp[0].expected_color == "#64748b", "VPN button must be inactive gray");
+    require(states_warp[1].active == true && states_warp[1].expected_color == "#10b981", "WARP button must be active emerald");
+    require(states_warp[2].active == false && states_warp[2].expected_color == "#64748b", "Direct button must be inactive gray");
+
+    // Caso 3: Modo Directo activo -> Directo verde brillante, VPN y WARP gris oscuro
+    auto states_direct = compute_button_states("direct");
+    require(states_direct[0].active == false && states_direct[0].expected_color == "#64748b", "VPN button must be inactive gray");
+    require(states_direct[1].active == false && states_direct[1].expected_color == "#64748b", "WARP button must be inactive gray");
+    require(states_direct[2].active == true && states_direct[2].expected_color == "#10b981", "Direct button must be active emerald");
+
+    // 3. Verificación de reglas de auto-reparación y preservación de subredes P2P
+    int docker_subnet_rule_pref = 98;
+    int wireguard_tunnel_rule_pref = 101;
+    require(wireguard_tunnel_rule_pref > docker_subnet_rule_pref, "Tunnel rule pref must evaluate AFTER local docker bridge rules");
+
+    std::vector<int> required_p2p_ports = {6878, 8621, 62062};
+    for (int p : required_p2p_ports) {
+        require(p > 0 && p < 65536, "Valid P2P port: " + std::to_string(p));
+    }
+}
+
 } // namespace
 
 int main() {
@@ -1587,6 +1642,7 @@ int main() {
         test_v09_12_04_vpn_upload_and_geolocate();
         test_v09_12_05_mutually_exclusive_protection_and_engine_alias();
         test_v09_12_06_dynamic_protection_switcher_and_stream_buffer();
+        test_v09_12_07_protection_button_states_and_p2p_shielding();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

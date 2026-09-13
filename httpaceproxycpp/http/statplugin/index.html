@@ -516,21 +516,25 @@
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            color: var(--muted);
+            color: #64748b;
             cursor: pointer;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
         }
 
-        .prot-toggle-btn:hover {
+        .prot-toggle-btn:hover:not(.active) {
             background: rgba(255, 255, 255, 0.06);
             border-color: rgba(255, 255, 255, 0.18);
-            color: var(--text);
+            color: #cbd5e1;
             transform: translateY(-1px);
         }
 
         .prot-toggle-btn .prot-icon {
             font-size: 16px;
             margin-right: 8px;
+            filter: grayscale(1);
+            opacity: 0.6;
+            transition: all 0.2s;
         }
 
         .prot-toggle-btn .prot-title {
@@ -538,49 +542,48 @@
             font-weight: 700;
             flex-grow: 1;
             text-align: left;
+            color: inherit;
         }
 
         .prot-toggle-btn .prot-tag {
             font-size: 10px;
             font-weight: 700;
-            padding: 2px 7px;
+            padding: 3px 8px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--muted);
+            background: rgba(255, 255, 255, 0.06);
+            color: #64748b;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
         }
 
-        .prot-toggle-btn.active.mode-vpn {
-            background: rgba(16, 185, 129, 0.12);
-            border-color: #10b981;
-            color: #10b981;
-            box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
-        }
-        .prot-toggle-btn.active.mode-vpn .prot-tag {
-            background: #10b981;
-            color: #ffffff;
-        }
-
-        .prot-toggle-btn.active.mode-warp {
-            background: rgba(59, 130, 246, 0.12);
-            border-color: #3b82f6;
-            color: #3b82f6;
-            box-shadow: 0 0 14px rgba(59, 130, 246, 0.25);
-        }
-        .prot-toggle-btn.active.mode-warp .prot-tag {
-            background: #3b82f6;
-            color: #ffffff;
+        /* ------------------------------------------------------------------ */
+        /* v09.12.07: ESTADO ACTIVO OBLIGATORIO EN VERDE ESMERALDA / BRILLANTE */
+        /* ------------------------------------------------------------------ */
+        .prot-toggle-btn.active {
+            background: rgba(16, 185, 129, 0.16) !important;
+            border: 2px solid #10b981 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.35), inset 0 0 8px rgba(16, 185, 129, 0.1) !important;
+            transform: translateY(-1px);
         }
 
-        .prot-toggle-btn.active.mode-direct {
-            background: rgba(234, 179, 8, 0.12);
-            border-color: #eab308;
-            color: #eab308;
-            box-shadow: 0 0 14px rgba(234, 179, 8, 0.25);
+        .prot-toggle-btn.active .prot-icon {
+            filter: grayscale(0) !important;
+            opacity: 1 !important;
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
         }
-        .prot-toggle-btn.active.mode-direct .prot-tag {
-            background: #eab308;
-            color: #1a1a1e;
+
+        .prot-toggle-btn.active .prot-title {
+            color: #ffffff !important;
+            font-weight: 800 !important;
+        }
+
+        .prot-toggle-btn.active .prot-tag {
+            background: #10b981 !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.7) !important;
         }
 
         .buffer-card {
@@ -2002,7 +2005,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Diagnóstico de Canales</h2>
-                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.06</span></p>
+                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.07</span></p>
             </div>
         </div>
 
@@ -2284,7 +2287,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.12.06</span>
+            <span class="val version-badge app-version">09.12.07</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -2559,7 +2562,7 @@
                     if (vpnPanel) vpnPanel.classList.remove('secondary');
                 }
 
-                // Actualizar interruptor de modo interactivo (v09.12.06)
+                // Actualizar interruptor de modo interactivo (v09.12.07)
                 const protBtnVpn = document.getElementById('prot-btn-vpn');
                 const protBtnWarp = document.getElementById('prot-btn-warp');
                 const protBtnDirect = document.getElementById('prot-btn-direct');
@@ -2567,13 +2570,23 @@
                 const tagWarp = document.getElementById('prot-tag-warp');
                 const tagDirect = document.getElementById('prot-tag-direct');
 
-                if (protBtnVpn) protBtnVpn.classList.toggle('active', isVpnActive);
-                if (protBtnWarp) protBtnWarp.classList.toggle('active', isWarpActive);
-                if (protBtnDirect) protBtnDirect.classList.toggle('active', !isVpnActive && !isWarpActive);
+                const currentMode = data.protection_mode || (data.vpn_wireguard ? 'vpn' : (data.warp_connected ? 'warp' : 'direct'));
+                const isVpn = (currentMode === 'vpn');
+                const isWarp = (currentMode === 'warp');
+                const isDirect = (currentMode === 'direct');
 
-                if (tagVpn) tagVpn.textContent = isVpnActive ? 'Activo' : 'Activar';
-                if (tagWarp) tagWarp.textContent = isWarpActive ? 'Activo' : 'Conectar';
-                if (tagDirect) tagDirect.textContent = (!isVpnActive && !isWarpActive) ? 'Activo' : 'Bypass';
+                if (protBtnVpn) {
+                    protBtnVpn.classList.toggle('active', isVpn);
+                    if (tagVpn) tagVpn.textContent = isVpn ? '● ACTIVO' : 'ACTIVAR';
+                }
+                if (protBtnWarp) {
+                    protBtnWarp.classList.toggle('active', isWarp);
+                    if (tagWarp) tagWarp.textContent = isWarp ? '● ACTIVO' : 'ACTIVAR';
+                }
+                if (protBtnDirect) {
+                    protBtnDirect.classList.toggle('active', isDirect);
+                    if (tagDirect) tagDirect.textContent = isDirect ? '● ACTIVO' : 'ACTIVAR';
+                }
 
                 if (tsBadge && tsText) {
                     const tsConn = data.tailscale ? data.tailscale.connected : false;
@@ -2643,6 +2656,27 @@
         }
 
         async function switchProtectionMode(mode) {
+            const protBtnVpn = document.getElementById('prot-btn-vpn');
+            const protBtnWarp = document.getElementById('prot-btn-warp');
+            const protBtnDirect = document.getElementById('prot-btn-direct');
+            const tagVpn = document.getElementById('prot-tag-vpn');
+            const tagWarp = document.getElementById('prot-tag-warp');
+            const tagDirect = document.getElementById('prot-tag-direct');
+
+            // Actualización visual inmediata y optimista (v09.12.07)
+            if (protBtnVpn) {
+                protBtnVpn.classList.toggle('active', mode === 'vpn');
+                if (tagVpn) tagVpn.textContent = (mode === 'vpn') ? '● ACTIVO' : 'ACTIVAR';
+            }
+            if (protBtnWarp) {
+                protBtnWarp.classList.toggle('active', mode === 'warp');
+                if (tagWarp) tagWarp.textContent = (mode === 'warp') ? '● ACTIVO' : 'ACTIVAR';
+            }
+            if (protBtnDirect) {
+                protBtnDirect.classList.toggle('active', mode === 'direct');
+                if (tagDirect) tagDirect.textContent = (mode === 'direct') ? '● ACTIVO' : 'ACTIVAR';
+            }
+
             const vpnSelect = document.getElementById('vpn-profile-select');
             let url = '/statplugin?action=set_protection_mode&mode=' + encodeURIComponent(mode);
             if (mode === 'vpn' && vpnSelect && vpnSelect.value) {
@@ -2655,7 +2689,7 @@
             try {
                 const res = await fetch(url);
                 const data = await res.json();
-                if (data.status === 'ok') {
+                if (data.status === 'ok' || data.status === 'success') {
                     if (typeof showToast === 'function') {
                         showToast('✓ ' + (data.message || 'Modo cambiado con éxito'), 'success');
                     }
