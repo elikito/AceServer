@@ -110,7 +110,33 @@ Broadcast::Broadcast(std::string infohash, Config config, HttpClient& http_clien
     ace_->authenticate();
 }
 
-Broadcast::~Broadcast() { stop(); }
+Broadcast::~Broadcast() {
+    running_ = false;
+    stopped_.store(true);
+    for (auto& client : clients()) {
+        if (client && client->queue) {
+            client->queue->close();
+        }
+    }
+    if (ace_) {
+        try { ace_->stop_broadcast(infohash_); } catch (...) {}
+        try { ace_->shutdown(); } catch (...) {}
+    }
+    if (stream_thread_.joinable()) {
+        if (stream_thread_.get_id() != std::this_thread::get_id()) {
+            stream_thread_.join();
+        } else {
+            stream_thread_.detach();
+        }
+    }
+    if (keepalive_thread_.joinable()) {
+        if (keepalive_thread_.get_id() != std::this_thread::get_id()) {
+            keepalive_thread_.join();
+        } else {
+            keepalive_thread_.detach();
+        }
+    }
+}
 
 namespace {
 
@@ -584,6 +610,12 @@ void BroadcastManager::reap_inactive_sessions(std::int64_t max_idle_seconds) {
             std::size_t c_count = broadcast->client_count();
             // Ambos deben ser cero: no deben quedar suscriptores ni clientes conectados
             if (subs <= 0 && c_count == 0) {
+                auto start_t = broadcast->get_start_time();
+                // Si la sesión está en su ventana protegida de 25s, no purgar todavía
+                if (start_t > 0 && (now - start_t) < 25) {
+                    ++it;
+                    continue;
+                }
                 auto zero_time = broadcast->get_zero_subscribers_time();
                 if (zero_time == 0) {
                     // Primer avistamiento sin suscriptores: marcar inicio de gracia linger_timeout (dinámico, mín 3s)
@@ -634,6 +666,10 @@ void BroadcastManager::remove_if_empty(const std::string& infohash) {
         if (it != broadcasts_.end()) {
             if (it->second->get_subscribers() <= 0 && it->second->client_count() == 0) {
                 auto now = unix_time();
+                auto start_t = it->second->get_start_time();
+                if (start_t > 0 && (now - start_t) < 25) {
+                    return;
+                }
                 auto zero_time = it->second->get_zero_subscribers_time();
                 int linger = std::max(3, config_.linger_timeout);
                 if (zero_time > 0 && (now - zero_time) >= linger) {

@@ -3497,6 +3497,21 @@ Json Proxy::get_network_diagnostics() {
         }
     }
 
+    // v09.12.05 — Lógica de Exclusión Mutua de Seguridad (WireGuard vs WARP)
+    std::string protection_mode = "direct";
+    bool warp_excluded = false;
+    bool vpn_secondary = false;
+
+    if (vpn_wireguard) {
+        protection_mode = "vpn";
+        warp_excluded = true;
+    } else if (warp_connected) {
+        protection_mode = "warp";
+        vpn_secondary = true;
+    } else if (tailscale_connected) {
+        protection_mode = "tailscale";
+    }
+
     return Json::object{
         {"status", "success"},
         {"warp_connected", warp_connected},
@@ -3515,12 +3530,15 @@ Json Proxy::get_network_diagnostics() {
             {"connected", tailscale_connected}
         }},
         {"safe_route", safe_route},
-        // v09.12.04 — WireGuard y geolocalización
+        // v09.12.04 / v09.12.05 — WireGuard y geolocalización con exclusión mutua
         {"vpn_wireguard", vpn_wireguard},
         {"vpn_profile", vpn_profile},
         {"country_flag", country_flag_emoji(loc)},
         {"country_name", country_name_from_iso(loc)},
-        {"country_code", loc}
+        {"country_code", loc},
+        {"protection_mode", protection_mode},
+        {"warp_excluded", warp_excluded},
+        {"vpn_secondary", vpn_secondary}
     };
 }
 
@@ -5405,89 +5423,102 @@ Json Proxy::get_engines_status() {
     Json::array engines_arr;
 
     auto probe_engine = [&](const std::string& host, int api_port, int http_port) -> std::pair<bool, std::string> {
-        // 1. Probar endpoint HTTP nativo en http_port (ej. 6878): /webui/api/service?method=get_version
-        try {
-            auto url = "http://" + host + ":" + std::to_string(http_port) + "/webui/api/service?method=get_version";
-            auto resp = http_client_.get(url, {{"User-Agent", "HTTPAceProxy"}}, 2, false);
-            if (resp.status >= 200 && resp.status < 300) {
-                auto data = Json::parse(resp.body);
-                if (data.contains("result") && data["result"].contains("version")) {
-                    auto v = data["result"]["version"].as_string("");
-                    if (!v.empty() && v != "unknown") {
-                        return {true, v};
-                    }
-                }
+        // v09.12.05: Probar host directo y fallbacks en red Docker (ej. gluetun para aceserve-modern)
+        std::vector<std::string> hosts_to_try = {host};
+        if (host == "aceserve-modern") {
+            hosts_to_try.push_back("gluetun");
+            if (!config_.ace_host.empty() && config_.ace_host != host && config_.ace_host != "gluetun") {
+                hosts_to_try.push_back(config_.ace_host);
             }
-        } catch (...) {}
+        }
 
-        // 2. Probar socket TCP telnet directo en api_port (62062): HELLOBG version=4 -> HELLOTS version=...
-        int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-        if (fd >= 0) {
-            timeval timeout{};
-            timeout.tv_sec = 2;
-            timeout.tv_usec = 0;
-            setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-            setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-
-            addrinfo hints{};
-            hints.ai_family = AF_INET;
-            hints.ai_socktype = SOCK_STREAM;
-            addrinfo* result = nullptr;
-            std::string port_str = std::to_string(api_port);
-
-            if (::getaddrinfo(host.c_str(), port_str.c_str(), &hints, &result) == 0 && result) {
-                bool connected = false;
-                for (auto* rp = result; rp; rp = rp->ai_next) {
-                    if (::connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
-                        connected = true;
-                        break;
-                    }
-                }
-                freeaddrinfo(result);
-
-                if (connected) {
-                    std::string hello = "HELLOBG version=4\r\n";
-                    ::send(fd, hello.data(), hello.size(), 0);
-
-                    std::string buffer;
-                    char buf[512];
-                    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-                    while (std::chrono::steady_clock::now() < deadline) {
-                        ssize_t n = ::recv(fd, buf, sizeof(buf) - 1, 0);
-                        if (n <= 0) break;
-                        buf[n] = '\0';
-                        buffer.append(buf, n);
-                        if (buffer.find('\n') != std::string::npos) break;
-                    }
-                    try {
-                        std::string bye = "SHUTDOWN\r\n";
-                        ::send(fd, bye.data(), bye.size(), 0);
-                    } catch (...) {}
-                    ::close(fd);
-
-                    auto pos = buffer.find("HELLOTS");
-                    if (pos != std::string::npos) {
-                        auto vpos = buffer.find("version=", pos);
-                        if (vpos != std::string::npos) {
-                            vpos += 8;
-                            auto vend = buffer.find_first_of(" \r\n\t", vpos);
-                            if (vend != std::string::npos) {
-                                std::string v = buffer.substr(vpos, vend - vpos);
-                                if (!v.empty()) return {true, v};
-                            }
+        for (const auto& target_host : hosts_to_try) {
+            // 1. Probar endpoint HTTP nativo en http_port (ej. 6878): /webui/api/service?method=get_version
+            try {
+                auto url = "http://" + target_host + ":" + std::to_string(http_port) + "/webui/api/service?method=get_version";
+                auto resp = http_client_.get(url, {{"User-Agent", "HTTPAceProxy"}}, 2, false);
+                if (resp.status >= 200 && resp.status < 300) {
+                    auto data = Json::parse(resp.body);
+                    if (data.contains("result") && data["result"].contains("version")) {
+                        auto v = data["result"]["version"].as_string("");
+                        if (!v.empty() && v != "unknown") {
+                            return {true, v};
                         }
                     }
-                    return {true, "unknown"};
                 }
+            } catch (...) {}
+
+            // 2. Probar socket TCP telnet directo en api_port (62062): HELLOBG version=4 -> HELLOTS version=...
+            int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+            if (fd >= 0) {
+                timeval timeout{};
+                timeout.tv_sec = 2;
+                timeout.tv_usec = 0;
+                setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+                setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+                addrinfo hints{};
+                hints.ai_family = AF_INET;
+                hints.ai_socktype = SOCK_STREAM;
+                addrinfo* result = nullptr;
+                std::string port_str = std::to_string(api_port);
+
+                if (::getaddrinfo(target_host.c_str(), port_str.c_str(), &hints, &result) == 0 && result) {
+                    bool connected = false;
+                    for (auto* rp = result; rp; rp = rp->ai_next) {
+                        if (::connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+                            connected = true;
+                            break;
+                        }
+                    }
+                    freeaddrinfo(result);
+
+                    if (connected) {
+                        std::string hello = "HELLOBG version=4\r\n";
+                        ::send(fd, hello.data(), hello.size(), 0);
+
+                        std::string buffer;
+                        char buf[512];
+                        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+                        while (std::chrono::steady_clock::now() < deadline) {
+                            ssize_t n = ::recv(fd, buf, sizeof(buf) - 1, 0);
+                            if (n <= 0) break;
+                            buf[n] = '\0';
+                            buffer.append(buf, n);
+                            if (buffer.find('\n') != std::string::npos) break;
+                        }
+                        try {
+                            std::string bye = "SHUTDOWN\r\n";
+                            ::send(fd, bye.data(), bye.size(), 0);
+                        } catch (...) {}
+                        ::close(fd);
+
+                        auto pos = buffer.find("HELLOTS");
+                        if (pos != std::string::npos) {
+                            auto vpos = buffer.find("version=", pos);
+                            if (vpos != std::string::npos) {
+                                vpos += 8;
+                                auto vend = buffer.find_first_of(" \r\n\t", vpos);
+                                if (vend != std::string::npos) {
+                                    std::string v = buffer.substr(vpos, vend - vpos);
+                                    if (!v.empty()) return {true, v};
+                                }
+                            }
+                        }
+                        return {true, "unknown"};
+                    }
+                }
+                ::close(fd);
             }
-            ::close(fd);
         }
 
         return {false, ""};
     };
 
     for (const auto& eng : kDefaultEngines) {
-        bool is_main = (eng.name == current_engine || (current_mode == "auto" && eng.name == (cpu_info_.has_avx_or_sse42 ? "aceserve-modern" : "aceserve-compat-light")));
+        bool is_main = (eng.name == current_engine || 
+                        (current_engine == "gluetun" && eng.name == "aceserve-modern") ||
+                        (current_mode == "auto" && eng.name == (cpu_info_.has_avx_or_sse42 ? "aceserve-modern" : "aceserve-compat-light")));
         std::string status = "standby";
         std::string version = "Inactivo";
 
@@ -5512,9 +5543,12 @@ Json Proxy::get_engines_status() {
         });
     }
 
+    std::string report_active_engine = current_engine;
+    if (report_active_engine == "gluetun") report_active_engine = "aceserve-modern";
+
     return Json::object{
         {"status", "success"},
-        {"active_engine", current_engine},
+        {"active_engine", report_active_engine},
         {"engine_mode", current_mode},
         {"cpu_detected", cpu_info_.cpu_detected},
         {"engines", engines_arr}

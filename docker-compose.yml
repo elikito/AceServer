@@ -15,7 +15,9 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     networks:
-      - aceproxy-net
+      aceproxy-net:
+        aliases:
+          - aceserve-modern
     environment:
       - TZ=Europe/Madrid
       - VPN_SERVICE_PROVIDER=custom

@@ -396,6 +396,94 @@
         }
 
         /* ------------------------------------------------------------------ */
+        /* MUTUALLY EXCLUSIVE PROTECTION UI (v09.12.05)                       */
+        /* ------------------------------------------------------------------ */
+        .protection-mode-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12.5px;
+            font-weight: 600;
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.25);
+            color: #22c55e;
+            transition: all 0.3s ease;
+        }
+
+        .protection-mode-banner.mode-vpn {
+            background: rgba(34, 197, 94, 0.09);
+            border-color: rgba(34, 197, 94, 0.35);
+            color: #22c55e;
+        }
+
+        .protection-mode-banner.mode-warp {
+            background: rgba(59, 130, 246, 0.09);
+            border-color: rgba(59, 130, 246, 0.35);
+            color: #3b82f6;
+        }
+
+        .protection-mode-banner.mode-direct {
+            background: rgba(234, 179, 8, 0.09);
+            border-color: rgba(234, 179, 8, 0.35);
+            color: #eab308;
+        }
+
+        .protection-mode-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .protection-mode-badge {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .net-item.excluded {
+            opacity: 0.45;
+            transition: opacity 0.3s ease;
+        }
+
+        .net-badge.excluded {
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px dashed rgba(148, 163, 184, 0.35);
+            color: var(--muted);
+        }
+
+        .net-badge.excluded .dot {
+            background: var(--muted);
+            box-shadow: none;
+        }
+
+        .vpn-panel.secondary {
+            opacity: 0.55;
+            filter: grayscale(40%);
+            transition: all 0.3s ease;
+        }
+
+        .vpn-panel.secondary .vpn-select,
+        .vpn-panel.secondary .vpn-apply-btn,
+        .vpn-panel.secondary .vpn-upload-btn {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .btn-disabled-exclusive {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+            border-color: rgba(148, 163, 184, 0.25) !important;
+            color: var(--muted) !important;
+        }
+
+        /* ------------------------------------------------------------------ */
         /* TOOLBAR                                                              */
         /* ------------------------------------------------------------------ */
         .toolbar {
@@ -1749,7 +1837,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Diagnóstico de Canales</h2>
-                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.04</span></p>
+                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.05</span></p>
             </div>
         </div>
 
@@ -1783,6 +1871,16 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Mutually Exclusive Protection Mode Banner (v09.12.05) -->
+            <div class="protection-mode-banner mode-vpn" id="protection-mode-banner">
+                <div class="protection-mode-title">
+                    <span id="pm-icon" style="font-size:16px;">🛡️</span>
+                    <span id="pm-text">Detectando capa de seguridad activa...</span>
+                </div>
+                <span class="protection-mode-badge" id="pm-badge">Comprobando</span>
+            </div>
+
             <div class="net-grid">
                 <div class="net-item">
                     <span class="net-label">Ruta de Tráfico</span>
@@ -1791,7 +1889,7 @@
                         <span id="net-route-text">Comprobando...</span>
                     </div>
                 </div>
-                <div class="net-item">
+                <div class="net-item" id="net-item-warp">
                     <span class="net-label">Cloudflare WARP</span>
                     <div id="net-warp-badge" class="net-badge pending">
                         <span class="dot"></span>
@@ -1981,7 +2079,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.12.04</span>
+            <span class="val version-badge app-version">09.12.05</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -2181,21 +2279,78 @@
                 }
 
                 const btnWarp = document.getElementById('btn-toggle-warp');
-                if (warpBadge && warpText) {
-                    const warpSt = data.warp ? data.warp.status : (data.warp_connected ? 'proxy' : 'disconnected');
-                    if (warpSt === 'active') {
+                const warpItem = document.getElementById('net-item-warp');
+                const pmBanner = document.getElementById('protection-mode-banner');
+                const pmIcon = document.getElementById('pm-icon');
+                const pmText = document.getElementById('pm-text');
+                const pmBadge = document.getElementById('pm-badge');
+                const vpnPanel = document.getElementById('vpn-panel');
+
+                // v09.12.05 — Lógica de Exclusión Mutua Visual (WireGuard vs WARP)
+                const isVpnActive = !!data.vpn_wireguard;
+                const isWarpActive = !isVpnActive && (data.warp_connected || (data.warp && (data.warp.status === 'active' || data.warp.status === 'proxy')));
+
+                if (isVpnActive) {
+                    // Modo VPN WireGuard Activo (Prioridad Total)
+                    if (pmBanner) {
+                        pmBanner.className = 'protection-mode-banner mode-vpn';
+                        if (pmIcon) pmIcon.textContent = '🛡️';
+                        if (pmText) pmText.textContent = `Capa Activa: WireGuard VPN (${data.vpn_profile || 'ProtonVPN'}) — Tráfico P2P blindado`;
+                        if (pmBadge) pmBadge.textContent = 'Prioridad Primaria';
+                    }
+                    if (warpItem) warpItem.classList.add('excluded');
+                    if (warpBadge && warpText) {
+                        warpBadge.className = 'net-badge excluded';
+                        warpText.textContent = 'Inactivo (Excluido por VPN activa)';
+                    }
+                    if (btnWarp) {
+                        btnWarp.disabled = true;
+                        btnWarp.classList.add('btn-disabled-exclusive');
+                        btnWarp.textContent = '⚡ WARP Excluido';
+                        btnWarp.title = 'Cloudflare WARP deshabilitado: la conexión WireGuard VPN tiene prioridad total sobre el tráfico.';
+                    }
+                    if (vpnPanel) vpnPanel.classList.remove('secondary');
+                } else if (isWarpActive) {
+                    // Modo Cloudflare WARP Activo
+                    if (pmBanner) {
+                        pmBanner.className = 'protection-mode-banner mode-warp';
+                        if (pmIcon) pmIcon.textContent = '⚡';
+                        if (pmText) pmText.textContent = 'Capa Activa: Cloudflare WARP (Túnel cifrado)';
+                        if (pmBadge) pmBadge.textContent = 'Túnel Activo';
+                    }
+                    if (warpItem) warpItem.classList.remove('excluded');
+                    if (warpBadge && warpText) {
+                        const warpSt = data.warp ? data.warp.status : (data.warp_connected ? 'proxy' : 'disconnected');
                         warpBadge.className = 'net-badge safe';
-                        warpText.textContent = 'Activo (Modo Túnel)';
-                        if (btnWarp) btnWarp.textContent = '🔌 Desconectar WARP';
-                    } else if (warpSt === 'proxy') {
-                        warpBadge.className = 'net-badge safe';
-                        warpText.textContent = 'Activo (Modo Proxy)';
-                        if (btnWarp) btnWarp.textContent = '🔌 Desconectar WARP';
-                    } else {
+                        warpText.textContent = (warpSt === 'proxy') ? 'Activo (Modo Proxy)' : 'Activo (Modo Túnel)';
+                    }
+                    if (btnWarp) {
+                        btnWarp.disabled = false;
+                        btnWarp.classList.remove('btn-disabled-exclusive');
+                        btnWarp.textContent = '🔌 Desconectar WARP';
+                        btnWarp.title = 'Desconectar Cloudflare WARP';
+                    }
+                    if (vpnPanel) vpnPanel.classList.add('secondary');
+                } else {
+                    // Modo Directo (Sin Protección)
+                    if (pmBanner) {
+                        pmBanner.className = 'protection-mode-banner mode-direct';
+                        if (pmIcon) pmIcon.textContent = '⚠️';
+                        if (pmText) pmText.textContent = 'Ruta Directa: Sin Protección Activa (ISP Local)';
+                        if (pmBadge) pmBadge.textContent = 'Sin Cifrado';
+                    }
+                    if (warpItem) warpItem.classList.remove('excluded');
+                    if (warpBadge && warpText) {
                         warpBadge.className = 'net-badge disconnected';
                         warpText.textContent = 'Offline';
-                        if (btnWarp) btnWarp.textContent = '⚡ Conectar WARP';
                     }
+                    if (btnWarp) {
+                        btnWarp.disabled = false;
+                        btnWarp.classList.remove('btn-disabled-exclusive');
+                        btnWarp.textContent = '⚡ Conectar WARP';
+                        btnWarp.title = 'Conectar Cloudflare WARP';
+                    }
+                    if (vpnPanel) vpnPanel.classList.remove('secondary');
                 }
 
                 if (tsBadge && tsText) {

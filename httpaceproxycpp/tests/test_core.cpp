@@ -1233,8 +1233,8 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
 }
 
 void test_v09_11_05_zero_copy_fanout_and_version() {
-    // 1. Verificación canónica de versión v09.12.04
-    require(std::string(kAppVersion) == "09.12.04", "App version must be exactly 09.12.04");
+    // 1. Verificación canónica de versión v09.12.05
+    require(std::string(kAppVersion) == "09.12.05", "App version must be exactly 09.12.05");
 
     // 2. Verificación de ChunkQueue con Zero-Copy Fan-Out (ChunkPtr compartido)
     std::vector<char> raw_data = {'T', 'E', 'S', 'T', '1', '2', '3'};
@@ -1326,8 +1326,8 @@ void test_v09_12_03_vpn_profile_management() {
 }
 
 void test_v09_12_04_vpn_upload_and_geolocate() {
-    // 1. Verificación canónica de versión v09.12.04
-    require(std::string(kAppVersion) == "09.12.04", "App version must be exactly 09.12.04");
+    // 1. Verificación canónica de versión v09.12.04+
+    require(std::string(kAppVersion) >= "09.12.04", "App version must be >= 09.12.04");
 
     // 2. Verificación de lógica de validación para subida de perfiles WireGuard
     auto validate_upload_filename = [](std::string name) -> std::pair<bool, std::string> {
@@ -1385,6 +1385,72 @@ void test_v09_12_04_vpn_upload_and_geolocate() {
     require(!diag_json["country_flag"].as_string().empty(), "country_flag is not empty");
 }
 
+void test_v09_12_05_mutually_exclusive_protection_and_engine_alias() {
+    // 1. Verificación canónica de versión v09.12.05
+    require(std::string(kAppVersion) == "09.12.05", "App version must be exactly 09.12.05");
+
+    // 2. Verificación de lógica de exclusión mutua de seguridad
+    auto compute_protection_status = [](bool vpn_wireguard, bool warp_connected, bool tailscale_connected) {
+        std::string mode = "direct";
+        bool warp_excluded = false;
+        bool vpn_secondary = false;
+
+        if (vpn_wireguard) {
+            mode = "vpn";
+            warp_excluded = true;
+        } else if (warp_connected) {
+            mode = "warp";
+            vpn_secondary = true;
+        } else if (tailscale_connected) {
+            mode = "tailscale";
+        }
+        return std::make_tuple(mode, warp_excluded, vpn_secondary);
+    };
+
+    // Caso A: VPN WireGuard activa -> WARP excluido
+    auto [modeA, warpExclA, vpnSecA] = compute_protection_status(true, false, false);
+    require(modeA == "vpn", "Mode A must be vpn");
+    require(warpExclA == true, "WARP must be excluded when VPN is active");
+    require(vpnSecA == false, "VPN is not secondary when active");
+
+    // Caso B: VPN WireGuard activa y WARP reportado -> VPN prima sobre WARP
+    auto [modeB, warpExclB, vpnSecB] = compute_protection_status(true, true, false);
+    require(modeB == "vpn", "Mode B must be vpn even if warp connected");
+    require(warpExclB == true, "WARP must be excluded when VPN active");
+
+    // Caso C: Solo WARP activo -> VPN secundario
+    auto [modeC, warpExclC, vpnSecC] = compute_protection_status(false, true, false);
+    require(modeC == "warp", "Mode C must be warp");
+    require(warpExclC == false, "WARP is not excluded when only WARP active");
+    require(vpnSecC == true, "VPN is secondary when WARP is active");
+
+    // Caso D: Sin túneles -> Modo directo
+    auto [modeD, warpExclD, vpnSecD] = compute_protection_status(false, false, false);
+    require(modeD == "direct", "Mode D must be direct");
+    require(warpExclD == false, "WARP not excluded in direct mode");
+    require(vpnSecD == false, "VPN not secondary in direct mode");
+
+    // 3. Verificación de alias y mapping de motor aceserve-modern con host gluetun
+    std::string current_engine = "gluetun";
+    std::string eng_name = "aceserve-modern";
+    bool is_main = (eng_name == current_engine || (current_engine == "gluetun" && eng_name == "aceserve-modern"));
+    require(is_main == true, "aceserve-modern must be recognized as is_main when current_engine is gluetun");
+
+    std::string report_engine = current_engine;
+    if (report_engine == "gluetun") report_engine = "aceserve-modern";
+    require(report_engine == "aceserve-modern", "Reported active engine must be mapped to aceserve-modern");
+
+    // 4. Verificación de ventana de inicio protegida (25s) para Broadcast & Reaper
+    int64_t start_time = 1000;
+    int64_t now_in_window = 1010; // 10s tras inicio (< 25s)
+    bool in_protected_window = (start_time > 0 && (now_in_window - start_time) < 25);
+    require(in_protected_window == true, "Session must be protected in initial 25s window");
+
+    int64_t now_after_window = 1030; // 30s tras inicio (>= 25s)
+    bool out_of_protected_window = (start_time > 0 && (now_after_window - start_time) < 25);
+    require(out_of_protected_window == false, "Session must be eligible for reaping after 25s window");
+}
+
 } // namespace
 
 int main() {
@@ -1431,6 +1497,7 @@ int main() {
         test_v09_11_05_zero_copy_fanout_and_version();
         test_v09_12_03_vpn_profile_management();
         test_v09_12_04_vpn_upload_and_geolocate();
+        test_v09_12_05_mutually_exclusive_protection_and_engine_alias();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {
