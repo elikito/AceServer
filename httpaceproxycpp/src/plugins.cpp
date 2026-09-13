@@ -991,6 +991,132 @@ public:
             send_bytes(ctx.connection, 200, "application/json; charset=utf-8", data.dump(2));
             return true;
 
+        // -----------------------------------------------------------------------
+        // v09.12.03 — Gestión de perfiles VPN WireGuard (multi-VPN ProtonVPN Plus)
+        // -----------------------------------------------------------------------
+        } else if (action == "vpn_list_profiles") {
+            // GET /statplugin?action=vpn_list_profiles
+            // Devuelve lista de .conf disponibles en config/vpn_profiles/ y el activo.
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                Json::object res;
+                res["status"] = "ok";
+                Json::array profiles;
+                std::string active_name;
+                // Resolver symlink active.conf
+                auto active_link = vpn_dir / "active.conf";
+                if (std::filesystem::exists(active_link)) {
+                    try {
+                        auto target = std::filesystem::read_symlink(active_link);
+                        active_name = target.filename().string();
+                    } catch (...) {
+                        active_name = "";
+                    }
+                }
+                // Listar archivos .conf (excluir active.conf)
+                if (std::filesystem::is_directory(vpn_dir)) {
+                    std::vector<std::string> names;
+                    for (const auto& entry : std::filesystem::directory_iterator(vpn_dir)) {
+                        if (!entry.is_regular_file()) continue;
+                        auto name = entry.path().filename().string();
+                        if (name == "active.conf") continue;
+                        if (name.size() > 5 && name.substr(name.size() - 5) == ".conf") {
+                            names.push_back(name);
+                        }
+                    }
+                    std::sort(names.begin(), names.end());
+                    for (const auto& n : names) profiles.push_back(Json(n));
+                }
+                res["profiles"] = Json(profiles);
+                res["active"] = active_name;
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                Json::object err;
+                err["status"] = "error";
+                err["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(err).dump(2));
+            }
+            return true;
+
+        } else if (action == "vpn_get_active") {
+            // GET /statplugin?action=vpn_get_active
+            // Resuelve el enlace active.conf y devuelve el nombre del perfil activo.
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                auto active_link = vpn_dir / "active.conf";
+                Json::object res;
+                if (std::filesystem::exists(active_link)) {
+                    auto target = std::filesystem::read_symlink(active_link);
+                    res["status"] = "ok";
+                    res["active"] = target.filename().string();
+                } else {
+                    res["status"] = "none";
+                    res["active"] = "";
+                }
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                Json::object err;
+                err["status"] = "error";
+                err["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(err).dump(2));
+            }
+            return true;
+
+        } else if (action == "vpn_set_profile") {
+            // GET /statplugin?action=vpn_set_profile&profile=NL-403.conf
+            // Valida, borra el symlink anterior y crea el nuevo. Reinicia gluetun si Docker socket disponible.
+            auto profile = query_get(ctx.query, "profile");
+            Json::object res;
+            // Validación de seguridad: sin path traversal, sólo .conf
+            bool valid = !profile.empty() && profile.size() <= 64
+                      && profile.find('/') == std::string::npos
+                      && profile.find('\\') == std::string::npos
+                      && profile.find("..") == std::string::npos
+                      && profile.size() > 5
+                      && profile.substr(profile.size() - 5) == ".conf"
+                      && profile != "active.conf";
+            if (!valid) {
+                res["status"] = "error";
+                res["message"] = "Nombre de perfil inválido o no permitido: " + profile;
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                auto target_file = vpn_dir / profile;
+                if (!std::filesystem::is_regular_file(target_file)) {
+                    res["status"] = "error";
+                    res["message"] = "Perfil no encontrado: " + profile;
+                    send_bytes(ctx.connection, 404, "application/json; charset=utf-8", Json(res).dump(2));
+                    return true;
+                }
+                auto active_link = vpn_dir / "active.conf";
+                // Eliminar symlink/archivo anterior si existe
+                if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
+                    std::filesystem::remove(active_link);
+                }
+                // Crear nuevo symlink relativo
+                std::filesystem::create_symlink(profile, active_link);
+                res["status"] = "ok";
+                res["active"] = profile;
+                res["message"] = "Perfil VPN cambiado a " + profile;
+                // Intentar reiniciar gluetun vía docker si socket disponible
+                bool docker_available = std::filesystem::exists("/var/run/docker.sock");
+                if (docker_available) {
+                    int ret = ::system("docker restart gluetun >/dev/null 2>&1 &");
+                    (void)ret;
+                    res["gluetun_restart"] = "requested";
+                } else {
+                    res["gluetun_restart"] = "skipped_no_socket";
+                }
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                res["status"] = "error";
+                res["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(res).dump(2));
+            }
+            return true;
+
         } else {
             // Servir el frontend HTML del statplugin.
             try {

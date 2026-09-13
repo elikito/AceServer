@@ -32,6 +32,27 @@ services:
       - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
       - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
 
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      - aceproxy-net
+    environment:
+      - TZ=Europe/Madrid
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_PORT_FORWARDING=on
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
+    volumes:
+      - ./config/vpn_profiles/active.conf:/gluetun/wireguard/wg0.conf:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+
   aceserve-modern:
     image: jopsis/aceserve:latest
     container_name: aceserve-modern
@@ -52,7 +73,7 @@ services:
       - "8622-8630:8622-8630/udp"
     environment:
       - TZ=Europe/Madrid
-      - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --live-cache-type memory --live-mem-cache-size 524288000 --max-upload-rate 1000
+      - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --max-peers 100 --live-cache-type memory --live-mem-cache-size 524288000 --max-upload-rate 1000
     command:
       - python
       - main.py

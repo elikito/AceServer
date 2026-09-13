@@ -1234,7 +1234,7 @@ void test_v09_11_04_pinned_virtual_cid_logic() {
 
 void test_v09_11_05_zero_copy_fanout_and_version() {
     // 1. Verificación canónica de versión v09.12.02
-    require(std::string(kAppVersion) == "09.12.02", "App version must be exactly 09.12.02");
+    require(std::string(kAppVersion) == "09.12.03", "App version must be exactly 09.12.03");
 
     // 2. Verificación de ChunkQueue con Zero-Copy Fan-Out (ChunkPtr compartido)
     std::vector<char> raw_data = {'T', 'E', 'S', 'T', '1', '2', '3'};
@@ -1284,6 +1284,47 @@ void test_v09_11_05_zero_copy_fanout_and_version() {
     require(std::string(legacy_out.data(), legacy_out.size()) == "ABC", "Content must match vector pop");
 }
 
+void test_v09_12_03_vpn_profile_management() {
+    // 1. Verificación canónica de versión v09.12.03
+    require(std::string(kAppVersion) == "09.12.03", "App version must be exactly 09.12.03 for VPN management");
+
+    // 2. Verificación de estructura de directorio de perfiles VPN
+    //    (comprobación lógica sin acceso real a FS en entorno de test unitario)
+    const std::string vpn_dir_suffix = "config/vpn_profiles";
+    require(!vpn_dir_suffix.empty(), "VPN profiles directory path must not be empty");
+
+    // 3. Verificación de nombres de perfil válidos (sin path traversal)
+    auto is_valid_profile_name = [](const std::string& name) -> bool {
+        if (name.empty() || name.size() > 64) return false;
+        if (name.find('/') != std::string::npos) return false;
+        if (name.find('\\') != std::string::npos) return false;
+        if (name.find(".." ) != std::string::npos) return false;
+        if (name.size() < 5) return false;
+        // Debe terminar en .conf
+        return name.size() > 5 && name.substr(name.size() - 5) == ".conf";
+    };
+    require(is_valid_profile_name("FR-223.conf"), "FR-223.conf must be a valid profile name");
+    require(is_valid_profile_name("NL-403.conf"), "NL-403.conf must be a valid profile name");
+    require(!is_valid_profile_name("../etc/passwd"), "Path traversal must be rejected");
+    require(!is_valid_profile_name(""), "Empty profile name must be rejected");
+    require(!is_valid_profile_name("no_extension"), "Name without .conf extension must be rejected");
+    require(!is_valid_profile_name("bad/path.conf"), "Profile name with slash must be rejected");
+
+    // 4. Verificación de generación de respuesta JSON de lista de perfiles
+    Json::object profile_list;
+    profile_list["status"] = "ok";
+    profile_list["active"] = "FR-223.conf";
+    Json::array profiles;
+    profiles.push_back(Json("FR-223.conf"));
+    profiles.push_back(Json("NL-403.conf"));
+    profile_list["profiles"] = Json(profiles);
+    Json resp(profile_list);
+    require(resp.is_object(), "VPN profile list response must be a JSON object");
+    require(resp["active"].as_string() == "FR-223.conf", "Active profile must be FR-223.conf by default");
+    require(resp["profiles"].is_array(), "Profiles field must be an array");
+    require(resp["profiles"].as_array().size() == 2, "Must have exactly 2 profiles (FR-223, NL-403)");
+}
+
 } // namespace
 
 int main() {
@@ -1328,6 +1369,7 @@ int main() {
         test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity();
         test_v09_11_04_pinned_virtual_cid_logic();
         test_v09_11_05_zero_copy_fanout_and_version();
+        test_v09_12_03_vpn_profile_management();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

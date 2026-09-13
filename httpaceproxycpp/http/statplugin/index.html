@@ -276,6 +276,98 @@
             color: var(--muted);
         }
 
+        /* ------------------------------------------------------------------ */
+        /* VPN PROFILE SELECTOR (v09.12.03)                                    */
+        /* ------------------------------------------------------------------ */
+        .vpn-panel {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .vpn-panel-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .vpn-select {
+            flex: 1;
+            min-width: 160px;
+            max-width: 280px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 5px 10px;
+            cursor: pointer;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .vpn-select:focus {
+            border-color: var(--brand);
+        }
+
+        .vpn-apply-btn {
+            background: var(--brand-dim);
+            border: 1px solid rgba(34,197,94,.35);
+            color: #22c55e;
+            border-radius: var(--radius-sm);
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 5px 14px;
+            cursor: pointer;
+            transition: background .2s, transform .1s;
+            white-space: nowrap;
+        }
+
+        .vpn-apply-btn:hover {
+            background: rgba(34,197,94,.22);
+        }
+
+        .vpn-apply-btn:active {
+            transform: scale(.97);
+        }
+
+        .vpn-apply-btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        .vpn-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .vpn-status-badge.active {
+            background: var(--brand-dim);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,.3);
+        }
+
+        .vpn-status-badge.inactive {
+            background: var(--gray-dim);
+            color: var(--muted);
+            border: 1px solid var(--border2);
+        }
+
         .btn-sm {
             padding: 4px 10px;
             font-size: 12px;
@@ -1635,7 +1727,7 @@
         <div class="header-section">
             <div class="header-title">
                 <h2>Diagnóstico de Canales</h2>
-                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.08.07</span></p>
+                <p>Verifica los CIDs con el Worker Pool de 4 fases — v<span class="app-version">09.12.03</span></p>
             </div>
         </div>
 
@@ -1698,6 +1790,22 @@
                         <span id="net-isp-val" class="net-isp">—</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- VPN Profile Selector (v09.12.03) -->
+            <div class="vpn-panel" id="vpn-panel">
+                <span class="vpn-panel-label">🔐 Perfil WireGuard:</span>
+                <select id="vpn-profile-select" class="vpn-select" title="Seleccionar perfil VPN WireGuard">
+                    <option value="" disabled selected>Cargando perfiles...</option>
+                </select>
+                <span id="vpn-status-badge" class="vpn-status-badge inactive">
+                    <span id="vpn-status-dot" style="width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
+                    <span id="vpn-status-text">Sin datos</span>
+                </span>
+                <button id="vpn-apply-btn" class="vpn-apply-btn" onclick="applyVpnProfile()"
+                    title="Aplicar el perfil seleccionado y reiniciar gluetun">
+                    ⚡ Aplicar
+                </button>
             </div>
         </div>
 
@@ -1832,7 +1940,7 @@
         </div>
         <div class="footer-right" id="footer-ver-block" title="Copiar versión">
             <span class="label" style="font-size:11px;font-weight:600;letter-spacing:.5px;">VERSIÓN:</span>
-            <span class="val version-badge app-version">09.08.07</span>
+            <span class="val version-badge app-version">09.12.03</span>
         </div>
     </div>
     <script src="/js/footer.js"></script>
@@ -1861,6 +1969,8 @@
             }
             loadPlugins();
             loadEnginesStatus();
+            loadNetworkDiagnostics(false);
+            loadVpnProfiles();
         });
 
         // =========================================================================
@@ -2081,13 +2191,99 @@
             try {
                 const res = await fetch('/statplugin?action=warp_toggle');
                 if (res.ok) {
-                    if (typeof showToast === 'function') showToast('✓ Comando WARP ejecutado', 'success');
+                    if (typeof showToast === 'function') showToast('\u2713 Comando WARP ejecutado', 'success');
                 }
             } catch (e) {
-                if (typeof showToast === 'function') showToast('⚠ Error enviando comando WARP: ' + e.message, 'error');
+                if (typeof showToast === 'function') showToast('\u26a0 Error enviando comando WARP: ' + e.message, 'error');
             }
             if (btn) btn.disabled = false;
             loadNetworkDiagnostics(false);
+        }
+
+        // =========================================================================
+        // VPN PROFILE MANAGEMENT (v09.12.03)
+        // =========================================================================
+        async function loadVpnProfiles() {
+            const select = document.getElementById('vpn-profile-select');
+            const badge = document.getElementById('vpn-status-badge');
+            const dot = document.getElementById('vpn-status-dot');
+            const statusText = document.getElementById('vpn-status-text');
+            if (!select) return;
+            try {
+                const res = await fetch('/statplugin?action=vpn_list_profiles');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const profiles = data.profiles || [];
+                const active = data.active || '';
+
+                // Populate dropdown
+                select.innerHTML = '';
+                if (profiles.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.textContent = 'Sin perfiles disponibles';
+                    opt.disabled = true;
+                    select.appendChild(opt);
+                } else {
+                    profiles.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p;
+                        // Friendly display name: remove .conf, show server location
+                        const label = p.replace(/\.conf$/i, '');
+                        opt.textContent = label + (p === active ? ' \u2714 (activo)' : '');
+                        opt.selected = (p === active);
+                        select.appendChild(opt);
+                    });
+                }
+
+                // Update badge
+                if (active && badge && dot && statusText) {
+                    badge.className = 'vpn-status-badge active';
+                    dot.style.background = '#22c55e';
+                    dot.style.boxShadow = '0 0 6px #22c55e';
+                    statusText.textContent = active.replace(/\.conf$/i, '');
+                } else if (badge && statusText) {
+                    badge.className = 'vpn-status-badge inactive';
+                    dot.style.background = 'var(--muted)';
+                    dot.style.boxShadow = 'none';
+                    statusText.textContent = 'Sin perfil activo';
+                }
+            } catch (err) {
+                console.warn('Error cargando perfiles VPN:', err);
+                if (select) {
+                    select.innerHTML = '<option value="" disabled selected>Error al cargar perfiles</option>';
+                }
+            }
+        }
+
+        async function applyVpnProfile() {
+            const select = document.getElementById('vpn-profile-select');
+            const btn = document.getElementById('vpn-apply-btn');
+            if (!select || !select.value) {
+                if (typeof showToast === 'function') showToast('\u26a0 Selecciona un perfil primero', 'error');
+                return;
+            }
+            const profile = select.value;
+            if (btn) btn.disabled = true;
+            if (typeof showToast === 'function') showToast('Aplicando perfil VPN: ' + profile.replace(/\.conf$/i, '') + '...', 'info');
+            try {
+                const res = await fetch('/statplugin?action=vpn_set_profile&profile=' + encodeURIComponent(profile));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    if (typeof showToast === 'function') {
+                        const restartMsg = data.gluetun_restart === 'requested'
+                            ? ' — Reiniciando gluetun...' : ' — Reinicia gluetun manualmente.';
+                        showToast('\u2713 Perfil VPN cambiado a ' + data.active.replace(/\.conf$/i, '') + restartMsg, 'success');
+                    }
+                    await loadVpnProfiles();
+                } else {
+                    if (typeof showToast === 'function') showToast('\u26a0 Error: ' + (data.message || 'desconocido'), 'error');
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('\u26a0 Error aplicando perfil: ' + e.message, 'error');
+            }
+            if (btn) btn.disabled = false;
         }
 
 
