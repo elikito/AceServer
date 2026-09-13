@@ -421,12 +421,23 @@ void Proxy::handle_http(const HttpRequest& request, ClientConnection& connection
         send_error(connection, 401, "Dropping connection due to firewall rules");
         return;
     }
-    if (request.method != "GET" && request.method != "HEAD" && request.method != "POST") {
+    if (request.method != "GET" && request.method != "HEAD" && request.method != "POST" && request.method != "OPTIONS") {
         send_error(connection, 400, "Bad Request");
+        return;
+    }
+    if (request.method == "OPTIONS") {
+        connection.send_response_headers(204, "No Content", {
+            {"Access-Control-Allow-Origin", "*"},
+            {"Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS"},
+            {"Access-Control-Allow-Headers", "Range, Content-Type, Accept, Origin, User-Agent, X-Requested-With"},
+            {"Access-Control-Max-Age", "86400"},
+            {"Connection", "close"}
+        });
         return;
     }
     if (request.method == "HEAD" || is_fake_request(request)) {
         connection.send_response_headers(200, status_reason(200), {
+            {"Access-Control-Allow-Origin", "*"},
             {"Content-Type", "video/mp2t"},
             {"Connection", "close"}
         });
