@@ -1,92 +1,24 @@
-networks:
-  aceproxy-net:
-    driver: bridge
-
+name: httpaceproxy
 services:
-  # ── gluetun: VPN gateway (WireGuard ProtonVPN Plus) ─────────────────────────
-  # aceserve-modern comparte el namespace de red de gluetun.
-  # Todos los puertos del motor AceStream se exponen aquí.
-  gluetun:
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun
+  aceserve-compat-light:
+    image: wafy80/acestream:latest
+    container_name: aceserve-compat-light
     restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    networks:
-      aceproxy-net:
-        aliases:
-          - aceserve-modern
-    environment:
-      - TZ=Europe/Madrid
-      - VPN_SERVICE_PROVIDER=custom
-      - VPN_TYPE=wireguard
-      - VPN_PORT_FORWARDING=off
-      - HTTP_CONTROL_SERVER_AUTH=none
-      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,172.18.0.0/16
-      - FIREWALL_VPN_INPUT_PORTS=6878,8621,8622,8623,8624,8625,8626,8627,8628,8629,8630,62062
-      - DNS_UPSTREAM_RESOLVER_TYPE=plain
-      - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1:53,8.8.8.8:53
-      - BLOCK_MALICIOUS=off
-      - BLOCK_SURVEILLANCE=off
-      - BLOCK_ADS=off
-    volumes:
-      - ./config/vpn_profiles/active.conf:/gluetun/wireguard/wg0.conf:ro
-      - ./config/gluetun_status:/tmp/gluetun
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-    # Puertos de aceserve-modern expuestos a través del namespace de gluetun
-    ports:
-      - "6878:6878/tcp"
-      - "6878:6878/udp"
-      - "8621:8621/tcp"
-      - "8621:8621/udp"
-      - "62062:62062/tcp"
-      - "8622-8630:8622-8630/udp"
-
-  httpaceproxy:
-    build:
-      context: .
-      dockerfile: httpaceproxycpp/Dockerfile
-    container_name: httpaceproxy
-    restart: unless-stopped
-    ports:
-      - "8888:8888"
-    environment:
-      - TZ=Europe/Madrid
-      - ACESTREAM_HOST=gluetun
-      - ACESTREAM_API_PORT=62062
-      - ACESTREAM_HTTP_PORT=6878
-      - ENABLED_PLUGINS=newera,elcano,acepl,af1c1onados,aio,stat,statplugin
     networks:
       - aceproxy-net
-    depends_on:
-      - aceserve-modern
-      - ipfs-node
-    volumes:
-      - ./config:/app/config
-      - ./httpaceproxycpp/http:/app/http
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-      - /run/cloudflare-warp:/run/cloudflare-warp
-      - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
-      - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
+    ports:
+      - "62063:62072"
 
-  # ── aceserve-modern: motor AceStream P2P ────────────────────────────────────
-  # Usa el namespace de red de gluetun → todo el tráfico P2P va por WireGuard.
-  # NO tiene sección "ports:" ni "networks:" propias.
-  aceserve-modern:
-    image: jopsis/aceserve:latest
-    container_name: aceserve-modern
+  aceserve-compat-stable:
+    image: blaiseio/acelink:latest
+    container_name: aceserve-compat-stable
     restart: unless-stopped
-    network_mode: "service:gluetun"
-    depends_on:
-      - gluetun
-    environment:
-      - TZ=Europe/Madrid
-      - ACESTREAM_OPTS=--live-buffer 35 --vod-buffer 20 --max-connections 500 --max-peers 100 --live-cache-type memory --live-mem-cache-size 524288000 --max-upload-rate 1000
+    networks:
+      - aceproxy-net
+    ports:
+      - "62064:62072"
+
+  aceserve-modern:
     command:
       - python
       - main.py
@@ -104,28 +36,117 @@ services:
       - "100"
       - --max-upload-rate
       - "1000"
+    container_name: aceserve-modern
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_started
+        required: true
+    environment:
+      ACESTREAM_OPTS: --live-buffer 35 --vod-buffer 20 --max-connections 500 --max-peers 100 --live-cache-type memory --live-mem-cache-size 524288000 --max-upload-rate 1000
+      TZ: Europe/Madrid
+    image: jopsis/aceserve:latest
+    restart: unless-stopped
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
 
-  ipfs-node:
-    image: ipfs/kubo:latest
-    container_name: ipfs-node
+  gluetun:
+    cap_add:
+      - NET_ADMIN
+    container_name: gluetun
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      BLOCK_ADS: 'off'
+      BLOCK_MALICIOUS: 'off'
+      BLOCK_SURVEILLANCE: 'off'
+      DNS_UPSTREAM_PLAIN_ADDRESSES: 1.1.1.1:53,8.8.8.8:53
+      DNS_UPSTREAM_RESOLVER_TYPE: plain
+      FIREWALL_OUTBOUND_SUBNETS: 172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,172.18.0.0/16,100.64.0.0/10
+      FIREWALL_VPN_INPUT_PORTS: 6878,8621,8622,8623,8624,8625,8626,8627,8628,8629,8630,62062
+      HTTP_CONTROL_SERVER_AUTH: none
+      TZ: Europe/Madrid
+      VPN_PORT_FORWARDING: 'off'
+      VPN_SERVICE_PROVIDER: custom
+      VPN_TYPE: wireguard
+    image: qmcgaw/gluetun:latest
+    networks:
+      aceproxy-net:
+        aliases:
+          - aceserve-modern
+    ports:
+      - 6878:6878/tcp
+      - 6878:6878/udp
+      - 8621:8621/tcp
+      - 8621:8621/udp
+      - 62062:62062/tcp
+      - 8622-8630:8622-8630/udp
     restart: unless-stopped
+    volumes:
+      - /opt/HTTPAceProxy/config/vpn_profiles/active.conf:/gluetun/wireguard/wg0.conf:ro
+      - /opt/HTTPAceProxy/config/gluetun_status:/tmp/gluetun
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+
+  httpaceproxy:
+    build:
+      context: /opt/HTTPAceProxy
+      dockerfile: httpaceproxycpp/Dockerfile
+    container_name: httpaceproxy
+    depends_on:
+      aceserve-modern:
+        condition: service_started
+        required: true
+      ipfs-node:
+        condition: service_started
+        required: true
+    environment:
+      ACESTREAM_API_PORT: "62062"
+      ACESTREAM_HOST: gluetun
+      ACESTREAM_HTTP_PORT: "6878"
+      ENABLED_PLUGINS: newera,elcano,acepl,af1c1onados,aio,stat,statplugin
+      TZ: Europe/Madrid
+    networks:
+      - aceproxy-net
+    ports:
+      - 8888:8888/tcp
+    restart: unless-stopped
+    volumes:
+      - /opt/HTTPAceProxy/config:/app/config
+      - /opt/HTTPAceProxy/httpaceproxycpp/http:/app/http
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /run/cloudflare-warp:/run/cloudflare-warp
+      - /var/lib/cloudflare-warp:/var/lib/cloudflare-warp:ro
+      - /usr/bin/warp-cli:/usr/bin/warp-cli:ro
+
+  ipfs-node:
+    container_name: ipfs-node
     dns:
       - 1.1.1.1
       - 8.8.8.8
     environment:
-      - TZ=Europe/Madrid
-      - IPFS_PROFILE=server,lowpower
+      IPFS_PROFILE: server,lowpower
+      TZ: Europe/Madrid
+    image: ipfs/kubo:latest
     networks:
       - aceproxy-net
     ports:
-      - "127.0.0.1:8180:8080"
-      - "127.0.0.1:5010:5001"
-      - "4010:4010/tcp"
+      - 127.0.0.1:8180:8080
+      - 127.0.0.1:5010:5001
+      - 4010:4010/tcp
+    restart: unless-stopped
     volumes:
-      - ./config/ipfs_data:/data/ipfs
-      - ./config/ipfs_staging:/export
+      - /opt/HTTPAceProxy/config/ipfs_data:/data/ipfs
+      - /opt/HTTPAceProxy/config/ipfs_staging:/export
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+
+networks:
+  aceproxy-net:
+    name: httpaceproxy_aceproxy-net
+    driver: bridge

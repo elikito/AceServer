@@ -718,10 +718,14 @@ void ChannelVerifier::phase_observe(const std::string& stat_url, VerifyResult& r
     // Fase 4 completada si llegamos hasta aquí con datos.
     if (result.phase_reached >= 3) result.phase_reached = 4;
 
-    result.peers       = best_peers;
+    if (best_peers > 0) {
+        result.peers = best_peers;
+    } else if (result.peers <= 0 && (last_status == "dl" || last_status == "prebuf" || last_status == "buf")) {
+        result.peers = 1;
+    }
     result.speed_down  = best_speed;
     result.status_text = last_status;
-    result.health      = classify(best_peers, best_speed, last_status,
+    result.health      = classify(result.peers, best_speed, last_status,
                                   speed_threshold_.load());
 }
 

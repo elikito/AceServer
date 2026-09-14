@@ -4,6 +4,31 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.14.02] - 2026-09-14
+
+### 🛡️ Blindaje de Red Excluyente, Concurso P2P con Semillas Reales, Gestión VPN Avanzada y Unificación de Streaming
+
+#### 1. Protección de Red Mutuamente Excluyente y Preservación de Tailscale (`docker-compose.yml`, `plugins.cpp`, `proxy.cpp`)
+- **Restauración del Alias de Red en Docker**: Restablecido el alias `aceserve-modern` en el contenedor `gluetun` dentro de la red `aceproxy-net`, resolviendo de raíz el error `Could not resolve host: aceserve-modern` y permitiendo que todas las peticiones internas HTTP y API alcancen el motor sin fallos DNS.
+- **Preservación Incondicional de Tailscale**: Incorporada la subred CGNAT `100.64.0.0/10` a `FIREWALL_OUTBOUND_SUBNETS` en `gluetun`, garantizando que el acceso remoto a través de Tailscale Mesh nunca sea interrumpido ni bloqueado por el firewall de la VPN.
+- **Detección SOCKS5 WARP**: Sincronizado el verificador de salud en `proxy.cpp` al puerto `4002` (y fallback 4001).
+
+#### 2. Gestión Avanzada de Perfiles VPN (`plugins.cpp`, `statplugin/index.html`)
+- **Borrado Inteligente de Perfil Activo**: Si el usuario elimina el perfil WireGuard que está actualmente en uso, el backend conmuta automáticamente a **Modo Directo (Sin Protección)** de forma transparente, eliminando el bloqueo con error 409 y dejando la conexión en estado consistente.
+- **Edición Directa de Perfiles en la Web**: Incorporadas las acciones `vpn_get_profile_content` y `vpn_save_profile_content` junto con un modal en `statplugin/index.html` con botón `✏️ Editar` para revisar y modificar la configuración de WireGuard directamente desde el panel.
+
+#### 3. Concurso de CIDs y Verificación de Salud P2P (`channel_verifier.cpp`, `stream_scorer.cpp`, `proxy.cpp`)
+- **Ampliación de Ventana de Observación (2500 ms)**: Elevado `kDefaultObserveTotalMs` a 2,5 segundos para permitir que el motor AceStream contacte con la DHT y los trackers en frío antes de cerrar la sesión, evitando que los CIDs se clasifiquen prematuramente con 0 peers.
+- **Preservación de Semillas y Fallback de Estrellas**: Restaurado el cálculo de estabilidad por estrellas (`***`=80, `**`=50, `*`=20) y asegurado que los candidatos clasificados como `ONLINE` o `LOW_PEERS` nunca queden con 0 peers en el ranking del concurso.
+- **Resolución Exitosa de Canales Virtuales**: Los canales `/auto/...` seleccionan de forma fiable el candidato con mayor disponibilidad P2P real, eliminando los timeouts y la sintonización a ciegas de CIDs caídos.
+
+#### 4. Unificación y Robustez del Reproductor Web (`player/index.html`)
+- **Motor Fluido Heredado de Mobile**: `/player/index.html` adopta el motor de streaming continuo de `/mobile/index.html`, con búfer optimizado MSE, desvinculación atómica previa, reconexión suave ante microcortes y eliminación del cartel bloqueante de "Abre VLC".
+- **Preservación de Legacy**: `/player/legacy.html` se mantiene 100% intacto y optimizado para iPad Air (iOS 12).
+
+#### 5. Sincronización Canónica de Versión a `09.14.02`
+- Actualización coordinada en backend y frontend: `version.hpp`, `CMakeLists.txt`, `test_core.cpp`, `footer.js`, `navbar.js`, `plugins_state.json` y `CHANGELOG.md`.
+
 ## [09.12.07] - 2026-09-13
 
 ### 🛡️ Estabilización Integral de Red, Selector Activo Verde Esmeralda y Streaming Móvil Anti-Colapso

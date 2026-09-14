@@ -1541,7 +1541,7 @@ void test_v09_12_06_dynamic_protection_switcher_and_stream_buffer() {
 
 void test_v09_12_07_protection_button_states_and_p2p_shielding() {
     // 1. Verificación canónica de versión v09.14.01
-    require(std::string(kAppVersion) == "09.14.01", "App version must be exactly 09.14.01");
+    require(std::string(kAppVersion) == "09.14.02", "App version must be exactly 09.14.02");
 
     // 2. Verificación de lógica de estados visuales (Verde Esmeralda Activo vs Gris Inactivo)
     struct ButtonState {

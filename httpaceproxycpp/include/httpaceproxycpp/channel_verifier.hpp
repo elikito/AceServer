@@ -58,7 +58,7 @@ inline constexpr long long kDefaultSpeedThreshold = 102400LL;
 // ---------------------------------------------------------------------------
 inline constexpr int kDefaultMaxWorkers = 2;
 inline constexpr int kDefaultCacheAgeSec = 90;
-inline constexpr int kDefaultObserveTotalMs = 800;
+inline constexpr int kDefaultObserveTotalMs = 1000;
 inline constexpr int kDefaultObservePollMs = 300;
 
 // ---------------------------------------------------------------------------

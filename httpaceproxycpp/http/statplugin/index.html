@@ -410,6 +410,26 @@
             border-color: #ef4444;
         }
 
+        .vpn-edit-btn {
+            background: rgba(59,130,246,.1);
+            border: 1px solid rgba(59,130,246,.3);
+            color: #3b82f6;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .vpn-edit-btn:hover {
+            background: rgba(59,130,246,.2);
+            border-color: #3b82f6;
+        }
+
         .btn-sm {
             padding: 4px 10px;
             font-size: 12px;
@@ -2178,10 +2198,34 @@
                     title="Subir archivo de configuración .conf de WireGuard">
                     📁 Subir .conf
                 </button>
+                <button type="button" id="vpn-edit-btn" class="vpn-edit-btn" onclick="openVpnEditModal()"
+                    title="Ver o editar el contenido del archivo .conf seleccionado">
+                    ✏️ Editar
+                </button>
                 <button type="button" id="vpn-delete-btn" class="vpn-delete-btn" onclick="deleteVpnProfile()"
-                    title="Eliminar el perfil seleccionado (no se puede borrar el perfil activo)">
+                    title="Eliminar el perfil seleccionado (si está activo, pasa automáticamente a Modo Directo)">
                     🗑️ Borrar
                 </button>
+            </div>
+        </div>
+
+        <!-- Modal para Edición de Perfil WireGuard -->
+        <div id="vpn-edit-modal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; width:90%; max-width:650px; padding:20px; box-shadow:0 20px 40px rgba(0,0,0,0.5); display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                    <div style="font-weight:700; font-size:16px; color:var(--text);">
+                        ✏️ Editar Perfil: <span id="vpn-edit-filename" style="color:var(--brand); font-family:monospace;"></span>
+                    </div>
+                    <button onclick="closeVpnEditModal()" style="background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;">&times;</button>
+                </div>
+                <div style="font-size:12px; color:var(--muted);">
+                    Modifica los parámetros de WireGuard ([Interface], PrivateKey, Address, [Peer], PublicKey, Endpoint).
+                </div>
+                <textarea id="vpn-edit-textarea" rows="14" style="width:100%; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:12px; font-family:monospace; font-size:12.5px; resize:vertical; box-sizing:border-box; outline:none;"></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeVpnEditModal()" style="padding:7px 14px; border-radius:6px; cursor:pointer;">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveVpnProfileContent()" style="background:var(--brand); color:#fff; border:none; padding:7px 16px; border-radius:6px; font-weight:600; cursor:pointer;">💾 Guardar Cambios</button>
+                </div>
             </div>
         </div>
 
@@ -2989,18 +3033,23 @@
         async function deleteVpnProfile() {
             const select = document.getElementById('vpn-profile-select');
             if (!select || !select.value) {
-                if (typeof showToast === 'function') showToast('\u26a0 Selecciona un perfil para borrar', 'error');
+                if (typeof showToast === 'function') showToast('⚠ Selecciona un perfil para borrar', 'error');
                 return;
             }
             const profile = select.value;
             const displayName = select.options[select.selectedIndex]?.text || profile;
             // Confirmación
-            if (!confirm(`¿Eliminar el perfil VPN "${displayName}"?\n\nEsta acción no se puede deshacer.`)) return;
+            if (!confirm(`¿Eliminar el perfil VPN "${displayName}"?\n\nSi está activo, el sistema pasará automáticamente a Modo Directo (Sin Protección).`)) return;
             try {
                 const res = await fetch('/statplugin?action=vpn_delete_profile&profile=' + encodeURIComponent(profile));
                 const data = await res.json();
                 if (res.ok && data.status === 'ok') {
-                    if (typeof showToast === 'function') showToast('✓ Perfil eliminado: ' + profile, 'success');
+                    if (data.switched_to_direct) {
+                        if (typeof showToast === 'function') showToast('✓ Perfil activo eliminado. Se cambió a Modo Directo.', 'success');
+                        loadNetworkDiagnostics();
+                    } else {
+                        if (typeof showToast === 'function') showToast('✓ ' + (data.message || 'Perfil eliminado'), 'success');
+                    }
                     await loadVpnProfiles();
                 } else {
                     if (typeof showToast === 'function') showToast('⚠ ' + (data.message || 'Error al borrar'), 'error');
@@ -3008,6 +3057,61 @@
             } catch (err) {
                 if (typeof showToast === 'function') showToast('⚠ Error: ' + err.message, 'error');
             }
+        }
+
+        async function openVpnEditModal() {
+            const select = document.getElementById('vpn-profile-select');
+            if (!select || !select.value) {
+                if (typeof showToast === 'function') showToast('⚠ Selecciona un perfil para editar', 'error');
+                return;
+            }
+            const profile = select.value;
+            try {
+                if (typeof showToast === 'function') showToast('Cargando perfil ' + profile + '...', 'info');
+                const res = await fetch('/statplugin?action=vpn_get_profile_content&profile=' + encodeURIComponent(profile));
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    document.getElementById('vpn-edit-filename').textContent = profile;
+                    document.getElementById('vpn-edit-textarea').value = data.content || '';
+                    document.getElementById('vpn-edit-modal').style.display = 'flex';
+                } else {
+                    if (typeof showToast === 'function') showToast('⚠ Error: ' + (data.message || 'No se pudo leer'), 'error');
+                }
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('⚠ Error al abrir editor: ' + err.message, 'error');
+            }
+        }
+
+        async function saveVpnProfileContent() {
+            const profile = document.getElementById('vpn-edit-filename').textContent;
+            const content = document.getElementById('vpn-edit-textarea').value;
+            if (!profile || !content.trim()) {
+                if (typeof showToast === 'function') showToast('⚠ El contenido no puede estar vacío', 'error');
+                return;
+            }
+            try {
+                if (typeof showToast === 'function') showToast('Guardando cambios en ' + profile + '...', 'info');
+                const res = await fetch('/statplugin?action=vpn_save_profile_content&profile=' + encodeURIComponent(profile), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                    body: content
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    if (typeof showToast === 'function') showToast('✓ ' + (data.message || 'Perfil guardado con éxito'), 'success');
+                    closeVpnEditModal();
+                    await loadVpnProfiles();
+                } else {
+                    if (typeof showToast === 'function') showToast('⚠ Error al guardar: ' + (data.message || ''), 'error');
+                }
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('⚠ Error de red al guardar: ' + err.message, 'error');
+            }
+        }
+
+        function closeVpnEditModal() {
+            const m = document.getElementById('vpn-edit-modal');
+            if (m) m.style.display = 'none';
         }
 
         // =========================================================================

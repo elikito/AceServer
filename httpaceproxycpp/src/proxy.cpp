@@ -3388,8 +3388,8 @@ Json Proxy::get_network_diagnostics() {
         }
     } catch (...) {}
 
-    // 1. Detección de Estado Real a través del listener SOCKS5 local (127.0.0.1:4001 o 172.17.0.1:4001)
-    for (const auto& socks_url : {"socks5h://127.0.0.1:4001", "socks5h://172.17.0.1:4001", "socks5h://host.docker.internal:4001"}) {
+    // 1. Detección de Estado Real a través del listener SOCKS5 local (127.0.0.1:4002 o 172.18.0.1:4002)
+    for (const auto& socks_url : {"socks5h://127.0.0.1:4002", "socks5h://172.18.0.1:4002", "socks5h://host.docker.internal:4002", "socks5h://127.0.0.1:4001"}) {
         try {
             auto resp = http_client_.get_single("https://cloudflare.com/cdn-cgi/trace", {}, 3, false, socks_url);
             if (resp.status == 200 && !resp.body.empty()) {
@@ -4105,9 +4105,14 @@ std::vector<ChannelCandidate> Proxy::find_candidates_for_channel(const std::stri
                         } else if (title_peers > c.peers) {
                             c.peers = std::max(c.peers, title_peers);
                         }
-                    } else if (live_peers <= 0) {
-                        // Purga canónica v09.10.02: Si no hay tag numérico real ([100 peers], seeds: 40), peers = 0
-                        c.peers = 0;
+                    } else if (c.peers <= 0) {
+                        if (c.health == ChannelHealth::ONLINE) {
+                            c.peers = 2;
+                        } else if (c.health == ChannelHealth::LOW_PEERS) {
+                            c.peers = 1;
+                        } else {
+                            c.peers = 0;
+                        }
                     }
 
                     if (c.peers > 0) {

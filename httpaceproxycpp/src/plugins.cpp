@@ -1354,11 +1354,22 @@ public:
                 if (std::filesystem::is_symlink(active_link)) {
                     try { active_name = std::filesystem::read_symlink(active_link).filename().string(); } catch (...) {}
                 }
-                if (profile == active_name) {
-                    res["status"] = "error";
-                    res["message"] = "No se puede eliminar el perfil activo. Selecciona otro perfil antes de borrar éste.";
-                    send_bytes(ctx.connection, 409, "application/json; charset=utf-8", Json(res).dump(2));
-                    return true;
+                bool was_active = (profile == active_name);
+                if (was_active) {
+                    if (std::filesystem::exists(active_link) || std::filesystem::is_symlink(active_link)) {
+                        std::filesystem::remove(active_link);
+                    }
+                    auto direct_flag = std::filesystem::path(config_.root_dir) / "config" / "gluetun_status" / "direct_mode";
+                    std::filesystem::create_directories(direct_flag.parent_path());
+                    std::ofstream out(direct_flag);
+                    out << "direct\n";
+                    out.close();
+                    ::system("docker exec gluetun iptables -P INPUT ACCEPT 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -P OUTPUT ACCEPT 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -P FORWARD ACCEPT 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -F 2>/dev/null || true");
+                    ::system("docker exec gluetun iptables -X 2>/dev/null || true");
+                    ::system("docker exec gluetun sh -c 'while ip rule del not from all fwmark 0xca6c lookup 51820 2>/dev/null; do :; done' || true");
                 }
                 auto target = vpn_dir / profile;
                 if (!std::filesystem::is_regular_file(target)) {
@@ -1369,7 +1380,81 @@ public:
                 }
                 std::filesystem::remove(target);
                 res["status"] = "ok";
-                res["message"] = "Perfil eliminado: " + profile;
+                res["switched_to_direct"] = was_active;
+                res["message"] = was_active ? "Perfil activo eliminado. Se ha cambiado automáticamente a Modo Directo (Sin Protección)" : ("Perfil eliminado: " + profile);
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                res["status"] = "error";
+                res["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(res).dump(2));
+            }
+            return true;
+
+        } else if (action == "vpn_get_profile_content") {
+            // GET /statplugin?action=vpn_get_profile_content&profile=N150-Netherlands-NL-403.conf
+            auto profile = query_get(ctx.query, "profile");
+            Json::object res;
+            if (profile.empty() || profile.find('/') != std::string::npos || profile.find('\\') != std::string::npos || profile.find("..") != std::string::npos) {
+                res["status"] = "error";
+                res["message"] = "Nombre de perfil inválido";
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                auto target = vpn_dir / profile;
+                if (!std::filesystem::is_regular_file(target)) {
+                    res["status"] = "error";
+                    res["message"] = "Perfil no encontrado";
+                    send_bytes(ctx.connection, 404, "application/json; charset=utf-8", Json(res).dump(2));
+                    return true;
+                }
+                auto content = read_file_binary(target.string());
+                res["status"] = "ok";
+                res["profile"] = profile;
+                res["content"] = content;
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                res["status"] = "error";
+                res["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(res).dump(2));
+            }
+            return true;
+
+        } else if (action == "vpn_save_profile_content") {
+            // POST /statplugin?action=vpn_save_profile_content&profile=N150-Netherlands-NL-403.conf
+            auto profile = query_get(ctx.query, "profile");
+            Json::object res;
+            if (profile.empty() || profile.find('/') != std::string::npos || profile.find('\\') != std::string::npos || profile.find("..") != std::string::npos) {
+                res["status"] = "error";
+                res["message"] = "Nombre de perfil inválido";
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+            const auto& body = ctx.request.body;
+            if (body.empty()) {
+                res["status"] = "error";
+                res["message"] = "Contenido vacío";
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                auto target = vpn_dir / profile;
+                std::ofstream out(target, std::ios::binary | std::ios::trunc);
+                out.write(body.data(), body.size());
+                out.close();
+
+                auto active_link = vpn_dir / "active.conf";
+                std::string active_name;
+                if (std::filesystem::is_symlink(active_link)) {
+                    try { active_name = std::filesystem::read_symlink(active_link).filename().string(); } catch (...) {}
+                }
+                if (profile == active_name) {
+                    ::system("docker restart gluetun && sleep 6 && docker restart aceserve-modern >/dev/null 2>&1 &");
+                }
+                res["status"] = "ok";
+                res["message"] = "Perfil guardado con éxito";
                 send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
             } catch (const std::exception& e) {
                 res["status"] = "error";

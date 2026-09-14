@@ -2437,29 +2437,11 @@
 
         function showPlaybackFailure(reason, streamUrl) {
             clearTimeout(playbackWatchdogTimer);
-            updatePlayerStatus(reason, 'error');
-            if (webMpegtsPlayer) {
-                try {
-                    webMpegtsPlayer.pause();
-                    webMpegtsPlayer.unload();
-                } catch (e) { }
-            }
-            if (hlsPlayer) {
-                try {
-                    hlsPlayer.destroy();
-                } catch (e) { }
-                hlsPlayer = null;
-            }
+            updatePlayerStatus(reason || 'Almacenando búfer...', 'error');
             const overlay = document.getElementById('player-error-overlay');
-            const reasonEl = document.getElementById('player-error-reason');
-            const vlcBtn = document.getElementById('player-error-vlc-btn');
-            if (overlay) {
-                if (reasonEl) reasonEl.textContent = reason;
-                if (vlcBtn && streamUrl) {
-                    const vlcUrl = streamUrl.replace(/^https?:\/\//i, 'vlc://');
-                    vlcBtn.href = vlcUrl;
-                }
-                overlay.style.display = 'flex';
+            if (overlay) overlay.style.display = 'none';
+            if (typeof showToast === 'function') {
+                showToast('ℹ ' + (reason || 'Reintentando sintonización...'), 'info');
             }
         }
 
@@ -2810,22 +2792,26 @@
                 });
             };
 
-            const resetPlaybackWatchdog = (timeoutMs = 30000) => {
+            const resetPlaybackWatchdog = (timeoutMs = 35000) => {
                 if (playbackWatchdogTimer) clearTimeout(playbackWatchdogTimer);
                 playbackWatchdogTimer = setTimeout(() => {
                     if (!streamHasStartedPlaying) {
                         if (currentStreamStats.totalBytes > 0 || currentStreamStats.speedKBps > 0) {
                             updatePlayerStatus('Almacenando búfer...', 'loading');
-                            resetPlaybackWatchdog(15000); // Conceder 15s más mientras sigan llegando datos
+                            resetPlaybackWatchdog(20000);
                         } else if (!hasTriedFallback) {
-                            trySoftwareFallback('Watchdog: intentando demuxer por software');
+                            trySoftwareFallback('Watchdog: sintonizando flujo...');
                         } else {
-                            showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+                            updatePlayerStatus('Reconectando flujo P2P...', 'loading');
+                            if (webMpegtsPlayer) {
+                                try { webMpegtsPlayer.load(); webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
+                            }
+                            resetPlaybackWatchdog(20000);
                         }
                     }
                 }, timeoutMs);
             };
-            resetPlaybackWatchdog(30000);
+            resetPlaybackWatchdog(35000);
 
             if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
                 trySoftwareFallback('Flujo HLS nativo');
@@ -2836,17 +2822,17 @@
                         isLive: true,
                         url: streamUrl
                     }, {
+                        enableWorker: true,
                         enableStashBuffer: true,
                         stashInitialSize: 384 * 1024,
                         liveBufferLatencyChasing: false,
-                        liveBufferLatencyMaxLatency: 15.0,
+                        liveBufferLatencyMaxLatency: 14.0,
                         liveBufferLatencyMinRemain: 2.0,
                         autoCleanupSourceBuffer: true,
-                        autoCleanupMaxBackwardDuration: 30,
-                        autoCleanupMinBackwardDuration: 15,
+                        autoCleanupMaxBackwardDuration: 25,
+                        autoCleanupMinBackwardDuration: 10,
                         lazyLoadMaxDuration: 3 * 60,
-                        deferLoadAfterError: false,
-                        enableWorker: true
+                        deferLoadAfterError: false
                     });
 
                     webMpegtsPlayer.attachMediaElement(videoElement);
@@ -2878,27 +2864,40 @@
                             currentStreamStats.totalBytes += (stat.loaderSpeed * dt * 1024);
                         }
                         if (!streamHasStartedPlaying && (stat.speed > 0 || stat.loaderSpeed > 0)) {
-                            resetPlaybackWatchdog(20000);
+                            resetPlaybackWatchdog(25000);
                         }
                         lastStatTime = now;
                     });
 
                     webMpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-                        console.warn('Error en mpegts player:', errorType, errorDetail, errorInfo);
-                        if (!hasTriedFallback) {
-                            trySoftwareFallback('Error decodificador MSE (' + errorDetail + ')');
+                        console.warn('Error transitorio en mpegts player:', errorType, errorDetail, errorInfo);
+                        if (errorType === mpegts.ErrorTypes.NETWORK_ERROR) {
+                            updatePlayerStatus('Reconectando buffer...', 'loading');
+                            setTimeout(() => {
+                                if (webMpegtsPlayer) {
+                                    try { webMpegtsPlayer.load(); webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
+                                }
+                            }, 1200);
+                        } else if (!hasTriedFallback) {
+                            trySoftwareFallback('Reintento decodificador MSE (' + errorDetail + ')');
                         } else {
-                            showPlaybackFailure('Canal no disponible o sin peers suficientes', streamUrl);
+                            setTimeout(() => {
+                                if (webMpegtsPlayer) {
+                                    try { webMpegtsPlayer.load(); webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
+                                }
+                            }, 2000);
                         }
                     });
 
                     webMpegtsPlayer.play().then(() => {
                         updatePlayerStatus('Conectado', 'loading');
                     }).catch(err => {
-                        console.warn('Error reproduciendo stream en mpegts:', err);
-                        if (!hasTriedFallback) {
-                            trySoftwareFallback('Fallo inicio reproducción mpegts');
-                        }
+                        console.warn('Inicio de reproducción mpegts:', err);
+                        setTimeout(() => {
+                            if (webMpegtsPlayer) {
+                                try { webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
+                            }
+                        }, 1000);
                     });
 
                     videoElement.onplaying = () => {
@@ -2918,10 +2917,12 @@
 
                     videoElement.onerror = () => {
                         if (!hasTriedFallback) {
-                            trySoftwareFallback('videoElement error nativo');
+                            trySoftwareFallback('Reintento por audio/video nativo');
                         } else {
-                            clearTimeout(playbackWatchdogTimer);
-                            showPlaybackFailure('Error al reproducir stream', streamUrl);
+                            updatePlayerStatus('Almacenando búfer...', 'loading');
+                            setTimeout(() => {
+                                try { videoElement.load(); videoElement.play().catch(() => {}); } catch(e) {}
+                            }, 1500);
                         }
                     };
 

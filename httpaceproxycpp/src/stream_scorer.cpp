@@ -246,9 +246,6 @@ int extract_peer_count_from_title(const std::string& name) {
         } catch (...) {}
     }
 
-    // PURGA CANÓNICA v09.10.02: Si el título no contiene una etiqueta numérica real explícita
-    // ([100 peers], seeds: 40, [299], (114)), el canal tiene estrictamente 0 peers.
-    // Los asteriscos ('*', '**', '***') o estrellas unicode ('★') jamás aportan peers.
     return 0;
 }
 
