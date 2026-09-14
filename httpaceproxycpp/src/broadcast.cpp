@@ -201,13 +201,6 @@ std::shared_ptr<StreamClient> Broadcast::add_client(const std::string& client_ip
         std::lock_guard<std::mutex> lock(mutex_);
         clients_.push_back(client);
     }
-    // v09.12.07: Reinyección limpia de PAT/PMT si el broadcast ya tiene datos cacheados
-    {
-        std::lock_guard<std::mutex> lock(pat_pmt_mutex_);
-        if (!latest_pat_pmt_.empty()) {
-            client->queue->push(latest_pat_pmt_, std::chrono::milliseconds(0));
-        }
-    }
     return client;
 }
 
@@ -258,13 +251,6 @@ void Broadcast::attach_migrated_client(const std::shared_ptr<StreamClient>& clie
     {
         std::lock_guard<std::mutex> lock(mutex_);
         clients_.push_back(client);
-    }
-    // Reinyección limpia de PAT/PMT del nuevo stream
-    {
-        std::lock_guard<std::mutex> lock(pat_pmt_mutex_);
-        if (!latest_pat_pmt_.empty()) {
-            client->queue->push(latest_pat_pmt_, std::chrono::milliseconds(50));
-        }
     }
 }
 
@@ -400,12 +386,13 @@ void Broadcast::stop(bool force) {
     running_ = false;
     {
         std::lock_guard<std::mutex> lock(ts_residual_mutex_);
-        if (!ts_residual_.empty()) {
+        if (ts_residual_.size() >= 188 && (ts_residual_.size() % 188 == 0) &&
+            static_cast<unsigned char>(ts_residual_[0]) == 0x47) {
             for (auto& client : clients()) {
                 client->queue->push(ts_residual_, std::chrono::milliseconds(50));
             }
-            ts_residual_.clear();
         }
+        ts_residual_.clear();
     }
     for (auto& client : clients()) client->queue->close();
     if (ace_) {
@@ -514,10 +501,27 @@ void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
     {
         std::lock_guard<std::mutex> lock(ts_residual_mutex_);
         ts_residual_.insert(ts_residual_.end(), data, data + size);
+
+        // v09.14.03: Resincronización estricta al byte de sincronismo MPEG-TS 0x47 (188 bytes/paquete)
+        // Descartar bytes corruptos o prefijos truncados iniciales hasta alinear con el flujo TS real
+        while (ts_residual_.size() >= 188) {
+            if (static_cast<unsigned char>(ts_residual_[0]) == 0x47) {
+                if (ts_residual_.size() >= 376) {
+                    if (static_cast<unsigned char>(ts_residual_[188]) != 0x47) {
+                        // 0x47 espurio dentro del payload; seguir buscando el 0x47 auténtico
+                        ts_residual_.erase(ts_residual_.begin());
+                        continue;
+                    }
+                }
+                break; // Sincronismo confirmado
+            }
+            ts_residual_.erase(ts_residual_.begin());
+        }
+
         std::size_t total = ts_residual_.size();
         std::size_t aligned_size = (total / 188) * 188;
 
-        if (aligned_size > 0) {
+        if (aligned_size > 0 && static_cast<unsigned char>(ts_residual_[0]) == 0x47) {
             chunk_to_push.assign(ts_residual_.begin(), ts_residual_.begin() + aligned_size);
             ts_residual_.erase(ts_residual_.begin(), ts_residual_.begin() + aligned_size);
         } else {
@@ -526,22 +530,6 @@ void Broadcast::broadcast_chunk(const char* data, std::size_t size) {
     }
 
     total_bytes_received_.fetch_add(chunk_to_push.size(), std::memory_order_relaxed);
-
-    // Cache latest PAT / PMT packets from stream (PAT PID is 0)
-    {
-        for (std::size_t offset = 0; offset + 188 <= chunk_to_push.size(); offset += 188) {
-            const unsigned char* pkt = reinterpret_cast<const unsigned char*>(chunk_to_push.data() + offset);
-            if (pkt[0] == 0x47) {
-                int pid = ((pkt[1] & 0x1F) << 8) | pkt[2];
-                if (pid == 0) {
-                    std::lock_guard<std::mutex> lock(pat_pmt_mutex_);
-                    std::size_t pmt_len = (offset + 376 <= chunk_to_push.size()) ? 376 : 188;
-                    latest_pat_pmt_.assign(chunk_to_push.begin() + offset, chunk_to_push.begin() + offset + pmt_len);
-                    break;
-                }
-            }
-        }
-    }
 
     auto write_timeout = std::max(1, config_.client_write_timeout);
     // v09.12.07: Push no bloqueante (0ms) en la cola de cada cliente para evitar que un cliente

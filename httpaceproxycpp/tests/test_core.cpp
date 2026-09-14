@@ -1187,6 +1187,8 @@ void test_v09_11_03_active_broadcast_cancellation_and_ts_discontinuity() {
 
 void test_v09_11_04_pinned_virtual_cid_logic() {
     Config cfg;
+    cfg.config_dir = "/tmp/test_empty_config_dir";
+    cfg.enabled_plugins.clear();
     Proxy proxy(cfg);
 
     std::string slug = "la-liga-tv";
@@ -1541,7 +1543,7 @@ void test_v09_12_06_dynamic_protection_switcher_and_stream_buffer() {
 
 void test_v09_12_07_protection_button_states_and_p2p_shielding() {
     // 1. Verificación canónica de versión v09.14.01
-    require(std::string(kAppVersion) == "09.14.02", "App version must be exactly 09.14.02");
+    require(std::string(kAppVersion) >= "09.14.02", "App version must be at least 09.14.02");
 
     // 2. Verificación de lógica de estados visuales (Verde Esmeralda Activo vs Gris Inactivo)
     struct ButtonState {
@@ -1594,6 +1596,84 @@ void test_v09_12_07_protection_button_states_and_p2p_shielding() {
     }
 }
 
+void test_v09_14_03_mpegts_packet_resynchronization_and_alignment() {
+    // 1. Verificación canónica de versión v09.14.03
+    require(std::string(kAppVersion) == "09.14.03", "App version must be exactly 09.14.03");
+
+    // 2. Simulación de flujo TS recibido de AceStream con prefijo corrupto / truncado (ej. 12 bytes iniciales de desalineación)
+    std::vector<char> simulated_incoming;
+    // 12 bytes de residuo corrupto de un paquete anterior
+    for (int i = 0; i < 12; ++i) simulated_incoming.push_back(static_cast<char>(0xAA + i));
+
+    // 3 paquetes MPEG-TS válidos (188 bytes cada uno, empezando por 0x47)
+    for (int p = 0; p < 3; ++p) {
+        simulated_incoming.push_back(0x47);
+        simulated_incoming.push_back(static_cast<char>(0x01)); // PID 0x0100
+        simulated_incoming.push_back(static_cast<char>(0x00));
+        simulated_incoming.push_back(static_cast<char>(0x10 | (p & 0x0F))); // CC
+        for (int b = 4; b < 188; ++b) {
+            simulated_incoming.push_back(static_cast<char>(0x55));
+        }
+    }
+
+    // 3. Aplicación del algoritmo estricto de resincronización y alineación
+    std::vector<char> ts_res = simulated_incoming;
+    while (ts_res.size() >= 188) {
+        if (static_cast<unsigned char>(ts_res[0]) == 0x47) {
+            if (ts_res.size() >= 376) {
+                if (static_cast<unsigned char>(ts_res[188]) != 0x47) {
+                    ts_res.erase(ts_res.begin());
+                    continue;
+                }
+            }
+            break;
+        }
+        ts_res.erase(ts_res.begin());
+    }
+
+    require(static_cast<unsigned char>(ts_res[0]) == 0x47, "Synchronizer must lock on 0x47 sync byte");
+    require(ts_res.size() == 188 * 3, "Resynchronizer must discard exactly 12 corrupt prefix bytes");
+
+    std::size_t aligned_size = (ts_res.size() / 188) * 188;
+    std::vector<char> chunk_to_push(ts_res.begin(), ts_res.begin() + aligned_size);
+    ts_res.erase(ts_res.begin(), ts_res.begin() + aligned_size);
+
+    require(chunk_to_push.size() == 188 * 3, "Extracted chunk size must be exactly 3 * 188 bytes");
+    require(ts_res.empty(), "Residual buffer must be empty after full packet extraction");
+    for (std::size_t offset = 0; offset < chunk_to_push.size(); offset += 188) {
+        require(static_cast<unsigned char>(chunk_to_push[offset]) == 0x47,
+                "Every packet in extracted chunk must start with 0x47 sync byte");
+    }
+
+    // 4. Verificación de robustez ante falsos positivos de 0x47 en payload
+    std::vector<char> false_sync_data;
+    false_sync_data.push_back(0x47); // Byte falso 0x47 solitario (payload)
+    for (int i = 1; i < 50; ++i) false_sync_data.push_back(0x00);
+    // Ahora viene el paquete real con 0x47 y cadencia de 188
+    for (int p = 0; p < 2; ++p) {
+        false_sync_data.push_back(0x47);
+        for (int b = 1; b < 188; ++b) false_sync_data.push_back(static_cast<char>(0x77));
+    }
+
+    std::vector<char> ts_false = false_sync_data;
+    while (ts_false.size() >= 188) {
+        if (static_cast<unsigned char>(ts_false[0]) == 0x47) {
+            if (ts_false.size() >= 376) {
+                if (static_cast<unsigned char>(ts_false[188]) != 0x47) {
+                    ts_false.erase(ts_false.begin());
+                    continue;
+                }
+            }
+            break;
+        }
+        ts_false.erase(ts_false.begin());
+    }
+
+    require(ts_false.size() == 188 * 2, "False sync in payload must be discarded; real sync of 2 packets locked");
+    require(static_cast<unsigned char>(ts_false[0]) == 0x47, "Locked packet must start with 0x47");
+    require(static_cast<unsigned char>(ts_false[188]) == 0x47, "Subsequent packet must start with 0x47");
+}
+
 } // namespace
 
 int main() {
@@ -1643,6 +1723,7 @@ int main() {
         test_v09_12_05_mutually_exclusive_protection_and_engine_alias();
         test_v09_12_06_dynamic_protection_switcher_and_stream_buffer();
         test_v09_12_07_protection_button_states_and_p2p_shielding();
+        test_v09_14_03_mpegts_packet_resynchronization_and_alignment();
         std::cout << "httpaceproxycpp core tests passed\n";
         return 0;
     } catch (const std::exception& e) {

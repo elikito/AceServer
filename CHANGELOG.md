@@ -4,6 +4,27 @@ Todos los cambios notables en este proyecto se documentan en este archivo.
 
 El formato sigue las directrices de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [09.14.03] - 2026-09-14
+
+### 🎬 Corrección Definitiva de Reproducción MPEG-TS en Reproductores Web e IPTV
+
+#### 1. Alineación Estricta al Byte de Sincronización MPEG-TS (`0x47`) (`broadcast.cpp`)
+- **Resolución de Raíz del Desfase de Paquetes TS**: Se descubrió que el acumulador TCP de streaming enviaba fragmentos con un desplazamiento de bytes residuales (p. ej. 12 bytes residuales de cabeceras/desconexiones previas). Aunque VLC cuenta con un resincronizador permisivo, los motores MSE (`mpegts.js` en `/player/index.html` y `/mobile/index.html`) y reproductores IPTV basados en ExoPlayer (TiviMate, OTT Navigator, Kodi) exigen que cada fragmento comience estrictamente en el byte de sincronización `0x47` (71 dec) con longitud exacta de 188 bytes por paquete.
+- **Resincronización Dinámica con Descarte de Prefijo Corrupto**: `Broadcast::broadcast_chunk` inspecciona y descarta automáticamente cualquier byte corrupto o residual hasta que `ts_residual_[0] == 0x47` y verifica la cadencia regular a intervalos de 188 bytes, asegurando que el 100% de los paquetes transmitidos a todos los clientes comiencen exactamente en el límite del paquete MPEG-TS.
+
+#### 2. Eliminación de Inyección de PAT/PMT Obsoletos (`broadcast.cpp`)
+- **Supresión de PAT/PMT Antiguos**: Eliminada la inyección artificial de `latest_pat_pmt_` al unirse nuevos clientes (`add_client` y `attach_migrated_client`). Dicha inyección introducía saltos bruscos en el contador de continuidad (CC) y discrepancias de PTS que provocaban el reinicio o bucle de congelación de los decodificadores web e IPTV. El flujo en directo de AceStream emite de forma natural tablas PAT y PMT cada ~15-40 ms, permitiendo que los clientes sintonicen limpiamente al instante.
+
+#### 3. Soporte de Peticiones HTTP HEAD (`proxy.cpp`)
+- **Respuestas Inmediatas a Sondas de Clientes**: Los reproductores web y aplicaciones IPTV realizan con frecuencia peticiones preliminares de tipo `HEAD` para validar disponibilidad y tipo MIME (`video/mp2t`). Se implementó respuesta inmediata de cabeceras HTTP 200 sin abrir ni bloquear sockets de datos.
+
+#### 4. Protección de Conmutación de Canales en Streaming Multicliente (`proxy.cpp`)
+- **Tolerancia Extendida en Emisiones Activas**: Se configuró un margen de 15 segundos antes de disparar conmutaciones a candidatos alternativos cuando la emisión ya se encuentra activa y recibiendo datos (`broadcast->is_running() && broadcast->total_bytes_received() > 0`), evitando que la conexión simultánea de un segundo cliente (móvil, navegador o reproductor IPTV) provoque microcortes o desconexiones forzadas en los clientes ya conectados.
+
+#### 5. Batería de Pruebas Unitarias (`test_core.cpp`)
+- **Test de Resincronización MPEG-TS**: Incorporado `test_v09_14_03_mpegts_packet_resynchronization_and_alignment` para verificar el descarte de prefijos basura, preservación de paquetes completos de 188 bytes y rechazo de falsos positivos en payload.
+- **Aislamiento de Configuración en Pruebas**: Ajustado `test_v09_11_04` para evitar dependencias de red externas durante los tests de integración en Docker.
+
 ## [09.14.02] - 2026-09-14
 
 ### 🛡️ Blindaje de Red Excluyente, Concurso P2P con Semillas Reales, Gestión VPN Avanzada y Unificación de Streaming

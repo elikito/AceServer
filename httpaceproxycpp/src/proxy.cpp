@@ -2461,8 +2461,12 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             bool cand_failed = false;
             if (client->queue->is_closed()) {
                 cand_failed = true;
-            } else if (!ctx.auto_slug.empty() && elapsed_sec >= kFirstChunkTimeoutSec) {
-                cand_failed = true;
+            } else if (!ctx.auto_slug.empty()) {
+                if (broadcast->is_running() && broadcast->total_bytes_received() > 0) {
+                    if (elapsed_sec >= 15.0) cand_failed = true;
+                } else if (elapsed_sec >= kFirstChunkTimeoutSec) {
+                    cand_failed = true;
+                }
             }
 
             if (cand_failed) {
@@ -2569,6 +2573,10 @@ void Proxy::handle_core_stream(RequestContext& ctx) {
             headers["Keep-Alive"] = "timeout=" + std::to_string(config_.video_timeout) + ", max=100";
         }
         ctx.connection.send_response_headers(200, status_reason(200), headers);
+        if (ctx.request.method == "HEAD") {
+            broadcast->remove_client(client);
+            return;
+        }
 
         // 3. ENVIAR EL PRIMER CHUNK PRECARGADO (Zero-Copy)
         bool ok = true;

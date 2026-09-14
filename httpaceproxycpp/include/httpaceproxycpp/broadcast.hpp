@@ -109,6 +109,7 @@ public:
     std::int64_t get_zero_subscribers_time() const { return zero_subscribers_time_.load(); }
     void reset_zero_subscribers_time() { zero_subscribers_time_.store(0, std::memory_order_relaxed); }
     bool has_valid_ts_data() const { return total_bytes_received_.load() >= 188; }
+    long long total_bytes_received() const { return total_bytes_received_.load(); }
     double get_bitrate_kbps();
     bool is_bitrate_degraded(int seconds_threshold = 20);
     std::int64_t get_start_time() const { return start_time_.load(std::memory_order_relaxed); }
