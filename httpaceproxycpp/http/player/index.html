@@ -1985,10 +1985,14 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const queryUrl = urlParams.get('url') || urlParams.get('stream');
                 const queryCid = urlParams.get('cid') || urlParams.get('content_id');
+                const queryChannel = urlParams.get('channel') || urlParams.get('slug');
                 const queryTitle = urlParams.get('title') || urlParams.get('name') || urlParams.get('canal');
                 if (queryCid) {
                     const cidStreamUrl = `/content_id/${encodeURIComponent(queryCid)}/stream.ts`;
                     playChannelInWebPlayer(cidStreamUrl, queryTitle || `AceStream: ${queryCid.substring(0, 8)}...`, queryCid);
+                } else if (queryChannel) {
+                    const autoStreamUrl = `/auto/${encodeURIComponent(queryChannel)}/stream.ts`;
+                    playChannelInWebPlayer(autoStreamUrl, queryTitle || queryChannel, '');
                 } else if (queryUrl) {
                     playChannelInWebPlayer(queryUrl, queryTitle || 'Canal en Directo', extractAceId(queryUrl) || '');
                 }
@@ -2792,20 +2796,24 @@
                 });
             };
 
+            const fullStreamUrl = new URL(streamUrl, window.location.href).href;
+
             const resetPlaybackWatchdog = (timeoutMs = 35000) => {
                 if (playbackWatchdogTimer) clearTimeout(playbackWatchdogTimer);
                 playbackWatchdogTimer = setTimeout(() => {
                     if (!streamHasStartedPlaying) {
+                        if (currentStreamStats.decodedFrames > 0 || (videoElement && videoElement.currentTime > 0)) {
+                            streamHasStartedPlaying = true;
+                            updatePlayerStatus('En directo', 'live');
+                            return;
+                        }
                         if (currentStreamStats.totalBytes > 0 || currentStreamStats.speedKBps > 0) {
                             updatePlayerStatus('Almacenando búfer...', 'loading');
                             resetPlaybackWatchdog(20000);
                         } else if (!hasTriedFallback) {
                             trySoftwareFallback('Watchdog: sintonizando flujo...');
                         } else {
-                            updatePlayerStatus('Reconectando flujo P2P...', 'loading');
-                            if (webMpegtsPlayer) {
-                                try { webMpegtsPlayer.load(); webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
-                            }
+                            updatePlayerStatus('Esperando datos del flujo...', 'loading');
                             resetPlaybackWatchdog(20000);
                         }
                     }
@@ -2820,18 +2828,18 @@
                     webMpegtsPlayer = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
-                        url: streamUrl
+                        url: fullStreamUrl
                     }, {
-                        enableWorker: true,
+                        enableWorker: false,
                         enableStashBuffer: true,
-                        stashInitialSize: 384 * 1024,
+                        stashInitialSize: 1024 * 1024,
                         liveBufferLatencyChasing: false,
                         liveBufferLatencyMaxLatency: 14.0,
                         liveBufferLatencyMinRemain: 2.0,
                         autoCleanupSourceBuffer: true,
-                        autoCleanupMaxBackwardDuration: 25,
-                        autoCleanupMinBackwardDuration: 10,
-                        lazyLoadMaxDuration: 3 * 60,
+                        autoCleanupMaxBackwardDuration: 60,
+                        autoCleanupMinBackwardDuration: 30,
+                        lazyLoad: false,
                         deferLoadAfterError: false
                     });
 
@@ -2850,21 +2858,23 @@
                         if (stat.speed) {
                             currentStreamStats.speedKBps = stat.speed;
                         }
-                        if (stat.decodedFrames) {
+                        if (stat.decodedFrames !== undefined && stat.decodedFrames > 0) {
                             if (dt > 0) {
                                 currentStreamStats.fps = Math.round((stat.decodedFrames - lastDecodedFrames) / dt);
                             }
                             lastDecodedFrames = stat.decodedFrames;
                             currentStreamStats.decodedFrames = stat.decodedFrames;
+                            if (!streamHasStartedPlaying) {
+                                streamHasStartedPlaying = true;
+                                if (playbackWatchdogTimer) clearTimeout(playbackWatchdogTimer);
+                                updatePlayerStatus('En directo', 'live');
+                            }
                         }
                         if (stat.droppedFrames) {
                             currentStreamStats.droppedFrames = stat.droppedFrames;
                         }
                         if (stat.loaderSpeed) {
                             currentStreamStats.totalBytes += (stat.loaderSpeed * dt * 1024);
-                        }
-                        if (!streamHasStartedPlaying && (stat.speed > 0 || stat.loaderSpeed > 0)) {
-                            resetPlaybackWatchdog(25000);
                         }
                         lastStatTime = now;
                     });
@@ -2874,37 +2884,40 @@
                         if (errorType === mpegts.ErrorTypes.NETWORK_ERROR) {
                             updatePlayerStatus('Reconectando buffer...', 'loading');
                             setTimeout(() => {
-                                if (webMpegtsPlayer) {
+                                if (webMpegtsPlayer && !streamHasStartedPlaying) {
                                     try { webMpegtsPlayer.load(); webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
                                 }
-                            }, 1200);
+                            }, 1500);
                         } else if (!hasTriedFallback) {
                             trySoftwareFallback('Reintento decodificador MSE (' + errorDetail + ')');
-                        } else {
-                            setTimeout(() => {
-                                if (webMpegtsPlayer) {
-                                    try { webMpegtsPlayer.load(); webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
-                                }
-                            }, 2000);
                         }
                     });
 
                     webMpegtsPlayer.play().then(() => {
                         updatePlayerStatus('Conectado', 'loading');
                     }).catch(err => {
-                        console.warn('Inicio de reproducción mpegts:', err);
-                        setTimeout(() => {
-                            if (webMpegtsPlayer) {
-                                try { webMpegtsPlayer.play().catch(() => {}); } catch(e) {}
-                            }
-                        }, 1000);
+                        console.warn('Autoplay con sonido bloqueado, silenciando para iniciar reproducción:', err);
+                        videoElement.muted = true;
+                        if (webMpegtsPlayer) {
+                            webMpegtsPlayer.play().then(() => {
+                                updatePlayerStatus('En directo (silenciado)', 'live');
+                            }).catch(() => {});
+                        }
                     });
 
                     videoElement.onplaying = () => {
                         streamHasStartedPlaying = true;
-                        clearTimeout(playbackWatchdogTimer);
+                        if (playbackWatchdogTimer) clearTimeout(playbackWatchdogTimer);
                         updatePlayerStatus('En directo', 'live');
                         checkVideoAudioTracks(videoElement);
+                    };
+
+                    videoElement.ontimeupdate = () => {
+                        if (videoElement.currentTime > 0 && !streamHasStartedPlaying) {
+                            streamHasStartedPlaying = true;
+                            if (playbackWatchdogTimer) clearTimeout(playbackWatchdogTimer);
+                            updatePlayerStatus('En directo', 'live');
+                        }
                     };
 
                     videoElement.onloadedmetadata = () => {
@@ -2912,7 +2925,9 @@
                     };
 
                     videoElement.onwaiting = () => {
-                        updatePlayerStatus('Almacenando búfer...', 'loading');
+                        if (!streamHasStartedPlaying) {
+                            updatePlayerStatus('Almacenando búfer...', 'loading');
+                        }
                     };
 
                     videoElement.onerror = () => {
@@ -2920,9 +2935,6 @@
                             trySoftwareFallback('Reintento por audio/video nativo');
                         } else {
                             updatePlayerStatus('Almacenando búfer...', 'loading');
-                            setTimeout(() => {
-                                try { videoElement.load(); videoElement.play().catch(() => {}); } catch(e) {}
-                            }, 1500);
                         }
                     };
 

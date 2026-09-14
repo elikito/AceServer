@@ -1702,9 +1702,11 @@
                 } catch (e) { }
             }
 
+            const fullStreamUrl = new URL(streamUrl, window.location.href).href;
+
             if (streamUrl.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
-                hlsPlayer = new Hls({ enableWorker: true, lowLatencyMode: true });
-                hlsPlayer.loadSource(streamUrl);
+                hlsPlayer = new Hls({ enableWorker: false, lowLatencyMode: true });
+                hlsPlayer.loadSource(fullStreamUrl);
                 hlsPlayer.attachMedia(video);
                 hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => { }));
             } else if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
@@ -1712,18 +1714,18 @@
                     mpegtsPlayer = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
-                        url: streamUrl
+                        url: fullStreamUrl
                     }, {
-                        enableWorker: true,
+                        enableWorker: false,
                         enableStashBuffer: true,
-                        stashInitialSize: 384 * 1024,
+                        stashInitialSize: 1024 * 1024,
                         liveBufferLatencyChasing: false,
                         liveBufferLatencyMaxLatency: 14.0,
                         liveBufferLatencyMinRemain: 2.0,
                         autoCleanupSourceBuffer: true,
-                        autoCleanupMaxBackwardDuration: 25,
-                        autoCleanupMinBackwardDuration: 10,
-                        lazyLoadMaxDuration: 3 * 60,
+                        autoCleanupMaxBackwardDuration: 60,
+                        autoCleanupMinBackwardDuration: 30,
+                        lazyLoad: false,
                         deferLoadAfterError: false
                     });
                     mpegtsPlayer.attachMediaElement(video);
@@ -1738,13 +1740,16 @@
                             }, 1000);
                         }
                     });
-                    mpegtsPlayer.play().catch(() => { });
+                    mpegtsPlayer.play().catch(() => {
+                        video.muted = true;
+                        if (mpegtsPlayer) mpegtsPlayer.play().catch(() => { });
+                    });
                 } catch (e) {
-                    video.src = streamUrl;
+                    video.src = fullStreamUrl;
                     video.play().catch(() => { });
                 }
             } else {
-                video.src = streamUrl;
+                video.src = fullStreamUrl;
                 video.play().catch(() => { });
             }
 
