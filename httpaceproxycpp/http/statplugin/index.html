@@ -390,6 +390,26 @@
             color: var(--brand);
         }
 
+        .vpn-delete-btn {
+            background: rgba(239,68,68,.1);
+            border: 1px solid rgba(239,68,68,.3);
+            color: #ef4444;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .vpn-delete-btn:hover {
+            background: rgba(239,68,68,.2);
+            border-color: #ef4444;
+        }
+
         .btn-sm {
             padding: 4px 10px;
             font-size: 12px;
@@ -2158,6 +2178,10 @@
                     title="Subir archivo de configuración .conf de WireGuard">
                     📁 Subir .conf
                 </button>
+                <button type="button" id="vpn-delete-btn" class="vpn-delete-btn" onclick="deleteVpnProfile()"
+                    title="Eliminar el perfil seleccionado (no se puede borrar el perfil activo)">
+                    🗑️ Borrar
+                </button>
             </div>
         </div>
 
@@ -2962,7 +2986,29 @@
             }
         }
 
-
+        async function deleteVpnProfile() {
+            const select = document.getElementById('vpn-profile-select');
+            if (!select || !select.value) {
+                if (typeof showToast === 'function') showToast('\u26a0 Selecciona un perfil para borrar', 'error');
+                return;
+            }
+            const profile = select.value;
+            const displayName = select.options[select.selectedIndex]?.text || profile;
+            // Confirmación
+            if (!confirm(`¿Eliminar el perfil VPN "${displayName}"?\n\nEsta acción no se puede deshacer.`)) return;
+            try {
+                const res = await fetch('/statplugin?action=vpn_delete_profile&profile=' + encodeURIComponent(profile));
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    if (typeof showToast === 'function') showToast('✓ Perfil eliminado: ' + profile, 'success');
+                    await loadVpnProfiles();
+                } else {
+                    if (typeof showToast === 'function') showToast('⚠ ' + (data.message || 'Error al borrar'), 'error');
+                }
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('⚠ Error: ' + err.message, 'error');
+            }
+        }
 
         // =========================================================================
         // LOAD PLUGINS (get_plugins + load health cache)

@@ -1327,6 +1327,57 @@ public:
             }
             return true;
 
+        } else if (action == "vpn_delete_profile") {
+            // GET /statplugin?action=vpn_delete_profile&profile=N150-Netherlands-NL-403.conf
+            // Elimina un perfil VPN. No permite borrar el perfil activo ni active.conf.
+            auto profile = query_get(ctx.query, "profile");
+            Json::object res;
+            // Validación de seguridad: sin path traversal, sólo .conf
+            bool valid = !profile.empty() && profile.size() <= 96
+                      && profile.find('/') == std::string::npos
+                      && profile.find('\\') == std::string::npos
+                      && profile.find("..") == std::string::npos
+                      && profile.size() > 5
+                      && profile.substr(profile.size() - 5) == ".conf"
+                      && profile != "active.conf";
+            if (!valid) {
+                res["status"] = "error";
+                res["message"] = "Nombre de perfil inválido: " + profile;
+                send_bytes(ctx.connection, 400, "application/json; charset=utf-8", Json(res).dump(2));
+                return true;
+            }
+            try {
+                auto vpn_dir = std::filesystem::path(config_.root_dir) / "config" / "vpn_profiles";
+                // Comprobar si es el perfil activo (no se puede borrar)
+                std::string active_name;
+                auto active_link = vpn_dir / "active.conf";
+                if (std::filesystem::is_symlink(active_link)) {
+                    try { active_name = std::filesystem::read_symlink(active_link).filename().string(); } catch (...) {}
+                }
+                if (profile == active_name) {
+                    res["status"] = "error";
+                    res["message"] = "No se puede eliminar el perfil activo. Selecciona otro perfil antes de borrar éste.";
+                    send_bytes(ctx.connection, 409, "application/json; charset=utf-8", Json(res).dump(2));
+                    return true;
+                }
+                auto target = vpn_dir / profile;
+                if (!std::filesystem::is_regular_file(target)) {
+                    res["status"] = "error";
+                    res["message"] = "Perfil no encontrado: " + profile;
+                    send_bytes(ctx.connection, 404, "application/json; charset=utf-8", Json(res).dump(2));
+                    return true;
+                }
+                std::filesystem::remove(target);
+                res["status"] = "ok";
+                res["message"] = "Perfil eliminado: " + profile;
+                send_bytes(ctx.connection, 200, "application/json; charset=utf-8", Json(res).dump(2));
+            } catch (const std::exception& e) {
+                res["status"] = "error";
+                res["message"] = e.what();
+                send_bytes(ctx.connection, 500, "application/json; charset=utf-8", Json(res).dump(2));
+            }
+            return true;
+
         } else {
             // Servir el frontend HTML del statplugin.
             try {

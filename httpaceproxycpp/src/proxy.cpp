@@ -3505,11 +3505,50 @@ Json Proxy::get_network_diagnostics() {
         if (!vpn_profile.empty()) {
             isp_name = "ProtonVPN WireGuard (" + vpn_profile + ")";
             traffic_route = "WireGuard VPN Tunnel (" + vpn_profile + ")";
-            if (vpn_profile.size() >= 2 && std::isalpha((unsigned char)vpn_profile[0]) && std::isalpha((unsigned char)vpn_profile[1])) {
-                std::string code = vpn_profile.substr(0, 2);
-                std::transform(code.begin(), code.end(), code.begin(), ::toupper);
-                loc = code;
+
+            // Extraer código ISO del país del nombre del perfil
+            // Soporta dos formatos:
+            //   - Nuevo: NODO-Pais-CC-Servidor  (ej: N150-Switzerland-CH-922.conf → "CH")
+            //   - Clásico: CC-Servidor           (ej: NL-403.conf → "NL")
+            std::string profile_base = vpn_profile;
+            if (profile_base.size() > 5 && profile_base.substr(profile_base.size()-5) == ".conf")
+                profile_base = profile_base.substr(0, profile_base.size()-5);
+
+            // Parsear segmentos separados por '-'
+            std::vector<std::string> segs;
+            {
+                std::string seg;
+                for (char c : profile_base) {
+                    if (c == '-') { if (!seg.empty()) segs.push_back(seg); seg.clear(); }
+                    else seg += c;
+                }
+                if (!seg.empty()) segs.push_back(seg);
             }
+
+            std::string extracted_cc;
+            // Formato nuevo: primer segmento tipo "N100" o "N150" (N + dígitos)
+            if (segs.size() >= 3 && segs[0].size() >= 2 && segs[0][0] == 'N' &&
+                std::isdigit((unsigned char)segs[0][1])) {
+                // Buscar el primer segmento de exactamente 2 letras mayúsculas después del nodo y país
+                for (size_t i = 2; i < segs.size(); ++i) {
+                    if (segs[i].size() == 2 &&
+                        std::isupper((unsigned char)segs[i][0]) &&
+                        std::isupper((unsigned char)segs[i][1])) {
+                        extracted_cc = segs[i];
+                        break;
+                    }
+                }
+            }
+            // Formato clásico: primer segmento de 2 letras (ej: NL, FR, CH)
+            if (extracted_cc.empty() && segs.size() >= 1 &&
+                segs[0].size() == 2 &&
+                std::isalpha((unsigned char)segs[0][0]) &&
+                std::isalpha((unsigned char)segs[0][1])) {
+                extracted_cc = segs[0];
+                std::transform(extracted_cc.begin(), extracted_cc.end(), extracted_cc.begin(), ::toupper);
+            }
+            if (!extracted_cc.empty()) loc = extracted_cc;
+
         } else {
             isp_name = "ProtonVPN WireGuard";
             traffic_route = "WireGuard VPN Tunnel";
