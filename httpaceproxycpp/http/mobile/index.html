@@ -1642,8 +1642,8 @@
                             }
                         }
                     })
-                    .catch(() => {});
-            } catch (e) {}
+                    .catch(() => { });
+            } catch (e) { }
         }
 
         async function selectAndPlayChannel(slugOrId, dial) {
@@ -1709,7 +1709,6 @@
                 hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => { }));
             } else if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
                 try {
-                    // v09.12.07: Configuración de buffer ultra-estable contra jitter y desfase sin saturar MSE
                     mpegtsPlayer = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
@@ -1734,7 +1733,7 @@
                         if (errorType === mpegts.ErrorTypes.NETWORK_ERROR) {
                             setTimeout(() => {
                                 if (mpegtsPlayer) {
-                                    try { mpegtsPlayer.load(); mpegtsPlayer.play().catch(() => {}); } catch(e){}
+                                    try { mpegtsPlayer.load(); mpegtsPlayer.play().catch(() => { }); } catch (e) { }
                                 }
                             }, 1000);
                         }
