@@ -695,8 +695,10 @@ void ChannelVerifier::phase_observe(const std::string& stat_url, VerifyResult& r
                 if (speed     > best_speed)  best_speed  = speed;
                 if (!sts.empty())            last_status = sts;
 
-                // Si ya tenemos señal positiva, no hace falta esperar más.
-                if (last_status == "dl" && best_speed > 0) {
+                // Si ya tenemos señal positiva con suficientes peers (>= 10), podemos finalizar de inmediato.
+                // Si reporta pocos peers iniciales del handshake, continuar muestreando durante la ventana de observación
+                // para permitir que el enjambre DHT/P2P reporte los peers reales.
+                if (last_status == "dl" && best_speed > 0 && best_peers >= 10) {
                     result.phase_reached = 4;
                     break;
                 }

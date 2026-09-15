@@ -1716,12 +1716,12 @@
                         isLive: true,
                         url: fullStreamUrl
                     }, {
-                        enableWorker: false,
+                        enableWorker: true,
                         enableStashBuffer: true,
-                        stashInitialSize: 1024 * 1024,
+                        stashInitialSize: 4 * 1024 * 1024,
                         liveBufferLatencyChasing: false,
-                        liveBufferLatencyMaxLatency: 14.0,
-                        liveBufferLatencyMinRemain: 2.0,
+                        liveBufferLatencyMaxLatency: 20.0,
+                        liveBufferLatencyMinRemain: 3.0,
                         autoCleanupSourceBuffer: true,
                         autoCleanupMaxBackwardDuration: 60,
                         autoCleanupMinBackwardDuration: 30,
